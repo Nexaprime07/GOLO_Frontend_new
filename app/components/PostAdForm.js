@@ -98,76 +98,81 @@ export default function PostAdForm() {
       {/** --------------------------------------- */}
 
       {/* Choose Category */}
-      <div className="bg-white p-8 rounded-3xl shadow-md border border-gray-100 relative">
-        <h3 className="font-semibold text-2xl mb-6 text-gray-800">
-          Choose Category
-        </h3>
+<div className="bg-white p-10 rounded-3xl shadow-md border border-gray-100 relative min-h-[320px]">
 
-        <button
-          onClick={() => scroll("left")}
-          className="absolute left-2 top-1/2 -translate-y-1/2 bg-white border border-gray-200 shadow-md rounded-full p-2 hover:bg-[#FFF3D6] transition z-10"
-        >
-          <ChevronLeft size={18} />
-        </button>
+  <h3 className="font-semibold text-2xl mb-8 text-gray-800 text-center">
+    Choose Category
+  </h3>
 
-        <button
-          onClick={() => scroll("right")}
-          className="absolute right-2 top-1/2 -translate-y-1/2 bg-white border border-gray-200 shadow-md rounded-full p-2 hover:bg-[#FFF3D6] transition z-10"
-        >
-          <ChevronRight size={18} />
-        </button>
+  {/* Left Scroll Button */}
+  <button
+    onClick={() => scroll("left")}
+    className="absolute left-2 top-1/2 -translate-y-1/2 bg-white border border-gray-200 shadow-md rounded-full p-2 hover:bg-[#FFF3D6] transition z-10"
+  >
+    <ChevronLeft size={18} />
+  </button>
 
+  {/* Right Scroll Button */}
+  <button
+    onClick={() => scroll("right")}
+    className="absolute right-2 top-1/2 -translate-y-1/2 bg-white border border-gray-200 shadow-md rounded-full p-2 hover:bg-[#FFF3D6] transition z-10"
+  >
+    <ChevronRight size={18} />
+  </button>
+
+  {/* Categories Scroll Row */}
+  <div
+    ref={scrollRef}
+    className="flex items-center gap-8 overflow-x-auto scroll-smooth px-14 snap-x snap-mandatory py-6"
+  >
+    {categories.map((cat, index) => {
+      const Icon = cat.icon;
+      const isActive = selectedCategory.name === cat.name;
+
+      return (
         <div
-          ref={scrollRef}
-          className="flex gap-6 overflow-x-auto scroll-smooth px-12 snap-x snap-mandatory"
+          key={index}
+          onClick={() => {
+            setSelectedCategory(cat);
+            setSelectedSub(null);
+          }}
+          className={`snap-start flex-shrink-0 w-[130px] h-[160px] flex flex-col items-center justify-center rounded-2xl cursor-pointer transition-all duration-300 border
+          ${
+            isActive
+              ? "bg-[#157A4F] text-white border-[#157A4F] shadow-xl scale-105"
+              : "bg-white text-gray-700 border-gray-200 hover:border-[#157A4F] hover:-translate-y-2 hover:shadow-lg"
+          }`}
         >
-          {categories.map((cat, index) => {
-            const Icon = cat.icon;
-            const isActive = selectedCategory.name === cat.name;
-
-            return (
-              <div
-                key={index}
-                onClick={() => {
-                  setSelectedCategory(cat);
-                  setSelectedSub(null);
-                }}
-                className={`snap-start flex-shrink-0 w-[110px] h-[130px] flex flex-col items-center justify-center rounded-2xl cursor-pointer transition-all duration-300 border
-                ${
-                  isActive
-                    ? "bg-[#157A4F] text-white border-[#157A4F] shadow-lg scale-105"
-                    : "bg-white text-gray-700 border-gray-200 hover:border-[#157A4F] hover:-translate-y-1 hover:shadow-md"
-                }`}
-              >
-                <Icon size={30} className="mb-2" />
-                <span className="text-xs font-medium text-center px-2">
-                  {cat.name}
-                </span>
-              </div>
-            );
-          })}
+          <Icon size={34} className="mb-3" />
+          <span className="text-sm font-medium text-center px-2">
+            {cat.name}
+          </span>
         </div>
+      );
+    })}
+  </div>
 
-        {/* Subcategories */}
-        {selectedCategory?.sub && (
-          <div className="flex gap-4 mt-8 justify-center">
-            {selectedCategory.sub.map((option, i) => (
-              <button
-                key={i}
-                onClick={() => setSelectedSub(option)}
-                className={`px-6 py-2 rounded-full text-sm font-medium transition
-                ${
-                  selectedSub === option
-                    ? "bg-[#157A4F] text-white shadow-md"
-                    : "bg-[#FFF3D6] text-gray-700 hover:bg-[#F5B849] hover:text-white"
-                }`}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+  {/* Subcategories */}
+  {selectedCategory?.sub && (
+    <div className="flex gap-4 mt-10 justify-center flex-wrap">
+      {selectedCategory.sub.map((option, i) => (
+        <button
+          key={i}
+          onClick={() => setSelectedSub(option)}
+          className={`px-6 py-2 rounded-full text-sm font-medium transition
+          ${
+            selectedSub === option
+              ? "bg-[#157A4F] text-white shadow-md"
+              : "bg-[#FFF3D6] text-gray-700 hover:bg-[#F5B849] hover:text-white"
+          }`}
+        >
+          {option}
+        </button>
+      ))}
+    </div>
+  )}
+
+</div>
 
       {/* Basic Info */}
       <div className="bg-white p-8 rounded-3xl shadow-md border border-gray-100 space-y-6">
@@ -196,65 +201,107 @@ export default function PostAdForm() {
         </div>
       </div>
 
-      {/* Scheduling */}
-      <div className="bg-white p-8 rounded-3xl shadow-md border border-gray-100 space-y-6">
-        <h3 className="font-semibold text-2xl text-gray-800">
-          Ad Scheduling
-        </h3>
+     {/* Scheduling */}
+<div className="bg-white p-8 rounded-3xl shadow-md border border-gray-100">
 
-        <div className="flex gap-4 justify-center">
-          <select
-            className="border border-gray-300 rounded-xl px-4 py-2 focus:ring-2 focus:ring-[#157A4F]"
-            value={currentMonth.getMonth()}
-            onChange={(e) =>
-              setCurrentMonth(new Date(currentMonth.getFullYear(), Number(e.target.value), 1))
-            }
-          >
-            {months.map((month, i) => (
-              <option key={i} value={i}>{month}</option>
-            ))}
-          </select>
+  <h3 className="font-semibold text-2xl text-gray-800 mb-8 text-center">
+    Ad Scheduling
+  </h3>
 
-          <select
-            className="border border-gray-300 rounded-xl px-4 py-2 focus:ring-2 focus:ring-[#157A4F]"
-            value={currentMonth.getFullYear()}
-            onChange={(e) =>
-              setCurrentMonth(new Date(Number(e.target.value), currentMonth.getMonth(), 1))
-            }
-          >
-            {years.map((year, i) => (
-              <option key={i} value={year}>{year}</option>
-            ))}
-          </select>
-        </div>
+  <div className="grid md:grid-cols-2 gap-8 items-start">
 
-        <div className="flex justify-center">
-          <div className="bg-[#FFF3D6] p-6 rounded-2xl border border-gray-200 shadow-sm">
-            <DayPicker
-              mode="multiple"
-              selected={selectedDates}
-              onSelect={setSelectedDates}
-              fromDate={new Date()}
-              month={currentMonth}
-              onMonthChange={setCurrentMonth}
-              className="text-sm"
-            />
-          </div>
-        </div>
+    {/* LEFT COLUMN — CALENDAR */}
+    <div className="space-y-6">
+
+      {/* Month & Year Selectors */}
+      <div className="flex gap-4 justify-center">
+        <select
+          className="border border-gray-300 rounded-xl px-4 py-2 focus:ring-2 focus:ring-[#157A4F] focus:outline-none transition"
+          value={currentMonth.getMonth()}
+          onChange={(e) =>
+            setCurrentMonth(
+              new Date(currentMonth.getFullYear(), Number(e.target.value), 1)
+            )
+          }
+        >
+          {months.map((month, i) => (
+            <option key={i} value={i}>{month}</option>
+          ))}
+        </select>
+
+        <select
+          className="border border-gray-300 rounded-xl px-4 py-2 focus:ring-2 focus:ring-[#157A4F] focus:outline-none transition"
+          value={currentMonth.getFullYear()}
+          onChange={(e) =>
+            setCurrentMonth(
+              new Date(Number(e.target.value), currentMonth.getMonth(), 1)
+            )
+          }
+        >
+          {years.map((year, i) => (
+            <option key={i} value={year}>{year}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Calendar Card */}
+      <div className="bg-[#FFF3D6] p-6 rounded-2xl border border-gray-200 shadow-sm flex justify-center">
+        <DayPicker
+          mode="multiple"
+          selected={selectedDates}
+          onSelect={setSelectedDates}
+          fromDate={new Date()}
+          month={currentMonth}
+          onMonthChange={setCurrentMonth}
+          className="text-sm"
+        />
+      </div>
+
+    </div>
+
+    {/* RIGHT COLUMN — SELECTED DATES */}
+    <div className="bg-gray-50 rounded-2xl border border-gray-200 shadow-inner flex flex-col h-[420px]">
+
+      {/* Header */}
+      <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+        <h4 className="text-lg font-semibold text-gray-700">
+          Selected Dates
+        </h4>
 
         {selectedDates.length > 0 && (
-          <div className="flex flex-wrap gap-3 justify-center">
+          <span className="bg-[#157A4F] text-white px-3 py-1 rounded-lg text-xs font-medium shadow">
+            {selectedDates.length} Day{selectedDates.length > 1 && "s"}
+          </span>
+        )}
+      </div>
+
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-[#157A4F]/60 scrollbar-track-transparent">
+
+        {selectedDates.length > 0 ? (
+          <div className="flex flex-wrap gap-3">
             {selectedDates.map((date, index) => (
               <span
                 key={index}
-                className="bg-[#157A4F] text-white px-4 py-2 rounded-full text-sm shadow-md"
+                className="bg-[#157A4F] text-white px-4 py-2 rounded-full text-sm shadow-md hover:scale-105 transition"
               >
                 {formatDate(date)}
               </span>
             ))}
           </div>
+        ) : (
+          <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+            No dates selected yet
+          </div>
         )}
+
       </div>
+
+    </div>
+
+  </div>
+
+</div>
 
       {/* Media Upload */}
       <div className="bg-white p-8 rounded-3xl shadow-md border border-gray-100">

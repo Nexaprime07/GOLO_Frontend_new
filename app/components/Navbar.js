@@ -164,7 +164,7 @@ export default function Navbar({
 
           <nav className="hidden md:flex gap-6 text-sm font-medium">
             <Link href="/choja" className="hover:opacity-80 transition">
-              Choja Home
+              Home
             </Link>
             <Link href="/post-ad" className="hover:opacity-80 transition">
               Post Your Ad
