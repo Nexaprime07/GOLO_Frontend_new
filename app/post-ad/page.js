@@ -91,7 +91,7 @@ export default function PostAdPage() {
                 key={item.id}
                 onClick={() => {
                   setSelected(item.id);
-                  router.push("/post-ad/form");
+                  router.push(`/post-ad/form?template=${item.id}`);
                 }}
                 className={`group flex flex-col bg-white rounded-3xl shadow-md border transition-all duration-300 cursor-pointer hover:-translate-y-2 hover:shadow-2xl ${
                   selected === item.id
