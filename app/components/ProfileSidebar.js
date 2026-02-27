@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { User, Package, Heart, LogOut } from "lucide-react";
 
 export default function ProfileSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
 
   const linkStyle = (path) =>
     `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
@@ -14,9 +15,13 @@ export default function ProfileSidebar() {
         : "text-gray-700 hover:bg-gray-100"
     }`;
 
+  const handleLogout = () => {
+    // Add logout logic here if needed (clear tokens, etc.)
+    router.push("/register");
+  };
+
   return (
     <div className="bg-white rounded-3xl shadow-sm p-6 h-fit border border-gray-100">
-
       {/* Title */}
       <div className="mb-8">
         <h3 className="text-xl font-semibold text-black">
@@ -29,7 +34,6 @@ export default function ProfileSidebar() {
 
       {/* Navigation */}
       <div className="space-y-3">
-
         <Link href="/profile" className={linkStyle("/profile")}>
           <User size={18} />
           <span>Profile</span>
@@ -49,11 +53,13 @@ export default function ProfileSidebar() {
         <div className="border-t border-gray-200 my-4"></div>
 
         {/* Logout */}
-        <button className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-all duration-200">
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-all duration-200"
+        >
           <LogOut size={18} />
           <span>Logout</span>
         </button>
-
       </div>
     </div>
   );
