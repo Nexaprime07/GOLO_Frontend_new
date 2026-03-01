@@ -1,11 +1,13 @@
 "use client";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
-import { Search, MapPin, User, X } from "lucide-react";
+import { Search, MapPin, User, X, LogOut, ChevronDown } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { useRouter } from "next/navigation";
 
 export default function Navbar({
   searchQuery = "",
-  setSearchQuery = () => {},
+  setSearchQuery = () => { },
 }) {
   const [location, setLocation] = useState("Kolhapur");
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -13,6 +15,8 @@ export default function Navbar({
 
   const dropdownRef = useRef(null);
   const profileRef = useRef(null);
+  const router = useRouter();
+  const { user, isAuthenticated, logout } = useAuth();
 
   const locations = [
     { city: "Kolhapur", state: "Maharashtra" },
@@ -41,6 +45,18 @@ export default function Navbar({
     return () =>
       document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const handleSearch = (e) => {
+    if (e.key === "Enter" && searchQuery.trim()) {
+      router.push(`/choja?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    setShowProfileMenu(false);
+    router.push("/");
+  };
 
   return (
     <header className="theme-footer shadow-sm sticky top-0 z-50 border-b border-gray-200">
@@ -77,6 +93,7 @@ export default function Navbar({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleSearch}
               placeholder="Search listings..."
               className="flex-1 outline-none text-sm bg-transparent text-black placeholder-gray-500 focus:outline-none"
             />
@@ -174,15 +191,77 @@ export default function Navbar({
             </Link>
           </nav>
 
-          {/* PROFILE ICON */}
-<Link href="/profile">
-  <div
-    className="w-9 h-9 rounded-full flex items-center justify-center shadow-md hover:scale-105 transition cursor-pointer bg-white"
-    style={{ color: "var(--color-primary)" }}
-  >
-    <User size={18} />
-  </div>
-</Link>
+          {/* PROFILE / AUTH */}
+          {isAuthenticated ? (
+            <div className="relative" ref={profileRef}>
+              <div
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                className="flex items-center gap-2 cursor-pointer"
+              >
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center shadow-md hover:scale-105 transition bg-white"
+                  style={{ color: "var(--color-primary)" }}
+                >
+                  {user?.name ? (
+                    <span className="text-sm font-bold">
+                      {user.name.charAt(0).toUpperCase()}
+                    </span>
+                  ) : (
+                    <User size={18} />
+                  )}
+                </div>
+                <ChevronDown size={14} className="text-gray-500" />
+              </div>
+
+              {/* Profile Dropdown */}
+              {showProfileMenu && (
+                <div className="absolute top-12 right-0 w-52 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
+                  <div className="px-4 py-2 border-b border-gray-100">
+                    <p className="text-sm font-semibold text-gray-800">{user?.name}</p>
+                    <p className="text-xs text-gray-500">{user?.email}</p>
+                  </div>
+                  <Link
+                    href="/profile"
+                    onClick={() => setShowProfileMenu(false)}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
+                  >
+                    <User size={16} /> My Profile
+                  </Link>
+                  <Link
+                    href="/my-ads"
+                    onClick={() => setShowProfileMenu(false)}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
+                  >
+                    📋 My Ads
+                  </Link>
+                  <Link
+                    href="/wishlist"
+                    onClick={() => setShowProfileMenu(false)}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
+                  >
+                    ❤️ Wishlist
+                  </Link>
+                  <div className="border-t border-gray-100 mt-1">
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 w-full transition"
+                    >
+                      <LogOut size={16} /> Logout
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Link href="/login">
+              <div
+                className="w-9 h-9 rounded-full flex items-center justify-center shadow-md hover:scale-105 transition cursor-pointer bg-white"
+                style={{ color: "var(--color-primary)" }}
+              >
+                <User size={18} />
+              </div>
+            </Link>
+          )}
         </div>
       </div>
     </header>

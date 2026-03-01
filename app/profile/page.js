@@ -1,11 +1,68 @@
 "use client";
 
 import Image from "next/image";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ProfileSidebar from "../components/ProfileSidebar";
+import { useAuth } from "../context/AuthContext";
+import { getProfile, getMyAds } from "../lib/api";
 
 export default function ProfilePage() {
+  const { user, isAuthenticated, loading: authLoading, refreshProfile } = useAuth();
+  const router = useRouter();
+  const [profile, setProfile] = useState(null);
+  const [activeAdsCount, setActiveAdsCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    async function fetchData() {
+      setLoading(true);
+      try {
+        const [profileRes, adsRes] = await Promise.all([
+          getProfile(),
+          getMyAds({ page: 1, limit: 1 }),
+        ]);
+
+        if (profileRes.success) {
+          setProfile(profileRes.data);
+        }
+        if (adsRes.success) {
+          setActiveAdsCount(adsRes.pagination?.total || 0);
+        }
+      } catch {
+        // Use cached user data as fallback
+        setProfile(user);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [isAuthenticated, user]);
+
+  if (authLoading || loading) {
+    return (
+      <>
+        <Navbar />
+        <div className="min-h-screen bg-[#F8F6F2] flex items-center justify-center">
+          <p className="text-gray-500">Loading profile...</p>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
+  const displayUser = profile || user;
+
   return (
     <>
       <Navbar />
@@ -23,20 +80,23 @@ export default function ProfilePage() {
             <div className="bg-white rounded-2xl shadow-sm p-8">
               <div className="flex flex-col md:flex-row items-center gap-6">
 
-                <Image
-                  src="/images/avatar.png"
-                  alt="Profile"
-                  width={120}
-                  height={120}
-                  className="rounded-full border-4 border-[#F5B849]"
-                />
+                <div
+                  className="w-[120px] h-[120px] rounded-full border-4 border-[#F5B849] flex items-center justify-center bg-gray-100"
+                  style={{ fontSize: "48px", fontWeight: "bold", color: "#157A4F" }}
+                >
+                  {displayUser?.name?.charAt(0)?.toUpperCase() || "U"}
+                </div>
 
                 <div className="text-center md:text-left">
                   <h2 className="text-2xl font-semibold text-black">
-                    Atharv Apugade
+                    {displayUser?.name || "User"}
                   </h2>
-                  <p className="text-gray-500">atharv@email.com</p>
-                  <p className="text-gray-500 mt-1">Nasik, India</p>
+                  <p className="text-gray-500">{displayUser?.email}</p>
+                  <p className="text-gray-500 mt-1">
+                    {displayUser?.profile?.city || displayUser?.profile?.state
+                      ? `${displayUser.profile.city || ""}${displayUser.profile.city && displayUser.profile.state ? ", " : ""}${displayUser.profile.state || ""}`
+                      : "India"}
+                  </p>
 
                   <button className="mt-4 bg-[#F5B849] hover:bg-[#e0a631] transition px-6 py-2 rounded-lg text-black font-medium">
                     Edit Profile
@@ -54,22 +114,31 @@ export default function ProfilePage() {
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
                   <p className="text-gray-500 text-sm">Full Name</p>
-                  <p className="font-medium text-black">Atharv Apugade</p>
+                  <p className="font-medium text-black">{displayUser?.name || "—"}</p>
                 </div>
 
                 <div>
                   <p className="text-gray-500 text-sm">Email</p>
-                  <p className="font-medium text-black">atharv@email.com</p>
+                  <p className="font-medium text-black">{displayUser?.email || "—"}</p>
                 </div>
 
                 <div>
                   <p className="text-gray-500 text-sm">Phone</p>
-                  <p className="font-medium text-black">+91 98765 43210</p>
+                  <p className="font-medium text-black">
+                    {displayUser?.profile?.phone || displayUser?.phone || "Not provided"}
+                  </p>
                 </div>
 
                 <div>
                   <p className="text-gray-500 text-sm">Member Since</p>
-                  <p className="font-medium text-black">January 2025</p>
+                  <p className="font-medium text-black">
+                    {displayUser?.createdAt
+                      ? new Date(displayUser.createdAt).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                      })
+                      : "—"}
+                  </p>
                 </div>
               </div>
             </div>
@@ -83,18 +152,22 @@ export default function ProfilePage() {
               <div className="grid md:grid-cols-3 gap-6 text-center">
 
                 <div className="bg-[#FFF3D6] rounded-xl p-6">
-                  <p className="text-2xl font-bold text-black">12</p>
+                  <p className="text-2xl font-bold text-black">{activeAdsCount}</p>
                   <p className="text-gray-600">Active Ads</p>
                 </div>
 
                 <div className="bg-[#FFF3D6] rounded-xl p-6">
-                  <p className="text-2xl font-bold text-black">34</p>
-                  <p className="text-gray-600">Total Purchases</p>
+                  <p className="text-2xl font-bold text-black">
+                    {displayUser?.isEmailVerified ? "✓" : "✗"}
+                  </p>
+                  <p className="text-gray-600">Email Verified</p>
                 </div>
 
                 <div className="bg-[#FFF3D6] rounded-xl p-6">
-                  <p className="text-2xl font-bold text-black">5</p>
-                  <p className="text-gray-600">Wishlist Items</p>
+                  <p className="text-2xl font-bold text-black capitalize">
+                    {displayUser?.role || "user"}
+                  </p>
+                  <p className="text-gray-600">Account Type</p>
                 </div>
 
               </div>

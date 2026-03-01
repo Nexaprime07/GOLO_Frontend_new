@@ -1,32 +1,41 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { ChevronDown, Grid } from "lucide-react";
 import { createPortal } from "react-dom";
 
 const mainCategories = [
   { name: "Education" },
-  { name: "Vehicle", sub: ["Rent", "Buy"] },
-  { name: "Property", sub: ["Rent", "Buy"] },
+  { name: "Vehicle", sub: ["Rent", "Sell"] },
+  { name: "Property", sub: ["Rent", "Sell"] },
   { name: "Employment" },
   { name: "Mobiles" },
-  { name: "Electronics & Home Appliances" },
+  { name: "Electronics & Home appliances" },
   { name: "Matrimonial" },
   { name: "Business" },
+  { name: "Astrology" },
 ];
 
 const extraCategories = [
-  "Astrology",
+
   "Lost & Found",
   "Service",
   "Personal",
   "Pets",
-  "Obituary",
-  "Others",
   "Public Notice",
   "Travel",
   "Furniture",
+  "Other",
 ];
+
+const allIconMap = {
+  Education: "🎓", Vehicle: "🚗", Property: "🏠", Employment: "💼",
+  Mobiles: "📱", "Electronics & Home appliances": "🖥️", Matrimonial: "💍",
+  Business: "🏪", Astrology: "🔮", "Lost & Found": "🔍", Service: "🔧",
+  Personal: "👤", Pets: "🐾", "Public Notice": "📢", Travel: "✈️",
+  Furniture: "🛋️", Other: "📦",
+};
 
 export default function CategoryBar() {
   const [activeDropdown, setActiveDropdown] = useState(null);
@@ -35,6 +44,7 @@ export default function CategoryBar() {
 
   const buttonRefs = useRef({});
   const wrapperRef = useRef(null);
+  const router = useRouter();
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -43,14 +53,22 @@ export default function CategoryBar() {
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
-    return () =>
-      document.removeEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const navigateToCategory = (categoryName, sub = null) => {
+    const encoded = encodeURIComponent(categoryName);
+    const url = sub
+      ? `/category/${encoded}?sub=${encodeURIComponent(sub)}`
+      : `/category/${encoded}`;
+    router.push(url);
+    setActiveDropdown(null);
+    setShowAllModal(false);
+  };
 
   const handleCategoryClick = (cat) => {
     if (!cat.sub) {
-      console.log("Navigate to:", cat.name);
-      setActiveDropdown(null);
+      navigateToCategory(cat.name);
       return;
     }
 
@@ -59,79 +77,65 @@ export default function CategoryBar() {
       return;
     }
 
-    const rect = buttonRefs.current[cat.name].getBoundingClientRect();
+    const rect = buttonRefs.current[cat.name]?.getBoundingClientRect();
+    if (!rect) return;
 
     setDropdownPosition({
-      top: rect.bottom + window.scrollY + 10,
+      top: rect.bottom + window.scrollY + 8,
       left: rect.left + window.scrollX,
     });
 
     setActiveDropdown(cat.name);
   };
 
-  const handleSubClick = (parent, sub) => {
-    console.log("Navigate to:", parent, sub);
-    setActiveDropdown(null);
-  };
-
   return (
     <>
       {/* MAIN BAR */}
-      <div
-        ref={wrapperRef}
-        className="w-full bg-white border-b border-gray-200"
-      >
-        <div className="w-full flex items-center h-16 px-10">
+      <div ref={wrapperRef} style={{ width: "100%", background: "#fff", borderBottom: "1px solid #e5e7eb", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
+        <div style={{ maxWidth: "1440px", margin: "0 auto", display: "flex", alignItems: "center", height: "52px", padding: "0 24px", overflowX: "auto", gap: "4px" }}>
 
-          {/* Categories stretched full width */}
-          <div className="flex items-center justify-between w-full">
-
-            {mainCategories.map((cat) => (
-              <div key={cat.name} className="relative flex-1 text-center">
-                <button
-                  ref={(el) => (buttonRefs.current[cat.name] = el)}
-                  onClick={() => handleCategoryClick(cat)}
-                  className="group relative inline-flex items-center justify-center gap-1 text-[14px] font-semibold text-gray-700 whitespace-nowrap transition"
-                >
-                  <span className="transition group-hover:text-[var(--accent-500)]">
-                    {cat.name}
-                  </span>
-
-                  {cat.sub && (
-                    <ChevronDown
-                      size={14}
-                      className={`transition-transform duration-300 ${
-                        activeDropdown === cat.name
-                          ? "rotate-180 text-[var(--accent-500)]"
-                          : ""
-                      }`}
-                    />
-                  )}
-
-                  {/* Modern underline */}
-                  <span className="absolute -bottom-2 left-0 w-0 h-[2px] bg-[var(--accent-500)] transition-all duration-300 group-hover:w-full rounded-full" />
-                </button>
-              </div>
-            ))}
-
-            {/* SEE ALL (fixed width, not stretched) */}
-            <div className="flex-shrink-0 ml-6">
+          {mainCategories.map((cat) => (
+            <div key={cat.name} style={{ flexShrink: 0 }}>
               <button
-                onClick={() => setShowAllModal(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-full border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:shadow-sm transition"
+                ref={(el) => (buttonRefs.current[cat.name] = el)}
+                onClick={() => handleCategoryClick(cat)}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: "4px",
+                  padding: "6px 14px", borderRadius: "20px", border: "none",
+                  background: activeDropdown === cat.name ? "#e6f4ee" : "transparent",
+                  color: activeDropdown === cat.name ? "#157A4F" : "#374151",
+                  fontWeight: 600, fontSize: "13px", cursor: "pointer",
+                  whiteSpace: "nowrap", transition: "all 0.15s",
+                }}
+                onMouseEnter={e => { if (activeDropdown !== cat.name) { e.currentTarget.style.background = "#f9fafb"; e.currentTarget.style.color = "#157A4F"; } }}
+                onMouseLeave={e => { if (activeDropdown !== cat.name) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#374151"; } }}
               >
-                <Grid size={16} />
-                See All
+                <span>{allIconMap[cat.name] || "📂"}</span>
+                <span>{cat.name}</span>
+                {cat.sub && (
+                  <ChevronDown size={12} style={{ transition: "transform 0.25s", transform: activeDropdown === cat.name ? "rotate(180deg)" : "none" }} />
+                )}
               </button>
             </div>
+          ))}
 
+          {/* See All */}
+          <div style={{ flexShrink: 0, marginLeft: "auto", paddingLeft: "12px" }}>
+            <button
+              onClick={() => setShowAllModal(true)}
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "6px 16px", borderRadius: "20px", border: "1.5px solid #e5e7eb", background: "#fff", color: "#374151", fontWeight: 600, fontSize: "13px", cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.15s" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#f9fafb"; e.currentTarget.style.borderColor = "#157A4F"; e.currentTarget.style.color = "#157A4F"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = "#e5e7eb"; e.currentTarget.style.color = "#374151"; }}
+            >
+              <Grid size={14} />
+              See All
+            </button>
           </div>
         </div>
       </div>
 
       {/* DROPDOWN */}
-      {activeDropdown &&
-        dropdownPosition &&
+      {activeDropdown && dropdownPosition && typeof window !== "undefined" &&
         createPortal(
           <div
             style={{
@@ -139,18 +143,35 @@ export default function CategoryBar() {
               top: dropdownPosition.top,
               left: dropdownPosition.left,
               zIndex: 9999,
+              background: "#fff",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+              borderRadius: "16px",
+              padding: "8px",
+              border: "1px solid #e5e7eb",
+              minWidth: "180px",
+              animation: "fadeDown 0.15s ease",
             }}
-            className="bg-white shadow-2xl rounded-2xl py-3 border border-gray-100 min-w-[180px]"
           >
+            <style>{`@keyframes fadeDown { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }`}</style>
+            {/* Show parent category too */}
+            <button
+              onClick={() => navigateToCategory(activeDropdown)}
+              style={{ width: "100%", textAlign: "left", padding: "10px 14px", borderRadius: "10px", border: "none", background: "transparent", fontWeight: 700, fontSize: "14px", color: "#157A4F", cursor: "pointer" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#f0fdf4"}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+            >
+              {allIconMap[activeDropdown]} All {activeDropdown}
+            </button>
+            <div style={{ height: "1px", background: "#e5e7eb", margin: "4px 0" }} />
             {mainCategories
               .find((c) => c.name === activeDropdown)
               ?.sub?.map((subItem) => (
                 <button
                   key={subItem}
-                  onClick={() =>
-                    handleSubClick(activeDropdown, subItem)
-                  }
-                  className="w-full text-left px-5 py-2 text-sm font-medium text-gray-700 hover:bg-[var(--accent-50)] hover:text-[var(--accent-600)] transition rounded-lg"
+                  onClick={() => navigateToCategory(activeDropdown, subItem)}
+                  style={{ width: "100%", textAlign: "left", padding: "9px 14px", borderRadius: "10px", border: "none", background: "transparent", fontSize: "13px", fontWeight: 500, color: "#374151", cursor: "pointer" }}
+                  onMouseEnter={e => e.currentTarget.style.background = "#f9fafb"}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                 >
                   {subItem}
                 </button>
@@ -160,30 +181,49 @@ export default function CategoryBar() {
         )}
 
       {/* SEE ALL MODAL */}
-      {showAllModal &&
+      {showAllModal && typeof window !== "undefined" &&
         createPortal(
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[9999]">
-            <div className="bg-white w-[90%] max-w-3xl rounded-3xl p-8 shadow-2xl">
+          <div
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }}
+            onClick={(e) => { if (e.target === e.currentTarget) setShowAllModal(false); }}
+          >
+            <div style={{ background: "#fff", borderRadius: "24px", padding: "32px", width: "90%", maxWidth: "720px", maxHeight: "80vh", overflowY: "auto", boxShadow: "0 24px 80px rgba(0,0,0,0.2)" }}>
 
-              <div className="flex justify-between items-center mb-8">
-                <h3 className="text-2xl font-bold">
-                  All Categories
-                </h3>
-                <button
-                  onClick={() => setShowAllModal(false)}
-                  className="text-gray-500 hover:text-black text-sm"
-                >
-                  Close
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+                <h3 style={{ fontSize: "20px", fontWeight: 800, margin: 0 }}>All Categories</h3>
+                <button onClick={() => setShowAllModal(false)} style={{ background: "#f3f4f6", border: "none", borderRadius: "10px", padding: "6px 14px", cursor: "pointer", fontWeight: 600, fontSize: "14px" }}>
+                  ✕ Close
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {/* Main categories */}
+              <p style={{ fontSize: "12px", fontWeight: 700, color: "#9ca3af", letterSpacing: "0.08em", marginBottom: "12px", textTransform: "uppercase" }}>Main Categories</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "10px", marginBottom: "24px" }}>
+                {mainCategories.map((cat) => (
+                  <button
+                    key={cat.name}
+                    onClick={() => navigateToCategory(cat.name)}
+                    style={{ padding: "14px 10px", borderRadius: "14px", border: "1.5px solid #e5e7eb", background: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 600, color: "#374151", textAlign: "center", transition: "all 0.15s" }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = "#157A4F"; e.currentTarget.style.background = "#f0fdf4"; e.currentTarget.style.color = "#157A4F"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = "#e5e7eb"; e.currentTarget.style.background = "#fff"; e.currentTarget.style.color = "#374151"; e.currentTarget.style.transform = "none"; }}
+                  >
+                    <div style={{ fontSize: "24px", marginBottom: "6px" }}>{allIconMap[cat.name] || "📂"}</div>
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
+
+              <p style={{ fontSize: "12px", fontWeight: 700, color: "#9ca3af", letterSpacing: "0.08em", marginBottom: "12px", textTransform: "uppercase" }}>More Categories</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "10px" }}>
                 {extraCategories.map((cat) => (
                   <button
                     key={cat}
-                    onClick={() => console.log("Navigate to:", cat)}
-                    className="p-4 rounded-xl border border-gray-200 hover:shadow-md hover:-translate-y-1 hover:border-[var(--accent-200)] cursor-pointer text-sm font-semibold text-gray-700 transition text-center bg-white"
+                    onClick={() => navigateToCategory(cat)}
+                    style={{ padding: "14px 10px", borderRadius: "14px", border: "1.5px solid #e5e7eb", background: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 600, color: "#374151", textAlign: "center", transition: "all 0.15s" }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = "#157A4F"; e.currentTarget.style.background = "#f0fdf4"; e.currentTarget.style.color = "#157A4F"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = "#e5e7eb"; e.currentTarget.style.background = "#fff"; e.currentTarget.style.color = "#374151"; e.currentTarget.style.transform = "none"; }}
                   >
+                    <div style={{ fontSize: "24px", marginBottom: "6px" }}>{allIconMap[cat] || "📂"}</div>
                     {cat}
                   </button>
                 ))}

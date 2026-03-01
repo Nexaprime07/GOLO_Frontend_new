@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getFeaturedDeals } from "../lib/api";
 
-const deals = [
+const fallbackDeals = [
   { img: "del1.webp", title: "Smart Watch Pro", discount: "30% OFF" },
   { img: "deal2.jpg", title: "Luxury Spa Package", discount: "30% OFF" },
   { img: "deal3.jpg", title: "Fashion Apparel Sale", discount: "25% OFF" },
@@ -12,6 +13,32 @@ const deals = [
 
 export default function FeaturedDeals() {
   const [activeIndex, setActiveIndex] = useState(null);
+  const [deals, setDeals] = useState(fallbackDeals);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchDeals() {
+      try {
+        const response = await getFeaturedDeals(4);
+        if (response.success && response.data?.length > 0) {
+          setDeals(
+            response.data.map((ad) => ({
+              id: ad._id,
+              img: ad.images?.[0] || "deal1.jpg",
+              title: ad.title,
+              discount: ad.negotiable ? "Negotiable" : `₹${ad.price}`,
+              isFromApi: true,
+            }))
+          );
+        }
+      } catch {
+        // Fallback to mock data silently
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchDeals();
+  }, []);
 
   return (
     <section className="py-20 theme-section">
@@ -24,9 +51,8 @@ export default function FeaturedDeals() {
           </h2>
 
           <button className="theme-button-accent px-4 py-2 rounded-full text-sm transition">
-  View More →
-</button>
-
+            View More →
+          </button>
         </div>
 
         {/* Grid */}
@@ -36,19 +62,19 @@ export default function FeaturedDeals() {
 
             return (
               <div
-                key={i}
+                key={deal.id || i}
                 onClick={() => setActiveIndex(i)}
-                className={`group cursor-pointer rounded-2xl overflow-hidden transition-all duration-300 ${
-                  isActive ? "theme-card-active" : "theme-card"
-                }`}
+                className={`group cursor-pointer rounded-2xl overflow-hidden transition-all duration-300 ${isActive ? "theme-card-active" : "theme-card"
+                  }`}
               >
                 <div className="overflow-hidden">
                   <Image
-                    src={`/images/${deal.img}`}
+                    src={deal.isFromApi ? deal.img : `/images/${deal.img}`}
                     width={400}
                     height={250}
                     alt={deal.title}
                     className="w-full h-52 object-cover transition-transform duration-500 group-hover:scale-105"
+                    unoptimized={deal.isFromApi}
                   />
                 </div>
 

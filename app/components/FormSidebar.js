@@ -1,11 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
-import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useAuth } from "../context/AuthContext";
+import { createAd } from "../lib/api";
 
-export default function FormSidebar({ 
-  adTitleState, 
-  adDescriptionState, 
-  cities, 
+export default function FormSidebar({
+  adTitleState,
+  adDescriptionState,
+  cities,
   uploadedImages,
   primaryContact,
   selectedCategory,
@@ -14,12 +16,19 @@ export default function FormSidebar({
   propertyTypeRent,
   isReviewStarted,
   setIsReviewStarted,
-  templateId
+  templateId,
+  selectedDates,
+  categoryDetails,
 }) {
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const router = useRouter();
+  const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
-    if (templateId === 1 && uploadedImages && uploadedImages.length > 1) {
+    if ((templateId === 1 || !templateId) && uploadedImages && uploadedImages.length > 1) {
       const id = setInterval(() => {
         setCarouselIndex((p) =>
           uploadedImages.length ? (p + 1) % uploadedImages.length : 0
@@ -41,6 +50,140 @@ export default function FormSidebar({
   const gst = Math.round(templateCost * 0.18);
   const subtotal = templateCost + gst;
 
+  const handlePostAd = async () => {
+    setSubmitError("");
+
+    // Check auth
+    if (!isAuthenticated) {
+      router.push("/login?redirect=/post-ad/form");
+      return;
+    }
+
+    // Basic validation
+    if (!adTitleState?.trim()) {
+      setSubmitError("Please enter an ad title.");
+      return;
+    }
+    if (!adDescriptionState?.trim()) {
+      setSubmitError("Please enter a description.");
+      return;
+    }
+    if (!selectedCategory) {
+      setSubmitError("Please select a category.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setIsReviewStarted(true);
+
+    try {
+      // 1) First upload all files to Cloudinary
+      const uploadedUrls = [];
+      if (uploadedImages && uploadedImages.length > 0) {
+        for (const img of uploadedImages) {
+          if (img.file) {
+            const formData = new FormData();
+            formData.append("file", img.file);
+            formData.append("upload_preset", "choja_preset"); // We will create this in the next step
+            formData.append("cloud_name", "dcm1plq42");
+
+            const uploadRes = await fetch(
+              `https://api.cloudinary.com/v1_1/dcm1plq42/image/upload`,
+              {
+                method: "POST",
+                body: formData,
+              }
+            );
+            const uploadData = await uploadRes.json();
+            if (uploadData.secure_url) {
+              uploadedUrls.push(uploadData.secure_url);
+            }
+          } else if (typeof img === "string") {
+            uploadedUrls.push(img);
+          } else if (img.url && !img.url.startsWith("blob:")) {
+            uploadedUrls.push(img.url);
+          }
+        }
+      }
+
+      // Build the ad data payload
+      const adData = {
+        title: adTitleState.trim(),
+        description: adDescriptionState.trim(),
+        category: typeof selectedCategory === 'string' ? selectedCategory : (selectedCategory?.name || "Other"),
+        subCategory: typeof selectedCategory === 'string' ? "General" : (selectedCategory?.subCategory || selectedCategory?.name || "General"),
+        // Swap out dummy logic with our permanently uploaded Cloudinary URLs
+        images: uploadedUrls,
+        price: parseFloat(mobilePrice || monthlyRent || "0") || 0,
+        location: cities?.[0] || "India",
+        city: cities?.[0] || "",
+        cities: cities || [],
+        primaryContact: primaryContact || "",
+        userType: "Customer",
+        contactInfo: {
+          name: user?.name || "User", // Required by backend ContactInfoDto
+          phone: primaryContact || "",
+          email: user?.email || "",
+          preferredContactMethod: "phone"
+        },
+        templateId: templateId || 1,
+        selectedDates: selectedDates || [],
+        tags: [typeof selectedCategory === 'string' ? selectedCategory : selectedCategory?.name].filter(Boolean),
+      };
+
+      // Add category-specific data
+      if (selectedCategory?.name === "Property" && propertyTypeRent) {
+        adData.propertyData = { propertyType: propertyTypeRent, rent: monthlyRent };
+      }
+      if (selectedCategory?.name === "Mobiles" && mobilePrice) {
+        adData.mobileData = { price: mobilePrice };
+      }
+
+      // Add any additional category details
+      if (categoryDetails) {
+        let categoryKey = selectedCategory?.name?.toLowerCase() + "Data";
+
+        // Handle specific naming conventions from backend
+        if (selectedCategory?.name === "Public Notice") categoryKey = "publicNoticeData";
+        if (selectedCategory?.name === "Lost & Found") categoryKey = "lostAndFoundData";
+        if (selectedCategory?.name === "Greetings & Tributes") categoryKey = "greetingsData"; // Or tributes based on sub
+
+        adData[categoryKey] = categoryDetails;
+      }
+
+      const response = await createAd(adData);
+
+      if (response.success) {
+        setSubmitSuccess(true);
+        setTimeout(() => {
+          router.push("/my-ads");
+        }, 2000);
+      } else {
+        setSubmitError(response.message || "Failed to post ad. Please try again.");
+      }
+    } catch (error) {
+      const status = error.status || error.data?.statusCode;
+      // Token expired — clear session and redirect to login
+      if (status === 401) {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('user');
+        }
+        router.push('/login?redirect=/post-ad/form&reason=session_expired');
+        return;
+      }
+      const errorMsg = error.data?.message || error.message;
+      if (Array.isArray(errorMsg)) {
+        setSubmitError(errorMsg.join(", "));
+      } else {
+        setSubmitError(errorMsg || "Failed to post ad. Please try again.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-8 sticky top-20">
 
@@ -56,14 +199,12 @@ export default function FormSidebar({
             {uploadedImages && uploadedImages.length > 0 ? (
               <img
                 src={
-                  templateId === 1
+                  templateId === 1 || !templateId
                     ? uploadedImages[carouselIndex]?.url
                     : uploadedImages[0]?.url
                 }
-                width={400}
-                height={250}
                 alt="preview"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
               />
             ) : (
               <span className="text-gray-400 text-sm">
@@ -106,7 +247,7 @@ export default function FormSidebar({
         {selectedCategory && (
           <div className="mt-4 pt-3 border-t border-gray-200">
             <span className="text-xs text-[#157A4F] font-medium">
-              {selectedCategory.name}
+              {selectedCategory.name || selectedCategory}
             </span>
           </div>
         )}
@@ -119,7 +260,7 @@ export default function FormSidebar({
         </h4>
 
         <div className="space-y-3 text-sm">
-          
+
           {/* Template Cost */}
           <div className="flex justify-between">
             <span>Template cost</span>
@@ -142,10 +283,25 @@ export default function FormSidebar({
           </span>
         </div>
 
-        <button 
-          onClick={() => setIsReviewStarted(true)}
-          className="w-full bg-[#157A4F] text-white py-3 rounded-xl hover:bg-[#0f5c3a] transition shadow-md font-semibold">
-          Review & Post Ad
+        {/* Error Message */}
+        {submitError && (
+          <p className="text-red-500 text-sm text-center">{submitError}</p>
+        )}
+
+        {/* Success Message */}
+        {submitSuccess && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-center">
+            <p className="text-green-700 font-semibold">🎉 Ad posted successfully!</p>
+            <p className="text-green-600 text-sm mt-1">Redirecting to My Ads...</p>
+          </div>
+        )}
+
+        <button
+          onClick={handlePostAd}
+          disabled={isSubmitting || submitSuccess}
+          className="w-full bg-[#157A4F] text-white py-3 rounded-xl hover:bg-[#0f5c3a] transition shadow-md font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {isSubmitting ? "Posting..." : submitSuccess ? "✓ Posted!" : "Review & Post Ad"}
         </button>
 
         <button className="w-full border border-gray-300 py-3 rounded-xl hover:bg-gray-50 transition font-medium">

@@ -1,9 +1,11 @@
 "use client";
 
 import AuthLayout from "./../../components/AuthLayout";
-import { Mail, Lock, User, Phone, MapPin, FileText } from "lucide-react";
+import { Mail, Lock, User, Phone, MapPin, FileText, Eye, EyeOff } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "../../context/AuthContext";
 
 export default function RegisterPage() {
   const quotes = [
@@ -13,7 +15,34 @@ export default function RegisterPage() {
   ];
 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [accountType, setAccountType] = useState("user"); // user | merchant
+  const [accountType, setAccountType] = useState("user");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  // User form fields
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+
+  // Merchant form fields
+  const [storeName, setStoreName] = useState("");
+  const [storeEmail, setStoreEmail] = useState("");
+  const [gstNumber, setGstNumber] = useState("");
+  const [contactNumber, setContactNumber] = useState("");
+  const [storeLocation, setStoreLocation] = useState("");
+  const [storePassword, setStorePassword] = useState("");
+
+  const router = useRouter();
+  const { register, isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push("/");
+    }
+  }, [isAuthenticated, router]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -21,6 +50,62 @@ export default function RegisterPage() {
     }, 4000);
     return () => clearInterval(interval);
   }, [quotes.length]);
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+
+    // Validate based on account type
+    if (accountType === "user") {
+      if (!name.trim() || !email.trim() || !password.trim()) {
+        setError("Name, email, and password are required.");
+        return;
+      }
+      if (password.length < 6) {
+        setError("Password must be at least 6 characters.");
+        return;
+      }
+    } else {
+      if (!storeName.trim() || !storeEmail.trim() || !storePassword.trim()) {
+        setError("Store name, email, and password are required.");
+        return;
+      }
+      if (storePassword.length < 6) {
+        setError("Password must be at least 6 characters.");
+        return;
+      }
+    }
+
+    setIsLoading(true);
+    try {
+      // Helper to format phone number to E.164 (satisfy backend IsPhoneNumber)
+      const formatPhone = (p) => {
+        if (!p) return undefined;
+        let cleaned = p.replace(/\D/g, ''); // Remove non-digits
+        if (cleaned.length === 10) return `+91${cleaned}`; // Default to India 
+        return p.startsWith('+') ? p : `+${cleaned}`; // Ensure it starts with +
+      };
+
+      const registrationData = accountType === "user"
+        ? { name, email, password, phone: formatPhone(phone) }
+        : { name: storeName, email: storeEmail, password: storePassword, phone: formatPhone(contactNumber) };
+
+      await register(registrationData);
+      setSuccess("Registration successful! Redirecting to login...");
+      setTimeout(() => router.push("/login"), 1500);
+    } catch (err) {
+      if (err.data?.message?.includes("phone")) {
+        setError("Invalid phone number format. Please include country code (e.g., +91).");
+      } else {
+        setError(
+          err.data?.message || "Registration failed. Please try again."
+        );
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <AuthLayout>
@@ -39,7 +124,7 @@ export default function RegisterPage() {
           {/* LEFT SIDE */}
           <div className="login-left">
             <div className="testimonial-section">
-              <div className="quote-mark">“</div>
+              <div className="quote-mark">&ldquo;</div>
               <div className="yellow-square-icon">G</div>
 
               <div className="quote-container">
@@ -62,9 +147,8 @@ export default function RegisterPage() {
                 {quotes.map((_, index) => (
                   <span
                     key={index}
-                    className={`dot ${
-                      currentIndex === index ? "active" : ""
-                    }`}
+                    className={`dot ${currentIndex === index ? "active" : ""
+                      }`}
                     onClick={() => setCurrentIndex(index)}
                   ></span>
                 ))}
@@ -166,7 +250,8 @@ export default function RegisterPage() {
                   </div>
                 </div>
               </div>
- {/* Social Buttons */}
+
+              {/* Social Buttons */}
               <div className="social-buttons">
                 <button className="social-btn google">
                   <span className="icon">G</span> Google
@@ -175,7 +260,7 @@ export default function RegisterPage() {
                   <span className="icon">f</span> Facebook
                 </button>
                 <button className="social-btn apple">
-                  <span className="icon"></span> Apple
+                  <span className="icon"></span> Apple
                 </button>
               </div>
               <div className="divider">
@@ -186,111 +271,180 @@ export default function RegisterPage() {
                 </span>
               </div>
 
-              {/* FORM SWITCH */}
-              {accountType === "user" ? (
-                <>
-                  <div className="input-group">
-                    <label>Name</label>
-                    <div className="input-wrapper">
-                      <User className="input-icon" size={18} />
-                      <input type="text" placeholder="Enter your full name" />
-                    </div>
-                  </div>
+              <form onSubmit={handleRegister}>
+                {/* Error / Success Messages */}
+                {error && (
+                  <p style={{ color: "red", fontSize: "13px", marginBottom: "15px", textAlign: "center" }}>
+                    {error}
+                  </p>
+                )}
+                {success && (
+                  <p style={{ color: "#157A4F", fontSize: "13px", marginBottom: "15px", textAlign: "center" }}>
+                    {success}
+                  </p>
+                )}
 
-                  <div className="input-group">
-                    <label>Email</label>
-                    <div className="input-wrapper">
-                      <Mail className="input-icon" size={18} />
-                      <input type="email" placeholder="Enter your email" />
+                {/* FORM SWITCH */}
+                {accountType === "user" ? (
+                  <>
+                    <div className="input-group">
+                      <label>Name</label>
+                      <div className="input-wrapper">
+                        <User className="input-icon" size={18} />
+                        <input
+                          type="text"
+                          placeholder="Enter your full name"
+                          value={name}
+                          onChange={(e) => { setName(e.target.value); setError(""); }}
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="input-group">
-                    <label>Number</label>
-                    <div className="input-wrapper">
-                      <Phone className="input-icon" size={18} />
-                      <input type="tel" placeholder="Enter your phone number" />
+                    <div className="input-group">
+                      <label>Email</label>
+                      <div className="input-wrapper">
+                        <Mail className="input-icon" size={18} />
+                        <input
+                          type="email"
+                          placeholder="Enter your email"
+                          value={email}
+                          onChange={(e) => { setEmail(e.target.value); setError(""); }}
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="input-group">
-                    <label>Create Password</label>
-                    <div className="input-wrapper">
-                      <Lock className="input-icon" size={18} />
-                      <input
-                        type="password"
-                        placeholder="Create a strong password"
-                      />
+                    <div className="input-group">
+                      <label>Number</label>
+                      <div className="input-wrapper">
+                        <Phone className="input-icon" size={18} />
+                        <input
+                          type="tel"
+                          placeholder="Enter your phone number"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                        />
+                      </div>
                     </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="input-group">
-                    <label>Store Name</label>
-                    <div className="input-wrapper">
-                      <User className="input-icon" size={18} />
-                      <input type="text" placeholder="Enter store name" />
+
+                    <div className="input-group">
+                      <label>Create Password</label>
+                      <div className="input-wrapper">
+                        <Lock className="input-icon" size={18} />
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Create a strong password"
+                          value={password}
+                          onChange={(e) => { setPassword(e.target.value); setError(""); }}
+                        />
+                        <div onClick={() => setShowPassword(!showPassword)} style={{ cursor: "pointer" }}>
+                          {showPassword ? <Eye className="input-icon-right" size={18} /> : <EyeOff className="input-icon-right" size={18} />}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-
-                  <div className="input-group">
-                    <label>Email</label>
-                    <div className="input-wrapper">
-                      <Mail className="input-icon" size={18} />
-                      <input type="email" placeholder="Enter store email" />
+                  </>
+                ) : (
+                  <>
+                    <div className="input-group">
+                      <label>Store Name</label>
+                      <div className="input-wrapper">
+                        <User className="input-icon" size={18} />
+                        <input
+                          type="text"
+                          placeholder="Enter store name"
+                          value={storeName}
+                          onChange={(e) => { setStoreName(e.target.value); setError(""); }}
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="input-group">
-                    <label>GST Number</label>
-                    <div className="input-wrapper">
-                      <FileText className="input-icon" size={18} />
-                      <input type="text" placeholder="Enter GST number" />
+                    <div className="input-group">
+                      <label>Email</label>
+                      <div className="input-wrapper">
+                        <Mail className="input-icon" size={18} />
+                        <input
+                          type="email"
+                          placeholder="Enter store email"
+                          value={storeEmail}
+                          onChange={(e) => { setStoreEmail(e.target.value); setError(""); }}
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="input-group">
-                    <label>Number</label>
-                    <div className="input-wrapper">
-                      <Phone className="input-icon" size={18} />
-                      <input type="tel" placeholder="Enter contact number" />
+                    <div className="input-group">
+                      <label>GST Number</label>
+                      <div className="input-wrapper">
+                        <FileText className="input-icon" size={18} />
+                        <input
+                          type="text"
+                          placeholder="Enter GST number"
+                          value={gstNumber}
+                          onChange={(e) => setGstNumber(e.target.value)}
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="input-group">
-                    <label>Location</label>
-                    <div className="input-wrapper">
-                      <MapPin className="input-icon" size={18} />
-                      <input type="text" placeholder="Enter store location" />
+                    <div className="input-group">
+                      <label>Number</label>
+                      <div className="input-wrapper">
+                        <Phone className="input-icon" size={18} />
+                        <input
+                          type="tel"
+                          placeholder="Enter contact number"
+                          value={contactNumber}
+                          onChange={(e) => setContactNumber(e.target.value)}
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="input-group">
-                    <label>Create Password</label>
-                    <div className="input-wrapper">
-                      <Lock className="input-icon" size={18} />
-                      <input
-                        type="password"
-                        placeholder="Create a strong password"
-                      />
+                    <div className="input-group">
+                      <label>Location</label>
+                      <div className="input-wrapper">
+                        <MapPin className="input-icon" size={18} />
+                        <input
+                          type="text"
+                          placeholder="Enter store location"
+                          value={storeLocation}
+                          onChange={(e) => setStoreLocation(e.target.value)}
+                        />
+                      </div>
                     </div>
-                  </div>
-                </>
-              )}
 
-              <div className="terms-checkbox">
-                <input type="checkbox" id="terms" />
-                <label htmlFor="terms">
-                  By clicking on "Continue", I agree{" "}
-                  <span className="link">Terms</span> and{" "}
-                  <span className="link">Privacy Policy</span>
-                </label>
-              </div>
+                    <div className="input-group">
+                      <label>Create Password</label>
+                      <div className="input-wrapper">
+                        <Lock className="input-icon" size={18} />
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Create a strong password"
+                          value={storePassword}
+                          onChange={(e) => { setStorePassword(e.target.value); setError(""); }}
+                        />
+                        <div onClick={() => setShowPassword(!showPassword)} style={{ cursor: "pointer" }}>
+                          {showPassword ? <Eye className="input-icon-right" size={18} /> : <EyeOff className="input-icon-right" size={18} />}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
 
-              <Link href="/verify">
-                <button className="continue-btn">Continue</button>
-              </Link>
+                <div className="terms-checkbox">
+                  <input type="checkbox" id="terms" />
+                  <label htmlFor="terms">
+                    By clicking on &quot;Continue&quot;, I agree{" "}
+                    <span className="link">Terms</span> and{" "}
+                    <span className="link">Privacy Policy</span>
+                  </label>
+                </div>
+
+                <button
+                  type="submit"
+                  className="continue-btn"
+                  disabled={isLoading}
+                  style={{ opacity: isLoading ? 0.7 : 1, cursor: isLoading ? "not-allowed" : "pointer" }}
+                >
+                  {isLoading ? "Creating account..." : "Continue"}
+                </button>
+              </form>
 
               <div className="register-footer">
                 Already have an account?{" "}

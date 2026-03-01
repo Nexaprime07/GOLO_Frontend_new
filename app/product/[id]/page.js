@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, use } from "react";
 import Image from "next/image";
 import Navbar from "./../../components/Navbar";
 import Footer from "./../../components/Footer";
 import Recommended from "@/app/components/Recommended";
+import { getAdById } from "../../lib/api";
 import {
   Heart,
   Share2,
@@ -13,18 +14,78 @@ import {
   Phone,
   MessageCircle,
   ShieldCheck,
+  Loader2,
 } from "lucide-react";
 
-export default function ProductDetails() {
+export default function ProductDetails({ params }) {
+  const resolvedParams = use(params);
+  const adId = resolvedParams.id;
 
-  const images = [
+  const [ad, setAd] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [selectedImage, setSelectedImage] = useState(0);
+
+  // Fallback data
+  const fallbackImages = [
     "/images/listing1.webp",
     "/images/listing2.webp",
     "/images/listing3.webp",
     "/images/listing4.webp",
   ];
 
-  const [selectedImage, setSelectedImage] = useState(0);
+  useEffect(() => {
+    async function fetchAd() {
+      if (!adId) return;
+      setLoading(true);
+      try {
+        const response = await getAdById(adId);
+        if (response.success && response.data) {
+          setAd(response.data);
+        } else {
+          setError("Ad not found");
+        }
+      } catch (err) {
+        setError("Failed to load ad details");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchAd();
+  }, [adId]);
+
+  const images = ad?.images?.length > 0 ? ad.images : fallbackImages;
+  const isExternalImage = ad?.images?.length > 0;
+
+  if (loading) {
+    return (
+      <>
+        <Navbar />
+        <div className="bg-[#F8F6F2] min-h-screen flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 size={32} className="animate-spin text-[#157A4F]" />
+            <p className="text-gray-500">Loading ad details...</p>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
+  if (error) {
+    return (
+      <>
+        <Navbar />
+        <div className="bg-[#F8F6F2] min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-xl font-semibold text-gray-700 mb-2">{error}</p>
+            <p className="text-gray-500">The ad you&apos;re looking for might have been removed</p>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
 
   return (
     <>
@@ -35,9 +96,9 @@ export default function ProductDetails() {
 
           {/* Breadcrumb */}
           <p className="text-sm text-gray-500 mb-6">
-            Home &nbsp;›&nbsp; Electronics &nbsp;›&nbsp; Home Appliances &nbsp;›&nbsp;
+            Home &nbsp;›&nbsp; {ad?.category || "Category"} &nbsp;›&nbsp; {ad?.subCategory || "Sub Category"} &nbsp;›&nbsp;
             <span className="text-gray-800 font-medium">
-              PureView RO Water Purifier
+              {ad?.title || "Product"}
             </span>
           </p>
 
@@ -56,10 +117,9 @@ export default function ProductDetails() {
                       key={index}
                       onClick={() => setSelectedImage(index)}
                       className={`w-20 h-20 rounded-xl overflow-hidden border-2 cursor-pointer transition
-                        ${
-                          selectedImage === index
-                            ? "border-[#157A4F]"
-                            : "border-gray-200 hover:border-[#157A4F]"
+                        ${selectedImage === index
+                          ? "border-[#157A4F]"
+                          : "border-gray-200 hover:border-[#157A4F]"
                         }`}
                     >
                       <Image
@@ -68,6 +128,7 @@ export default function ProductDetails() {
                         height={100}
                         alt={`thumbnail-${index}`}
                         className="object-cover w-full h-full"
+                        unoptimized={isExternalImage}
                       />
                     </div>
                   ))}
@@ -79,8 +140,9 @@ export default function ProductDetails() {
                     src={images[selectedImage]}
                     width={900}
                     height={600}
-                    alt="Product"
+                    alt={ad?.title || "Product"}
                     className="rounded-xl w-full object-cover transition-all duration-300"
+                    unoptimized={isExternalImage}
                   />
                   <div className="absolute bottom-8 right-10 bg-[#157A4F] text-white text-xs px-3 py-1 rounded-full">
                     {selectedImage + 1} / {images.length} Photos
@@ -91,18 +153,25 @@ export default function ProductDetails() {
 
               {/* Tags */}
               <div className="flex gap-3 mt-8">
-                <span className="text-xs font-semibold bg-[#FFF3D6] text-[#157A4F] px-3 py-1 rounded-full">
-                  Featured Ad
-                </span>
+                {ad?.isPromoted && (
+                  <span className="text-xs font-semibold bg-[#FFF3D6] text-[#157A4F] px-3 py-1 rounded-full">
+                    Featured Ad
+                  </span>
+                )}
                 <span className="text-xs font-semibold bg-gray-200 text-gray-700 px-3 py-1 rounded-full">
-                  Kitchenware
+                  {ad?.category || "General"}
                 </span>
+                {ad?.subCategory && (
+                  <span className="text-xs font-semibold bg-gray-200 text-gray-700 px-3 py-1 rounded-full">
+                    {ad.subCategory}
+                  </span>
+                )}
               </div>
 
               {/* Title */}
               <div className="flex justify-between items-start mt-4">
                 <h1 className="text-2xl font-bold text-gray-800 w-4/5">
-                  PureView Pro RO + UV Water Purifier - High Capacity (15L)
+                  {ad?.title || "Product Title"}
                 </h1>
 
                 <div className="flex gap-3 text-gray-400">
@@ -113,14 +182,23 @@ export default function ProductDetails() {
 
               {/* Info Row */}
               <div className="flex items-center gap-6 text-sm text-gray-500 mt-3">
-                <span>Posted 2 hours ago</span>
+                <span>
+                  Posted{" "}
+                  {ad?.createdAt
+                    ? new Date(ad.createdAt).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })
+                    : "recently"}
+                </span>
                 <span className="flex items-center gap-1">
                   <MapPin size={14} />
-                  Model Town, Sector 4
+                  {ad?.location || "Location not specified"}
                 </span>
                 <span className="flex items-center gap-1">
                   <Star size={14} className="text-[#F5B849] fill-[#F5B849]" />
-                  4.2 (128 Reviews)
+                  {ad?.views || 0} views
                 </span>
               </div>
 
@@ -131,41 +209,22 @@ export default function ProductDetails() {
                 </h2>
 
                 <p className="text-sm text-gray-600 leading-relaxed mb-6">
-                  Maintain your family's health with the PureView Pro RO Purifier.
-                  This advanced water purification system ensures every drop is
-                  safe, clean, and infused with essential minerals.
+                  {ad?.description || "No description available."}
                 </p>
 
-                <ul className="grid grid-cols-2 gap-3 text-sm text-gray-600">
-                  <li>✓ 15 Litre Storage Capacity</li>
-                  <li>✓ RO + UV + UF + TDS Control</li>
-                  <li>✓ 1 Year Brand Warranty</li>
-                  <li>✓ Food Grade Plastic Tank</li>
-                  <li>✓ Smart LED Indicator</li>
-                  <li>✓ Energy Efficient Operation</li>
-                </ul>
-              </div>
-
-              {/* Second Description */}
-              <div className="bg-white p-6 rounded-2xl shadow-sm mt-6 border border-gray-200">
-                <h2 className="font-semibold text-lg mb-4">
-                  Detailed Description
-                </h2>
-
-                <p className="text-sm text-gray-600 leading-relaxed mb-6">
-                  Special features include an auto shut-off mechanism when the tank
-                  is full and a leak-proof design. Installation is provided free of
-                  charge by the seller for local customers.
-                </p>
-
-                <ul className="grid grid-cols-2 gap-3 text-sm text-gray-600">
-                  <li>✓ 15 Litre Storage Capacity</li>
-                  <li>✓ RO + UV + UF + TDS Control</li>
-                  <li>✓ 1 Year Brand Warranty</li>
-                  <li>✓ Food Grade Plastic Tank</li>
-                  <li>✓ Smart LED Indicator</li>
-                  <li>✓ Energy Efficient Operation</li>
-                </ul>
+                {/* Tags */}
+                {ad?.tags?.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {ad.tags.map((tag, i) => (
+                      <span
+                        key={i}
+                        className="text-xs bg-gray-100 text-gray-600 px-3 py-1 rounded-full"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
             </div>
@@ -177,15 +236,17 @@ export default function ProductDetails() {
                 {/* Price Card */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
                   <div className="flex justify-between items-center">
-                    <p className="text-gray-500 font-medium">Final Price</p>
+                    <p className="text-gray-500 font-medium">
+                      {ad?.negotiable ? "Negotiable Price" : "Final Price"}
+                    </p>
                     <div className="flex items-center gap-1 text-sm text-gray-600">
                       <Star size={14} className="text-[#F5B849] fill-[#F5B849]" />
-                      4.8
+                      {ad?.views || 0}
                     </div>
                   </div>
 
                   <h2 className="text-3xl font-bold mt-3 text-[#157A4F]">
-                    ₹2,499
+                    ₹{ad?.price?.toLocaleString() || "0"}
                   </h2>
 
                   <button className="w-full mt-6 py-3 rounded-xl bg-[#157A4F] hover:bg-[#0f5c3a] text-white font-semibold flex items-center justify-center gap-2 transition">
@@ -199,32 +260,31 @@ export default function ProductDetails() {
                   </button>
                 </div>
 
-                {/* Seller Card */}
+                {/* Contact Info Card */}
+                {ad?.contactInfo && (
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                    <h3 className="font-semibold mb-3">Contact Information</h3>
+                    {ad.contactInfo.phone && (
+                      <p className="text-sm text-gray-600">📞 {ad.contactInfo.phone}</p>
+                    )}
+                    {ad.contactInfo.email && (
+                      <p className="text-sm text-gray-600 mt-1">✉️ {ad.contactInfo.email}</p>
+                    )}
+                    {ad.contactInfo.whatsapp && (
+                      <p className="text-sm text-gray-600 mt-1">💬 {ad.contactInfo.whatsapp}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Location Card */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-gray-300" />
-                    <div>
-                      <p className="font-semibold">Rajesh Kumar</p>
-                      <p className="text-xs text-gray-500">
-                        Member Since Jan 2022
-                      </p>
-                    </div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <MapPin size={18} className="text-[#157A4F]" />
+                    <h3 className="font-semibold">Location</h3>
                   </div>
-
-                  <div className="flex justify-between mt-6 text-sm text-gray-600">
-                    <div>
-                      <p className="font-semibold">RESPONSE</p>
-                      <p>Under 1 hour</p>
-                    </div>
-                    <div>
-                      <p className="font-semibold">LISTINGS</p>
-                      <p>14 Active Ads</p>
-                    </div>
-                  </div>
-
-                  <button className="w-full mt-6 py-3 rounded-xl border border-[#157A4F] text-[#157A4F] hover:bg-[#FFF3D6] transition">
-                    Message Seller
-                  </button>
+                  <p className="text-sm text-gray-600">{ad?.location}</p>
+                  {ad?.city && <p className="text-sm text-gray-500">{ad.city}, {ad.state}</p>}
+                  {ad?.pincode && <p className="text-sm text-gray-500">PIN: {ad.pincode}</p>}
                 </div>
 
                 {/* Safety Tips */}
@@ -248,7 +308,7 @@ export default function ProductDetails() {
 
         </div>
       </div>
-<Recommended />
+      <Recommended />
       <Footer />
     </>
   );

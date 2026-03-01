@@ -22,6 +22,7 @@ export default function FormContent() {
   const [propertyTypeRent, setPropertyTypeRent] = useState("");
   const [isReviewStarted, setIsReviewStarted] = useState(false);
   const [isCategoryDetailsComplete, setIsCategoryDetailsComplete] = useState(false);
+  const [categoryDetailsData, setCategoryDetailsData] = useState(null);
 
   const searchParams = useSearchParams();
   const templateParam = searchParams.get("template");
@@ -41,13 +42,23 @@ export default function FormContent() {
   const isSchedulingComplete = selectedDates.length > 0;
   const isReviewComplete = isReviewStarted;
 
+  const handleCategoryDetailsChange = (data) => {
+    if (data === false) {
+      setIsCategoryDetailsComplete(false);
+      setCategoryDetailsData(null);
+    } else {
+      setIsCategoryDetailsComplete(true);
+      setCategoryDetailsData(typeof data === "object" ? data : null);
+    }
+  };
+
   const currentStep = !isBasicInfoComplete
     ? 1
     : !isCategoryDetailsComplete
-    ? 2
-    : !isSchedulingComplete
-    ? 3
-    : 4;
+      ? 2
+      : !isSchedulingComplete
+        ? 3
+        : 4;
 
   return (
     <div className="bg-gradient-to-br from-gray-50 via-blue-50 to-white min-h-screen flex flex-col">
@@ -72,7 +83,7 @@ export default function FormContent() {
 
           {/* LEFT FORM */}
           <div className="lg:col-span-2">
-            <PostAdForm 
+            <PostAdForm
               adTitleState={adTitleState}
               setAdTitleState={setAdTitleState}
               adDescriptionState={adDescriptionState}
@@ -93,14 +104,14 @@ export default function FormContent() {
               setMonthlyRent={setMonthlyRent}
               propertyTypeRent={propertyTypeRent}
               setPropertyTypeRent={setPropertyTypeRent}
-              onCategoryDetailsChange={setIsCategoryDetailsComplete}
+              onCategoryDetailsChange={handleCategoryDetailsChange}
               templateId={templateId}
             />
           </div>
 
           {/* RIGHT SIDEBAR */}
           <div className="lg:col-span-1">
-            <FormSidebar 
+            <FormSidebar
               adTitleState={adTitleState}
               adDescriptionState={adDescriptionState}
               cities={cities}
@@ -110,9 +121,11 @@ export default function FormContent() {
               mobilePrice={mobilePrice}
               monthlyRent={monthlyRent}
               propertyTypeRent={propertyTypeRent}
+              categoryDetails={categoryDetailsData}
               isReviewStarted={isReviewStarted}
               setIsReviewStarted={setIsReviewStarted}
               templateId={templateId}
+              selectedDates={selectedDates}
             />
           </div>
 

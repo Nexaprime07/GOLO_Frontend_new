@@ -59,13 +59,51 @@ export default function PostAdForm({
   const [selectedSub, setSelectedSub] = useState(null);
   const [mediaError, setMediaError] = useState("");
   const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  // Education states
+  const [educationInstitutionType, setEducationInstitutionType] = useState("");
+  const [educationInstitutionName, setEducationInstitutionName] = useState("");
+  const [educationCourseName, setEducationCourseName] = useState("");
   const [educationMode, setEducationMode] = useState("");
   const [educationDemo, setEducationDemo] = useState("");
+  const [educationDuration, setEducationDuration] = useState("");
+  const [educationFees, setEducationFees] = useState("");
+  const [educationExperience, setEducationExperience] = useState("");
+  const [educationQualification, setEducationQualification] = useState("");
+
   const [matrimonialGender, setMatrimonialGender] = useState("");
   const [matrimonialMarital, setMatrimonialMarital] = useState("");
+  const [matrimonialProfileFor, setMatrimonialProfileFor] = useState("");
+  const [matrimonialName, setMatrimonialName] = useState("");
+  const [matrimonialAge, setMatrimonialAge] = useState("");
+  const [matrimonialReligion, setMatrimonialReligion] = useState("");
+  const [matrimonialCaste, setMatrimonialCaste] = useState("");
+  const [matrimonialEducation, setMatrimonialEducation] = useState("");
+  const [matrimonialOccupation, setMatrimonialOccupation] = useState("");
+  const [matrimonialIncome, setMatrimonialIncome] = useState("");
+  const [matrimonialHeight, setMatrimonialHeight] = useState("");
+  const [matrimonialLocation, setMatrimonialLocation] = useState("");
+  const [matrimonialAboutMe, setMatrimonialAboutMe] = useState("");
+  const [matrimonialPartnerPref, setMatrimonialPartnerPref] = useState("");
   const [vehicleSellTransmission, setVehicleSellTransmission] = useState("");
   const [vehicleSellRC, setVehicleSellRC] = useState("");
+  const [vehicleSellType, setVehicleSellType] = useState("");
+  const [vehicleSellBrand, setVehicleSellBrand] = useState("");
+  const [vehicleSellModel, setVehicleSellModel] = useState("");
+  const [vehicleSellVariant, setVehicleSellVariant] = useState("");
+  const [vehicleSellYear, setVehicleSellYear] = useState("");
+  const [vehicleSellKMDriven, setVehicleSellKMDriven] = useState("");
+  const [vehicleSellFuelType, setVehicleSellFuelType] = useState("");
+  const [vehicleSellOwnership, setVehicleSellOwnership] = useState("");
+  const [vehicleSellInsurance, setVehicleSellInsurance] = useState("");
+  const [vehicleSellCondition, setVehicleSellCondition] = useState("");
+  const [vehicleSellPrice, setVehicleSellPrice] = useState("");
+  const [vehicleRentType, setVehicleRentType] = useState("");
+  const [vehicleRentBrandModel, setVehicleRentBrandModel] = useState("");
+  const [vehicleRentAmount, setVehicleRentAmount] = useState("");
+  const [vehicleRentDeposit, setVehicleRentDeposit] = useState("");
   const [vehicleRentDriver, setVehicleRentDriver] = useState("");
+  const [vehicleRentMinDuration, setVehicleRentMinDuration] = useState("");
   const [businessType, setBusinessType] = useState("");
   const [validTillDate, setValidTillDate] = useState(null);
   const [travelDate, setTravelDate] = useState(null);
@@ -127,6 +165,8 @@ export default function PostAdForm({
   const [employmentRequirements, setEmploymentRequirements] = useState("");
   const [employmentBenefits, setEmploymentBenefits] = useState("");
   const [employmentVacancies, setEmploymentVacancies] = useState("");
+  const [employmentJobTitle, setEmploymentJobTitle] = useState("");
+  const [employmentCompanyName, setEmploymentCompanyName] = useState("");
 
   const [petSpecies, setPetSpecies] = useState("");
   const [petBreed, setPetBreed] = useState("");
@@ -199,7 +239,7 @@ export default function PostAdForm({
     { name: "Other", icon: Package },
   ];
 
-  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 10 }, (_, i) => currentYear + i);
 
@@ -220,16 +260,80 @@ export default function PostAdForm({
     }
 
     let isComplete = false;
+    let categoryData = null;
+
     switch (selectedCategory.name) {
       case "Education":
-        isComplete = isFilled(educationMode) && isFilled(educationDemo);
+        isComplete = isFilled(educationInstitutionType) && isFilled(educationInstitutionName);
+        if (isComplete) {
+          categoryData = {
+            institutionType: educationInstitutionType,
+            institutionName: educationInstitutionName,
+            courseName: educationCourseName || undefined,
+            duration: educationDuration || undefined,
+            fees: educationFees ? parseInt(educationFees) : undefined,
+            facilities: [], // Can be expanded in UI later
+            contactPerson: undefined,
+            contactNumber: undefined,
+            email: undefined,
+            website: undefined
+          };
+          // Adding extras to metadata if needed, but keeping DTO clean
+        }
         break;
       case "Matrimonial":
-        isComplete = isFilled(matrimonialGender) && isFilled(matrimonialMarital);
+        isComplete = isFilled(matrimonialProfileFor) && isFilled(matrimonialName) && isFilled(matrimonialAge) && isFilled(matrimonialGender) && isFilled(matrimonialMarital);
+        if (isComplete) {
+          categoryData = {
+            profileFor: matrimonialProfileFor,
+            name: matrimonialName,
+            age: parseInt(matrimonialAge),
+            gender: matrimonialGender,
+            maritalStatus: matrimonialMarital,
+            religion: matrimonialReligion || undefined,
+            caste: matrimonialCaste || undefined,
+            education: matrimonialEducation || undefined,
+            occupation: matrimonialOccupation || undefined,
+            annualIncome: matrimonialIncome || undefined,
+            height: matrimonialHeight || undefined,
+            city: matrimonialLocation || undefined,
+            about: matrimonialAboutMe ? `${matrimonialAboutMe}\nPartner Preference: ${matrimonialPartnerPref}` : undefined
+          };
+        }
         break;
       case "Vehicle":
-        if (selectedSub === "Sell") isComplete = isFilled(vehicleSellTransmission) && isFilled(vehicleSellRC);
-        else if (selectedSub === "Rent") isComplete = isFilled(vehicleRentDriver);
+        if (selectedSub === "Sell") {
+          isComplete = isFilled(vehicleSellTransmission) && isFilled(vehicleSellRC) && isFilled(vehicleSellType) && isFilled(vehicleSellBrand) && isFilled(vehicleSellModel) && isFilled(vehicleSellYear) && isFilled(vehicleSellKMDriven) && isFilled(vehicleSellFuelType) && isFilled(vehicleSellPrice);
+          if (isComplete) {
+            categoryData = {
+              type: "Sell",
+              vehicleType: vehicleSellType,
+              brand: vehicleSellBrand,
+              model: vehicleSellVariant ? `${vehicleSellModel} ${vehicleSellVariant}` : vehicleSellModel,
+              year: parseInt(vehicleSellYear, 10),
+              kilometersDriven: parseInt(vehicleSellKMDriven, 10),
+              fuelType: vehicleSellFuelType,
+              transmission: vehicleSellTransmission,
+              ownerNumber: vehicleSellOwnership === "Single Owner" ? 1 : (vehicleSellOwnership === "Second Owner" ? 2 : (vehicleSellOwnership === "Third Owner" ? 3 : undefined)),
+              insurance: vehicleSellInsurance || undefined,
+              condition: vehicleSellCondition || undefined,
+              price: Number(vehicleSellPrice),
+            };
+          }
+        } else if (selectedSub === "Rent") {
+          isComplete = isFilled(vehicleRentType) && isFilled(vehicleRentBrandModel) && isFilled(vehicleRentAmount) && isFilled(vehicleRentDeposit) && isFilled(vehicleRentDriver) && isFilled(vehicleRentMinDuration);
+          if (isComplete) {
+            categoryData = {
+              type: "Rent",
+              vehicleType: vehicleRentType,
+              brandModel: vehicleRentBrandModel,
+              rentAmount: Number(vehicleRentAmount),
+              securityDeposit: Number(vehicleRentDeposit),
+              includesDriver: vehicleRentDriver,
+              minRentalDuration: vehicleRentMinDuration
+            };
+          }
+        }
         break;
       case "Business":
         isComplete = isFilled(businessType);
@@ -257,13 +361,26 @@ export default function PostAdForm({
         isComplete = isFilled(personalName) && isFilled(personalAchievementTitle) && isFilled(personalAge) && isFilled(personalGender) && isFilled(personalDescription) && isFilled(personalContact);
         break;
       case "Employment":
-        isComplete = isFilled(employmentType) && isFilled(employmentExperience) && isFilled(employmentSalaryRange) && isFilled(employmentIndustry) && isFilled(employmentJobDescription) && isFilled(employmentRequirements) && isFilled(employmentBenefits) && isFilled(employmentVacancies);
+        isComplete = isFilled(employmentType) && isFilled(employmentJobTitle) && isFilled(employmentCompanyName) && isFilled(employmentExperience) && isFilled(employmentSalaryRange) && isFilled(employmentIndustry) && isFilled(employmentJobDescription) && isFilled(employmentRequirements) && isFilled(employmentBenefits) && isFilled(employmentVacancies);
+        if (isComplete) {
+          categoryData = {
+            jobType: employmentType, // Enum checked
+            jobTitle: employmentJobTitle,
+            companyName: employmentCompanyName,
+            experienceRequired: employmentExperience,
+            salary: employmentSalaryRange,
+            qualifications: employmentRequirements,
+            description: `${employmentJobDescription}\n\nIndustry: ${employmentIndustry}\nBenefits: ${employmentBenefits}`,
+            vacancies: parseInt(employmentVacancies) || 1
+          };
+        }
         break;
       case "Pets":
         isComplete = isFilled(petSpecies) && isFilled(petBreed) && isFilled(petAge) && isFilled(petGender) && isFilled(petWeight);
         break;
       case "Mobiles":
         isComplete = isFilled(mobileBrand) && isFilled(mobileModel) && isFilled(mobileCondition) && isFilled(mobileWarranty) && isFilled(mobilePrice);
+        if (isComplete) categoryData = { brand: mobileBrand, model: mobileModel, condition: mobileCondition, warranty: mobileWarranty, price: Number(mobilePrice), negotiable: mobileNegotiable };
         break;
       case "Electronics":
         isComplete = isFilled(electronicAppliance) && isFilled(electronicBrand) && isFilled(electronicModel) && isFilled(electronicCondition) && isFilled(electronicWarranty) && isFilled(electronicPrice);
@@ -283,7 +400,8 @@ export default function PostAdForm({
         break;
     }
 
-    onCategoryDetailsChange && onCategoryDetailsChange(Boolean(isComplete));
+    // Only set categoryDetails to an object if it's complete, else false
+    onCategoryDetailsChange && onCategoryDetailsChange(isComplete ? (categoryData || true) : false);
   };
 
   // Helper functions
@@ -392,9 +510,37 @@ export default function PostAdForm({
     educationDemo,
     matrimonialGender,
     matrimonialMarital,
+    matrimonialProfileFor,
+    matrimonialName,
+    matrimonialAge,
+    matrimonialReligion,
+    matrimonialCaste,
+    matrimonialEducation,
+    matrimonialOccupation,
+    matrimonialIncome,
+    matrimonialHeight,
+    matrimonialLocation,
+    matrimonialAboutMe,
+    matrimonialPartnerPref,
     vehicleSellTransmission,
     vehicleSellRC,
+    vehicleSellType,
+    vehicleSellBrand,
+    vehicleSellModel,
+    vehicleSellVariant,
+    vehicleSellYear,
+    vehicleSellKMDriven,
+    vehicleSellFuelType,
+    vehicleSellOwnership,
+    vehicleSellInsurance,
+    vehicleSellCondition,
+    vehicleSellPrice,
     vehicleRentDriver,
+    vehicleRentType,
+    vehicleRentBrandModel,
+    vehicleRentAmount,
+    vehicleRentDeposit,
+    vehicleRentMinDuration,
     businessType,
     travelDate,
     consultationMode,
@@ -519,11 +665,10 @@ export default function PostAdForm({
                   setSelectedSub(null);
                 }}
                 className={`snap-start flex-shrink-0 w-[130px] h-[160px] flex flex-col items-center justify-center rounded-2xl cursor-pointer transition-all duration-300 border
-                ${
-                  isActive
+                ${isActive
                     ? "bg-[#157A4F] text-white border-[#157A4F] shadow-xl scale-105"
                     : "bg-white text-gray-700 border-gray-200 hover:border-[#157A4F] hover:-translate-y-2 hover:shadow-lg"
-                }`}
+                  }`}
               >
                 <Icon size={34} className="mb-3" />
                 <span className="text-sm font-medium text-center px-2">
@@ -542,11 +687,10 @@ export default function PostAdForm({
                 key={i}
                 onClick={() => setSelectedSub(option)}
                 className={`px-6 py-2 rounded-full text-sm font-medium transition
-                ${
-                  selectedSub === option
+                ${selectedSub === option
                     ? "bg-[#157A4F] text-white shadow-md"
                     : "bg-[#FFF3D6] text-gray-700 hover:bg-[#F5B849] hover:text-white"
-                }`}
+                  }`}
               >
                 {option}
               </button>
@@ -571,7 +715,7 @@ export default function PostAdForm({
 
         {/* Language + Primary Contact (2 Columns) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
+
           {/* Language */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700">
@@ -597,9 +741,8 @@ export default function PostAdForm({
                 setContactError(!e.target.value.trim());
               }}
               placeholder="Enter primary contact"
-              className={`w-full h-11 px-4 rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 ${
-                contactError ? "border-red-500" : "border-gray-300"
-              }`}
+              className={`w-full h-11 px-4 rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 ${contactError ? "border-red-500" : "border-gray-300"
+                }`}
             />
           </div>
         </div>
@@ -623,15 +766,14 @@ export default function PostAdForm({
               setTitleError(!e.target.value.trim());
             }}
             placeholder="Enter a catchy ad title"
-            className={`w-full h-11 px-4 rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 ${
-              titleError ? "border-red-500" : "border-gray-300"
-            }`}
+            className={`w-full h-11 px-4 rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 ${titleError ? "border-red-500" : "border-gray-300"
+              }`}
           />
 
           <p className="text-xs text-gray-500">
-              Catchy titles sell faster!
-            </p>
-          </div>
+            Catchy titles sell faster!
+          </p>
+        </div>
 
         {/* Description */}
         <div className="space-y-2">
@@ -652,9 +794,8 @@ export default function PostAdForm({
               setDescError(!e.target.value.trim());
             }}
             placeholder="Write a detailed description of your listing..."
-            className={`w-full px-4 py-3 rounded-lg border bg-white text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-300 ${
-              descError ? "border-red-500" : "border-gray-300"
-            }`}
+            className={`w-full px-4 py-3 rounded-lg border bg-white text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-300 ${descError ? "border-red-500" : "border-gray-300"
+              }`}
           />
         </div>
 
@@ -664,9 +805,8 @@ export default function PostAdForm({
             Locations
           </label>
 
-          <div className={`w-full min-h-[56px] px-3 py-2 rounded-lg border bg-white flex flex-wrap items-center gap-2 focus-within:ring-2 focus-within:ring-gray-300 ${
-            locationError ? "border-red-500" : "border-gray-300"
-          }`}>
+          <div className={`w-full min-h-[56px] px-3 py-2 rounded-lg border bg-white flex flex-wrap items-center gap-2 focus-within:ring-2 focus-within:ring-gray-300 ${locationError ? "border-red-500" : "border-gray-300"
+            }`}>
             {/* City Chips */}
             {cities.map((city, index) => (
               <span
@@ -706,23 +846,37 @@ export default function PostAdForm({
             {selectedCategory.name === "Education" && (
               <div className="grid grid-cols-2 gap-6">
                 <div className="col-span-2">
-                  <label className="text-sm font-medium text-gray-700">Course Type</label>
-                  <select className={inputStyle}>
-                    <option value="">Course Type (e.g. Tuition)</option>
-                    <option value="Tuition">Tuition</option>
+                  <label className="text-sm font-medium text-gray-700">Institution Type</label>
+                  <select
+                    className={inputStyle}
+                    value={educationInstitutionType}
+                    onChange={(e) => setEducationInstitutionType(e.target.value)}
+                  >
+                    <option value="">Select Institution Type</option>
+                    <option value="School">School</option>
+                    <option value="College">College</option>
                     <option value="Coaching">Coaching</option>
+                    <option value="Tutorial">Tutorial</option>
                     <option value="Online Course">Online Course</option>
-                    <option value="Workshop">Workshop</option>
-                    <option value="Other">Other</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Class/Standard</label>
-                  <input placeholder="10th Grade" className={inputStyle} />
+                  <label className="text-sm font-medium text-gray-700">Institution Name</label>
+                  <input
+                    placeholder="ABC Academy"
+                    className={inputStyle}
+                    value={educationInstitutionName}
+                    onChange={(e) => setEducationInstitutionName(e.target.value)}
+                  />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Subject</label>
-                  <input placeholder="Mathematics" className={inputStyle} />
+                  <label className="text-sm font-medium text-gray-700">Course Name</label>
+                  <input
+                    placeholder="Mathematics"
+                    className={inputStyle}
+                    value={educationCourseName}
+                    onChange={(e) => setEducationCourseName(e.target.value)}
+                  />
                 </div>
                 <div className="col-span-2">
                   <label className="text-sm font-medium text-gray-700">Mode of Education</label>
@@ -738,59 +892,91 @@ export default function PostAdForm({
                     <button type="button" className={`px-6 py-2 rounded-full text-sm font-medium ${educationDemo === "No" ? "bg-[#157A4F] text-white shadow-md" : "bg-[#FFF3D6] text-gray-700 hover:bg-[#F5B849] hover:text-white"}`} onClick={() => setEducationDemo("No")}>No</button>
                   </div>
                 </div>
-                <div><label className="text-sm font-medium text-gray-700">Institute Name / Personal Brand</label><input placeholder="ABC Academy" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Duration</label><input placeholder="6 months" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Fees</label><input placeholder="₹5000" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Teaching Experience</label><input placeholder="5 years" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Qualification</label><input placeholder="MSc Mathematics" className={inputStyle} /></div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Duration</label>
+                  <input
+                    placeholder="6 months"
+                    className={inputStyle}
+                    value={educationDuration}
+                    onChange={(e) => setEducationDuration(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Fees (₹)</label>
+                  <input
+                    type="number"
+                    placeholder="5000"
+                    className={inputStyle}
+                    value={educationFees}
+                    onChange={(e) => setEducationFees(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Teaching Experience</label>
+                  <input
+                    placeholder="5 years"
+                    className={inputStyle}
+                    value={educationExperience}
+                    onChange={(e) => setEducationExperience(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Qualification</label>
+                  <input
+                    placeholder="MSc Mathematics"
+                    className={inputStyle}
+                    value={educationQualification}
+                    onChange={(e) => setEducationQualification(e.target.value)}
+                  />
+                </div>
               </div>
             )}
 
             {selectedCategory.name === "Matrimonial" && (
               <div className="grid grid-cols-2 gap-6">
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Profile For</label><select className={inputStyle}><option value="">Profile For (e.g. Self)</option><option value="Self">Self</option><option value="Relative">Relative</option><option value="Relative">Friend</option></select></div>
-                <div><label className="text-sm font-medium text-gray-700">Name</label><input placeholder="Rahul Sharma" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Age</label><input placeholder="28" className={inputStyle} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Profile For</label><select className={inputStyle} value={matrimonialProfileFor} onChange={e => setMatrimonialProfileFor(e.target.value)}><option value="">Profile For (e.g. Self)</option><option value="Self">Self</option><option value="Relative">Relative</option><option value="Friend">Friend</option></select></div>
+                <div><label className="text-sm font-medium text-gray-700">Name</label><input placeholder="Rahul Sharma" className={inputStyle} value={matrimonialName} onChange={e => setMatrimonialName(e.target.value)} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Age</label><input type="number" placeholder="28" className={inputStyle} value={matrimonialAge} onChange={e => setMatrimonialAge(e.target.value)} /></div>
                 <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Gender</label><select className={inputStyle} value={matrimonialGender} onChange={e => setMatrimonialGender(e.target.value)}><option value="">Gender (e.g. Male)</option><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select></div>
                 <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Marital Status</label><select className={inputStyle} value={matrimonialMarital} onChange={e => setMatrimonialMarital(e.target.value)}><option value="">Marital Status (e.g. Single)</option><option value="Single">Single</option><option value="Divorced">Divorced</option><option value="Widow">Widow</option><option value="Widower">Widower</option></select></div>
-                <div><label className="text-sm font-medium text-gray-700">Religion</label><input placeholder="Hindu" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Caste</label><input placeholder="Brahmin" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Education</label><input placeholder="MBA" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Occupation</label><input placeholder="Engineer" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Annual Income</label><input placeholder="₹10,00,000" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Height</label><input placeholder={'5\'8"'} className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Location</label><input placeholder="Pune" className={inputStyle} /></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">About Me</label><textarea placeholder="I am a fun-loving person..." className={inputStyle + " resize-none h-24"} /></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Partner Preference</label><textarea placeholder="Looking for..." className={inputStyle + " resize-none h-24"} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Religion</label><input placeholder="Hindu" className={inputStyle} value={matrimonialReligion} onChange={e => setMatrimonialReligion(e.target.value)} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Caste</label><input placeholder="Brahmin" className={inputStyle} value={matrimonialCaste} onChange={e => setMatrimonialCaste(e.target.value)} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Education</label><input placeholder="MBA" className={inputStyle} value={matrimonialEducation} onChange={e => setMatrimonialEducation(e.target.value)} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Occupation</label><input placeholder="Engineer" className={inputStyle} value={matrimonialOccupation} onChange={e => setMatrimonialOccupation(e.target.value)} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Annual Income</label><input placeholder="₹10,00,000" className={inputStyle} value={matrimonialIncome} onChange={e => setMatrimonialIncome(e.target.value)} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Height</label><input placeholder={'5\'8"'} className={inputStyle} value={matrimonialHeight} onChange={e => setMatrimonialHeight(e.target.value)} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Location</label><input placeholder="Pune" className={inputStyle} value={matrimonialLocation} onChange={e => setMatrimonialLocation(e.target.value)} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">About Me</label><textarea placeholder="I am a fun-loving person..." className={inputStyle + " resize-none h-24"} value={matrimonialAboutMe} onChange={e => setMatrimonialAboutMe(e.target.value)} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Partner Preference</label><textarea placeholder="Looking for..." className={inputStyle + " resize-none h-24"} value={matrimonialPartnerPref} onChange={e => setMatrimonialPartnerPref(e.target.value)} /></div>
               </div>
             )}
 
             {selectedCategory.name === "Vehicle" && selectedSub === "Sell" && (
               <div className="grid grid-cols-2 gap-6">
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Vehicle Type</label><select className={inputStyle}><option value="">Vehicle Type (e.g. Four Wheeler)</option><option value="Four Wheeler">Four Wheeler</option><option value="Two Wheeler">Two Wheeler</option><option value="Three Wheeler">Three Wheeler</option><option value="Truck">Truck</option><option value="Other">Other</option></select></div>
-                <div><label className="text-sm font-medium text-gray-700">Brand</label><input placeholder="Maruti" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Model</label><input placeholder="Swift" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Variant</label><input placeholder="VXi" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Year</label><input placeholder="2020" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">KM Driven</label><input placeholder="15000" className={inputStyle} /></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Fuel Type</label><select className={inputStyle}><option value="">Fuel Type (e.g. Petrol)</option><option value="Petrol">Petrol</option><option value="Diesel">Diesel</option><option value="Electric">Electric</option><option value="CNG">CNG</option></select></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Vehicle Type</label><select className={inputStyle} value={vehicleSellType} onChange={(e) => setVehicleSellType(e.target.value)}><option value="">Vehicle Type (e.g. Four Wheeler)</option><option value="Four Wheeler">Four Wheeler</option><option value="Two Wheeler">Two Wheeler</option><option value="Three Wheeler">Three Wheeler</option><option value="Truck">Truck</option><option value="Other">Other</option></select></div>
+                <div><label className="text-sm font-medium text-gray-700">Brand</label><input placeholder="Maruti" className={inputStyle} value={vehicleSellBrand} onChange={(e) => setVehicleSellBrand(e.target.value)} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Model</label><input placeholder="Swift" className={inputStyle} value={vehicleSellModel} onChange={(e) => setVehicleSellModel(e.target.value)} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Variant</label><input placeholder="VXi" className={inputStyle} value={vehicleSellVariant} onChange={(e) => setVehicleSellVariant(e.target.value)} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Year</label><input type="number" placeholder="2020" className={inputStyle} value={vehicleSellYear} onChange={(e) => setVehicleSellYear(e.target.value)} /></div>
+                <div><label className="text-sm font-medium text-gray-700">KM Driven</label><input type="number" placeholder="15000" className={inputStyle} value={vehicleSellKMDriven} onChange={(e) => setVehicleSellKMDriven(e.target.value)} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Fuel Type</label><select className={inputStyle} value={vehicleSellFuelType} onChange={(e) => setVehicleSellFuelType(e.target.value)}><option value="">Fuel Type (e.g. Petrol)</option><option value="Petrol">Petrol</option><option value="Diesel">Diesel</option><option value="Electric">Electric</option><option value="Hybrid">Hybrid</option><option value="CNG">CNG</option></select></div>
                 <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Transmission</label><div className="flex gap-4"><button type="button" className={`px-6 py-2 rounded-full text-sm font-medium ${vehicleSellTransmission === "Manual" ? "bg-[#157A4F] text-white shadow-md" : "bg-[#FFF3D6] text-gray-700"}`} onClick={() => setVehicleSellTransmission("Manual")}>Manual</button><button type="button" className={`px-6 py-2 rounded-full text-sm font-medium ${vehicleSellTransmission === "Automatic" ? "bg-[#157A4F] text-white shadow-md" : "bg-[#FFF3D6] text-gray-700"}`} onClick={() => setVehicleSellTransmission("Automatic")}>Automatic</button></div></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Ownership</label><select className={inputStyle}><option value="">Ownership (e.g. Single Owner)</option><option value="Single Owner">Single Owner</option><option value="Second Owner">Second Owner</option><option value="Third Owner">Third Owner</option></select></div>
-                <div><label className="text-sm font-medium text-gray-700">Insurance Valid Till</label><input placeholder="Dec 2026" className={inputStyle} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Ownership</label><select className={inputStyle} value={vehicleSellOwnership} onChange={(e) => setVehicleSellOwnership(e.target.value)}><option value="">Ownership (e.g. Single Owner)</option><option value="Single Owner">Single Owner</option><option value="Second Owner">Second Owner</option><option value="Third Owner">Third Owner</option></select></div>
+                <div><label className="text-sm font-medium text-gray-700">Insurance Valid Till</label><input placeholder="Dec 2026" className={inputStyle} value={vehicleSellInsurance} onChange={(e) => setVehicleSellInsurance(e.target.value)} /></div>
                 <div className="col-span-2"><label className="text-sm font-medium text-gray-700">RC Available</label><div className="flex gap-4"><button type="button" className={`px-6 py-2 rounded-full text-sm font-medium ${vehicleSellRC === "Yes" ? "bg-[#157A4F] text-white shadow-md" : "bg-[#FFF3D6] text-gray-700"}`} onClick={() => setVehicleSellRC("Yes")}>Yes</button><button type="button" className={`px-6 py-2 rounded-full text-sm font-medium ${vehicleSellRC === "No" ? "bg-[#157A4F] text-white shadow-md" : "bg-[#FFF3D6] text-gray-700"}`} onClick={() => setVehicleSellRC("No")}>No</button></div></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Condition</label><select className={inputStyle}><option value="">Condition (e.g. Excellent)</option><option value="Excellent">Excellent</option><option value="Very Good">Very Good</option><option value="Good">Good</option></select></div>
-                <div><label className="text-sm font-medium text-gray-700">Price</label><input placeholder="₹5,00,000" className={inputStyle} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Condition</label><select className={inputStyle} value={vehicleSellCondition} onChange={(e) => setVehicleSellCondition(e.target.value)}><option value="">Condition (e.g. Excellent)</option><option value="Excellent">Excellent</option><option value="Very Good">Very Good</option><option value="Good">Good</option></select></div>
+                <div><label className="text-sm font-medium text-gray-700">Price</label><input type="number" placeholder="500000" className={inputStyle} value={vehicleSellPrice} onChange={(e) => setVehicleSellPrice(e.target.value)} /></div>
               </div>
             )}
 
             {selectedCategory.name === "Vehicle" && selectedSub === "Rent" && (
               <div className="grid grid-cols-2 gap-6">
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Vehicle Type</label><select className={inputStyle}><option value="">Vehicle Type (e.g. Four Wheeler)</option><option value="Four Wheeler">Four Wheeler</option><option value="Two Wheeler">Two Wheeler</option><option value="Three Wheeler">Three Wheeler</option><option value="Truck">Truck</option><option value="Other">Other</option></select></div>
-                <div><label className="text-sm font-medium text-gray-700">Brand / Model</label><input placeholder="Maruti Swift" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Per Day Rent Amount</label><input placeholder="₹1000" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Security Deposit</label><input placeholder="₹5000" className={inputStyle} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Vehicle Type</label><select className={inputStyle} value={vehicleRentType} onChange={(e) => setVehicleRentType(e.target.value)}><option value="">Vehicle Type (e.g. Four Wheeler)</option><option value="Four Wheeler">Four Wheeler</option><option value="Two Wheeler">Two Wheeler</option><option value="Three Wheeler">Three Wheeler</option><option value="Truck">Truck</option><option value="Other">Other</option></select></div>
+                <div><label className="text-sm font-medium text-gray-700">Brand / Model</label><input placeholder="Maruti Swift" className={inputStyle} value={vehicleRentBrandModel} onChange={(e) => setVehicleRentBrandModel(e.target.value)} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Per Day Rent Amount</label><input type="number" placeholder="1000" className={inputStyle} value={vehicleRentAmount} onChange={(e) => setVehicleRentAmount(e.target.value)} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Security Deposit</label><input type="number" placeholder="5000" className={inputStyle} value={vehicleRentDeposit} onChange={(e) => setVehicleRentDeposit(e.target.value)} /></div>
                 <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Includes Driver</label><div className="flex gap-4"><button type="button" className={`px-6 py-2 rounded-full text-sm font-medium ${vehicleRentDriver === "Yes" ? "bg-[#157A4F] text-white shadow-md" : "bg-[#FFF3D6] text-gray-700"}`} onClick={() => setVehicleRentDriver("Yes")}>Yes</button><button type="button" className={`px-6 py-2 rounded-full text-sm font-medium ${vehicleRentDriver === "No" ? "bg-[#157A4F] text-white shadow-md" : "bg-[#FFF3D6] text-gray-700"}`} onClick={() => setVehicleRentDriver("No")}>No</button><button type="button" className={`px-6 py-2 rounded-full text-sm font-medium ${vehicleRentDriver === "Both" ? "bg-[#157A4F] text-white shadow-md" : "bg-[#FFF3D6] text-gray-700"}`} onClick={() => setVehicleRentDriver("Both")}>Both</button></div></div>
-                <div><label className="text-sm font-medium text-gray-700">Min Rental Duration</label><input placeholder="2 days" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Min Rental Duration</label><input placeholder="2 days" className={inputStyle} value={vehicleRentMinDuration} onChange={(e) => setVehicleRentMinDuration(e.target.value)} /></div>
               </div>
             )}
 
@@ -801,9 +987,9 @@ export default function PostAdForm({
                 <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Services Offered</label><input placeholder="e.g. Web Development, Consulting" className={inputStyle} /></div>
                 <div><label className="text-sm font-medium text-gray-700">GST Number</label><input placeholder="18AABCU9603R1Z0 (optional)" className={inputStyle} /></div>
                 <div><label className="text-sm font-medium text-gray-700">Website URL</label><input placeholder="https://www.example.com (optional)" className={inputStyle} /></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Social Media Presence</label><div className="space-y-3"><div className="flex gap-2"><select value={socialInput.platform} onChange={(e) => setSocialInput({...socialInput, platform: e.target.value})} className={inputStyle}><option value="">Select Platform</option><option value="Facebook">Facebook</option><option value="Instagram">Instagram</option><option value="LinkedIn">LinkedIn</option><option value="Twitter">Twitter</option><option value="YouTube">YouTube</option></select><button type="button" onClick={addSocialMedia} className="px-4 py-2 bg-[#157A4F] text-white rounded-lg font-medium hover:bg-[#0f5c3d] transition">Add</button></div><div className="flex gap-2"><input value={socialInput.url} onChange={(e) => setSocialInput({...socialInput, url: e.target.value})} placeholder="https://facebook.com/yourpage" className={inputStyle} /></div><div className="flex flex-wrap gap-2 mt-3">{socialMedia.map((item) => (<span key={item.id} className="flex items-center gap-2 px-3 py-2 bg-[#157A4F] text-white rounded-full text-sm"><span>{item.platform}: {item.url}</span><button type="button" onClick={() => removeSocialMedia(item.id)} className="text-white hover:text-red-200">×</button></span>))}</div></div></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Social Media Presence</label><div className="space-y-3"><div className="flex gap-2"><select value={socialInput.platform} onChange={(e) => setSocialInput({ ...socialInput, platform: e.target.value })} className={inputStyle}><option value="">Select Platform</option><option value="Facebook">Facebook</option><option value="Instagram">Instagram</option><option value="LinkedIn">LinkedIn</option><option value="Twitter">Twitter</option><option value="YouTube">YouTube</option></select><button type="button" onClick={addSocialMedia} className="px-4 py-2 bg-[#157A4F] text-white rounded-lg font-medium hover:bg-[#0f5c3d] transition">Add</button></div><div className="flex gap-2"><input value={socialInput.url} onChange={(e) => setSocialInput({ ...socialInput, url: e.target.value })} placeholder="https://facebook.com/yourpage" className={inputStyle} /></div><div className="flex flex-wrap gap-2 mt-3">{socialMedia.map((item) => (<span key={item.id} className="flex items-center gap-2 px-3 py-2 bg-[#157A4F] text-white rounded-full text-sm"><span>{item.platform}: {item.url}</span><button type="button" onClick={() => removeSocialMedia(item.id)} className="text-white hover:text-red-200">×</button></span>))}</div></div></div>
                 <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Campaign Name</label><input placeholder="Summer Sale 2026" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Valid Till</label><div className="relative"><input type="text" placeholder="Click to select date" readOnly className={inputStyle + " cursor-pointer"} value={validTillDate ? formatDate(validTillDate) : ""} onClick={() => setOpenCalendar(openCalendar === "validTill" ? null : "validTill")} />{openCalendar === "validTill" && (<div className="absolute top-14 left-0 bg-[#FFF3D6] p-4 rounded-2xl border border-gray-200 shadow-xl z-20"><DayPicker mode="single" selected={validTillDate} onSelect={(date) => {setValidTillDate(date); setOpenCalendar(null);}} month={calendarDateMonth} onMonthChange={setCalendarDateMonth} fromDate={new Date()} /></div>)}</div></div>
+                <div><label className="text-sm font-medium text-gray-700">Valid Till</label><div className="relative"><input type="text" placeholder="Click to select date" readOnly className={inputStyle + " cursor-pointer"} value={validTillDate ? formatDate(validTillDate) : ""} onClick={() => setOpenCalendar(openCalendar === "validTill" ? null : "validTill")} />{openCalendar === "validTill" && (<div className="absolute top-14 left-0 bg-[#FFF3D6] p-4 rounded-2xl border border-gray-200 shadow-xl z-20"><DayPicker mode="single" selected={validTillDate} onSelect={(date) => { setValidTillDate(date); setOpenCalendar(null); }} month={calendarDateMonth} onMonthChange={setCalendarDateMonth} fromDate={new Date()} /></div>)}</div></div>
                 <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Campaign Description</label><textarea placeholder="Describe your campaign details..." className={inputStyle + " resize-none h-24"} /></div>
                 <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Shop Address</label><input placeholder="123 Business Street, City, State" className={inputStyle} /></div>
               </div>
@@ -814,7 +1000,7 @@ export default function PostAdForm({
                 <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Package Type</label><select className={inputStyle}><option value="">Select Package Type</option><option value="Tour Package">Tour Package</option><option value="Bus Rental">Bus Rental</option><option value="Hotel Only">Hotel Only</option><option value="Other">Other</option></select></div>
                 <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Destination</label><input placeholder="e.g. Paris, Rome, Venice" className={inputStyle} /></div>
                 <div><label className="text-sm font-medium text-gray-700">Duration</label><input placeholder="7 days" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Travel Date</label><div className="relative"><input type="text" placeholder="Click to select date" readOnly className={inputStyle + " cursor-pointer"} value={travelDate ? formatDate(travelDate) : ""} onClick={() => setOpenCalendar(openCalendar === "travelDate" ? null : "travelDate")} />{openCalendar === "travelDate" && (<div className="absolute top-14 left-0 bg-[#FFF3D6] p-4 rounded-2xl border border-gray-200 shadow-xl z-20"><DayPicker mode="single" selected={travelDate} onSelect={(date) => {setTravelDate(date); setOpenCalendar(null);}} month={calendarDateMonth} onMonthChange={setCalendarDateMonth} fromDate={new Date()} /></div>)}</div></div>
+                <div><label className="text-sm font-medium text-gray-700">Travel Date</label><div className="relative"><input type="text" placeholder="Click to select date" readOnly className={inputStyle + " cursor-pointer"} value={travelDate ? formatDate(travelDate) : ""} onClick={() => setOpenCalendar(openCalendar === "travelDate" ? null : "travelDate")} />{openCalendar === "travelDate" && (<div className="absolute top-14 left-0 bg-[#FFF3D6] p-4 rounded-2xl border border-gray-200 shadow-xl z-20"><DayPicker mode="single" selected={travelDate} onSelect={(date) => { setTravelDate(date); setOpenCalendar(null); }} month={calendarDateMonth} onMonthChange={setCalendarDateMonth} fromDate={new Date()} /></div>)}</div></div>
                 <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Inclusions</label><textarea placeholder="Flights, Hotels, Meals, Tours..." className={inputStyle + " resize-none h-20"} /></div>
                 <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Exclusions</label><textarea placeholder="Personal expenses, Travel insurance..." className={inputStyle + " resize-none h-20"} /></div>
                 <div><label className="text-sm font-medium text-gray-700">Price Per Person</label><input placeholder="₹25,000" className={inputStyle} /></div>
@@ -840,7 +1026,7 @@ export default function PostAdForm({
                 <div><label className="text-sm font-medium text-gray-700">Monthly Rent</label><input placeholder="₹25,000" className={inputStyle} /></div>
                 <div><label className="text-sm font-medium text-gray-700">Security Deposit</label><input placeholder="₹75,000" className={inputStyle} /></div>
                 <div><label className="text-sm font-medium text-gray-700">Maintenance Cost Per Month</label><input placeholder="₹2,000" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Available From</label><div className="relative"><input type="text" placeholder="Click to select date" readOnly className={inputStyle + " cursor-pointer"} value={availableFromDate ? formatDate(availableFromDate) : ""} onClick={() => setOpenCalendar(openCalendar === "availableFrom" ? null : "availableFrom")} />{openCalendar === "availableFrom" && (<div className="absolute top-14 left-0 bg-[#FFF3D6] p-4 rounded-2xl border border-gray-200 shadow-xl z-20"><DayPicker mode="single" selected={availableFromDate} onSelect={(date) => {setAvailableFromDate(date); setOpenCalendar(null);}} month={calendarDateMonth} onMonthChange={setCalendarDateMonth} fromDate={new Date()} /></div>)}</div></div>
+                <div><label className="text-sm font-medium text-gray-700">Available From</label><div className="relative"><input type="text" placeholder="Click to select date" readOnly className={inputStyle + " cursor-pointer"} value={availableFromDate ? formatDate(availableFromDate) : ""} onClick={() => setOpenCalendar(openCalendar === "availableFrom" ? null : "availableFrom")} />{openCalendar === "availableFrom" && (<div className="absolute top-14 left-0 bg-[#FFF3D6] p-4 rounded-2xl border border-gray-200 shadow-xl z-20"><DayPicker mode="single" selected={availableFromDate} onSelect={(date) => { setAvailableFromDate(date); setOpenCalendar(null); }} month={calendarDateMonth} onMonthChange={setCalendarDateMonth} fromDate={new Date()} /></div>)}</div></div>
                 <div><label className="text-sm font-medium text-gray-700">Preferred Tenant</label><select value={preferredTenant} onChange={(e) => setPreferredTenant(e.target.value)} className={inputStyle}><option value="">Select Tenant Type</option><option value="Family">Family</option><option value="Bachelor">Bachelor</option><option value="Company">Company</option></select></div>
                 <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Lease Duration</label><input placeholder="6 months or 1 year" className={inputStyle} /></div>
               </div>
@@ -875,7 +1061,7 @@ export default function PostAdForm({
                 <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Status</label><div className="flex gap-4"><button type="button" className={`px-6 py-2 rounded-full text-sm font-medium ${lfStatus === "Lost" ? "bg-[#157A4F] text-white shadow-md" : "bg-[#FFF3D6] text-gray-700"}`} onClick={() => setLfStatus("Lost")}>Lost</button><button type="button" className={`px-6 py-2 rounded-full text-sm font-medium ${lfStatus === "Found" ? "bg-[#157A4F] text-white shadow-md" : "bg-[#FFF3D6] text-gray-700"}`} onClick={() => setLfStatus("Found")}>Found</button></div></div>
                 <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Item Type</label><input placeholder="e.g. Phone, Wallet, Keys, Jewelry" value={itemType} onChange={(e) => setItemType(e.target.value)} className={inputStyle} /></div>
                 <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Item Name</label><input placeholder="iPhone 15 Pro Max, Brown Leather Wallet" value={itemName} onChange={(e) => setItemName(e.target.value)} className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Date</label><div className="relative"><input type="text" placeholder="Click to select date" readOnly className={inputStyle + " cursor-pointer"} value={lfDate ? formatDate(lfDate) : ""} onClick={() => setOpenCalendar(openCalendar === "lfDate" ? null : "lfDate")} />{openCalendar === "lfDate" && (<div className="absolute top-14 left-0 bg-[#FFF3D6] p-4 rounded-2xl border border-gray-200 shadow-xl z-20"><DayPicker mode="single" selected={lfDate} onSelect={(date) => {setLfDate(date); setOpenCalendar(null);}} month={calendarDateMonth} onMonthChange={setCalendarDateMonth} fromDate={new Date()} /></div>)}</div></div>
+                <div><label className="text-sm font-medium text-gray-700">Date</label><div className="relative"><input type="text" placeholder="Click to select date" readOnly className={inputStyle + " cursor-pointer"} value={lfDate ? formatDate(lfDate) : ""} onClick={() => setOpenCalendar(openCalendar === "lfDate" ? null : "lfDate")} />{openCalendar === "lfDate" && (<div className="absolute top-14 left-0 bg-[#FFF3D6] p-4 rounded-2xl border border-gray-200 shadow-xl z-20"><DayPicker mode="single" selected={lfDate} onSelect={(date) => { setLfDate(date); setOpenCalendar(null); }} month={calendarDateMonth} onMonthChange={setCalendarDateMonth} fromDate={new Date()} /></div>)}</div></div>
                 <div><label className="text-sm font-medium text-gray-700">Location</label><input placeholder="Bandra, Mumbai" value={lfLocation} onChange={(e) => setLfLocation(e.target.value)} className={inputStyle} /></div>
                 <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Description</label><textarea placeholder="Describe the item, markings, condition..." value={lfDescription} onChange={(e) => setLfDescription(e.target.value)} className={inputStyle + " resize-none h-24"} /></div>
                 <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Reward Amount (Optional)</label><input placeholder="₹5,000 or No Reward" value={reward} onChange={(e) => setReward(e.target.value)} className={inputStyle} /></div>
@@ -896,76 +1082,79 @@ export default function PostAdForm({
 
             {selectedCategory.name === "Personal" && (
               <div className="grid grid-cols-2 gap-6">
-                <div><label className="text-sm font-medium text-gray-700">Name</label><input value={personalName} onChange={(e)=>setPersonalName(e.target.value)} placeholder="Full name" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Achievement Title</label><input value={personalAchievementTitle} onChange={(e)=>setPersonalAchievementTitle(e.target.value)} placeholder="e.g. Award-winning Poet" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Age</label><input value={personalAge} onChange={(e)=>setPersonalAge(e.target.value)} placeholder="Age" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Gender</label><select value={personalGender} onChange={(e)=>setPersonalGender(e.target.value)} className={inputStyle}><option value="">Select Gender</option><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Description</label><textarea value={personalDescription} onChange={(e)=>setPersonalDescription(e.target.value)} placeholder="Brief description about yourself" className={inputStyle + " resize-none h-24"} /></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Contact</label><input value={personalContact} onChange={(e)=>setPersonalContact(e.target.value)} placeholder="Phone or email" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Name</label><input value={personalName} onChange={(e) => setPersonalName(e.target.value)} placeholder="Full name" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Achievement Title</label><input value={personalAchievementTitle} onChange={(e) => setPersonalAchievementTitle(e.target.value)} placeholder="e.g. Award-winning Poet" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Age</label><input value={personalAge} onChange={(e) => setPersonalAge(e.target.value)} placeholder="Age" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Gender</label><select value={personalGender} onChange={(e) => setPersonalGender(e.target.value)} className={inputStyle}><option value="">Select Gender</option><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Description</label><textarea value={personalDescription} onChange={(e) => setPersonalDescription(e.target.value)} placeholder="Brief description about yourself" className={inputStyle + " resize-none h-24"} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Contact</label><input value={personalContact} onChange={(e) => setPersonalContact(e.target.value)} placeholder="Phone or email" className={inputStyle} /></div>
               </div>
             )}
 
             {selectedCategory.name === "Employment" && (
               <div className="grid grid-cols-2 gap-6">
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Employment Type</label><select value={employmentType} onChange={(e)=>setEmploymentType(e.target.value)} className={inputStyle}><option value="">Select Type</option><option value="Full-time">Full-time</option><option value="Part-Time">Part-Time</option><option value="Internship">Internship</option></select></div>
-                <div><label className="text-sm font-medium text-gray-700">Experience</label><input value={employmentExperience} onChange={(e)=>setEmploymentExperience(e.target.value)} placeholder="e.g. 3 years" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Salary Range (monthly)</label><input value={employmentSalaryRange} onChange={(e)=>setEmploymentSalaryRange(e.target.value)} placeholder="e.g. ₹20,000 - ₹35,000" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Industry</label><input value={employmentIndustry} onChange={(e)=>setEmploymentIndustry(e.target.value)} placeholder="Industry (e.g. IT)" className={inputStyle} /></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Job Description</label><textarea value={employmentJobDescription} onChange={(e)=>setEmploymentJobDescription(e.target.value)} placeholder="Describe role and responsibilities" className={inputStyle + " resize-none h-24"} /></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Requirements</label><textarea value={employmentRequirements} onChange={(e)=>setEmploymentRequirements(e.target.value)} placeholder="List required skills/qualifications" className={inputStyle + " resize-none h-20"} /></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Benefits & Perks</label><input value={employmentBenefits} onChange={(e)=>setEmploymentBenefits(e.target.value)} placeholder="e.g. Health insurance, Paid leave" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Total Vacancies</label><input value={employmentVacancies} onChange={(e)=>setEmploymentVacancies(e.target.value)} placeholder="Number of openings" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Job Title</label><input value={employmentJobTitle} onChange={(e) => setEmploymentJobTitle(e.target.value)} placeholder="e.g. Software Engineer" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Company Name</label><input value={employmentCompanyName} onChange={(e) => setEmploymentCompanyName(e.target.value)} placeholder="Company Name" className={inputStyle} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Employment Type</label><select value={employmentType} onChange={(e) => setEmploymentType(e.target.value)} className={inputStyle}><option value="">Select Type</option><option value="Full Time">Full Time</option><option value="Part Time">Part Time</option><option value="Contract">Contract</option><option value="Internship">Internship</option><option value="Freelance">Freelance</option></select></div>
+                <div><label className="text-sm font-medium text-gray-700">Experience</label><input value={employmentExperience} onChange={(e) => setEmploymentExperience(e.target.value)} placeholder="e.g. 3 years" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Salary Range (monthly)</label><input value={employmentSalaryRange} onChange={(e) => setEmploymentSalaryRange(e.target.value)} placeholder="e.g. ₹20,000 - ₹35,000" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Industry</label><input value={employmentIndustry} onChange={(e) => setEmploymentIndustry(e.target.value)} placeholder="Industry (e.g. IT)" className={inputStyle} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Job Description</label><textarea value={employmentJobDescription} onChange={(e) => setEmploymentJobDescription(e.target.value)} placeholder="Describe role and responsibilities" className={inputStyle + " resize-none h-24"} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Requirements</label><textarea value={employmentRequirements} onChange={(e) => setEmploymentRequirements(e.target.value)} placeholder="List required skills/qualifications" className={inputStyle + " resize-none h-20"} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Benefits & Perks</label><input value={employmentBenefits} onChange={(e) => setEmploymentBenefits(e.target.value)} placeholder="e.g. Health insurance, Paid leave" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Total Vacancies</label><input value={employmentVacancies} onChange={(e) => setEmploymentVacancies(e.target.value)} placeholder="Number of openings" className={inputStyle} /></div>
               </div>
             )}
 
+
             {selectedCategory.name === "Pets" && (
               <div className="grid grid-cols-2 gap-6">
-                <div><label className="text-sm font-medium text-gray-700">Animal Species</label><input value={petSpecies} onChange={(e)=>setPetSpecies(e.target.value)} placeholder="e.g. Dog, Cat" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Pet Breed</label><input value={petBreed} onChange={(e)=>setPetBreed(e.target.value)} placeholder="Breed (if known)" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Age</label><input value={petAge} onChange={(e)=>setPetAge(e.target.value)} placeholder="Pet age" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Gender</label><select value={petGender} onChange={(e)=>setPetGender(e.target.value)} className={inputStyle}><option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option></select></div>
-                <div><label className="text-sm font-medium text-gray-700">Weight</label><input value={petWeight} onChange={(e)=>setPetWeight(e.target.value)} placeholder="Weight (kg)" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Animal Species</label><input value={petSpecies} onChange={(e) => setPetSpecies(e.target.value)} placeholder="e.g. Dog, Cat" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Pet Breed</label><input value={petBreed} onChange={(e) => setPetBreed(e.target.value)} placeholder="Breed (if known)" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Age</label><input value={petAge} onChange={(e) => setPetAge(e.target.value)} placeholder="Pet age" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Gender</label><select value={petGender} onChange={(e) => setPetGender(e.target.value)} className={inputStyle}><option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option></select></div>
+                <div><label className="text-sm font-medium text-gray-700">Weight</label><input value={petWeight} onChange={(e) => setPetWeight(e.target.value)} placeholder="Weight (kg)" className={inputStyle} /></div>
                 <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Temperament (multiple)</label><div className="flex flex-wrap gap-2 mt-2">
-                  {['friendly','active','quiet','protective','kid friendly'].map((temp)=> (
-                    <label key={temp} className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-full cursor-pointer"><input type="checkbox" checked={petTemperament.includes(temp)} onChange={(e)=>{
-                      if(e.target.checked) setPetTemperament([...petTemperament,temp]); else setPetTemperament(petTemperament.filter(t=>t!==temp));
+                  {['friendly', 'active', 'quiet', 'protective', 'kid friendly'].map((temp) => (
+                    <label key={temp} className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-full cursor-pointer"><input type="checkbox" checked={petTemperament.includes(temp)} onChange={(e) => {
+                      if (e.target.checked) setPetTemperament([...petTemperament, temp]); else setPetTemperament(petTemperament.filter(t => t !== temp));
                     }} className="w-4 h-4" /> <span className="text-sm capitalize">{temp}</span></label>
                   ))}
                 </div></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Special Diet / Needs</label><input value={petSpecialDiet} onChange={(e)=>setPetSpecialDiet(e.target.value)} placeholder="Any special diet or medical needs" className={inputStyle} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Special Diet / Needs</label><input value={petSpecialDiet} onChange={(e) => setPetSpecialDiet(e.target.value)} placeholder="Any special diet or medical needs" className={inputStyle} /></div>
               </div>
             )}
 
             {selectedCategory.name === "Mobiles" && (
               <div className="grid grid-cols-2 gap-6">
-                <div><label className="text-sm font-medium text-gray-700">Brand</label><input value={mobileBrand} onChange={(e)=>setMobileBrand(e.target.value)} placeholder="e.g. Apple, Samsung" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Model</label><input value={mobileModel} onChange={(e)=>setMobileModel(e.target.value)} placeholder="Model name/number" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Condition</label><select value={mobileCondition} onChange={(e)=>setMobileCondition(e.target.value)} className={inputStyle}><option value="">Select Condition</option><option value="New">New</option><option value="Like New">Like New</option><option value="Fair">Fair</option></select></div>
-                <div><label className="text-sm font-medium text-gray-700">Warranty Remaining</label><input value={mobileWarranty} onChange={(e)=>setMobileWarranty(e.target.value)} placeholder="e.g. 6 months" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Price</label><input value={mobilePrice} onChange={(e)=>setMobilePrice(e.target.value)} placeholder="₹" className={inputStyle} /></div>
-                <div className="flex items-center gap-3"><input type="checkbox" checked={mobileNegotiable} onChange={(e)=>setMobileNegotiable(e.target.checked)} className="w-4 h-4" /><span className="text-sm font-medium text-gray-700">Price Negotiable</span></div>
+                <div><label className="text-sm font-medium text-gray-700">Brand</label><input value={mobileBrand} onChange={(e) => setMobileBrand(e.target.value)} placeholder="e.g. Apple, Samsung" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Model</label><input value={mobileModel} onChange={(e) => setMobileModel(e.target.value)} placeholder="Model name/number" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Condition</label><select value={mobileCondition} onChange={(e) => setMobileCondition(e.target.value)} className={inputStyle}><option value="">Select Condition</option><option value="New">New</option><option value="Like New">Like New</option><option value="Fair">Fair</option></select></div>
+                <div><label className="text-sm font-medium text-gray-700">Warranty Remaining</label><input value={mobileWarranty} onChange={(e) => setMobileWarranty(e.target.value)} placeholder="e.g. 6 months" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Price</label><input value={mobilePrice} onChange={(e) => setMobilePrice(e.target.value)} placeholder="₹" className={inputStyle} /></div>
+                <div className="flex items-center gap-3"><input type="checkbox" checked={mobileNegotiable} onChange={(e) => setMobileNegotiable(e.target.checked)} className="w-4 h-4" /><span className="text-sm font-medium text-gray-700">Price Negotiable</span></div>
               </div>
             )}
 
             {selectedCategory.name === "Electronics" && (
               <div className="grid grid-cols-2 gap-6">
-                <div><label className="text-sm font-medium text-gray-700">Appliance Name</label><input value={electronicAppliance} onChange={(e)=>setElectronicAppliance(e.target.value)} placeholder="e.g. Washing Machine" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Brand</label><input value={electronicBrand} onChange={(e)=>setElectronicBrand(e.target.value)} placeholder="Brand" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Model Name/Number</label><input value={electronicModel} onChange={(e)=>setElectronicModel(e.target.value)} placeholder="Model" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Condition</label><select value={electronicCondition} onChange={(e)=>setElectronicCondition(e.target.value)} className={inputStyle}><option value="">Select Condition</option><option value="New">New</option><option value="Like New">Like New</option><option value="Fair">Fair</option></select></div>
-                <div><label className="text-sm font-medium text-gray-700">Warranty Remaining</label><input value={electronicWarranty} onChange={(e)=>setElectronicWarranty(e.target.value)} placeholder="e.g. 1 year" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Price</label><input value={electronicPrice} onChange={(e)=>setElectronicPrice(e.target.value)} placeholder="₹" className={inputStyle} /></div>
-                <div className="flex items-center gap-3"><input type="checkbox" checked={electronicNegotiable} onChange={(e)=>setElectronicNegotiable(e.target.checked)} className="w-4 h-4" /><span className="text-sm font-medium text-gray-700">Price Negotiable</span></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Capacity (kg/L/etc)</label><input value={electronicCapacity} onChange={(e)=>setElectronicCapacity(e.target.value)} placeholder="e.g. 7 kg, 500 L" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Appliance Name</label><input value={electronicAppliance} onChange={(e) => setElectronicAppliance(e.target.value)} placeholder="e.g. Washing Machine" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Brand</label><input value={electronicBrand} onChange={(e) => setElectronicBrand(e.target.value)} placeholder="Brand" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Model Name/Number</label><input value={electronicModel} onChange={(e) => setElectronicModel(e.target.value)} placeholder="Model" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Condition</label><select value={electronicCondition} onChange={(e) => setElectronicCondition(e.target.value)} className={inputStyle}><option value="">Select Condition</option><option value="New">New</option><option value="Like New">Like New</option><option value="Fair">Fair</option></select></div>
+                <div><label className="text-sm font-medium text-gray-700">Warranty Remaining</label><input value={electronicWarranty} onChange={(e) => setElectronicWarranty(e.target.value)} placeholder="e.g. 1 year" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Price</label><input value={electronicPrice} onChange={(e) => setElectronicPrice(e.target.value)} placeholder="₹" className={inputStyle} /></div>
+                <div className="flex items-center gap-3"><input type="checkbox" checked={electronicNegotiable} onChange={(e) => setElectronicNegotiable(e.target.checked)} className="w-4 h-4" /><span className="text-sm font-medium text-gray-700">Price Negotiable</span></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Capacity (kg/L/etc)</label><input value={electronicCapacity} onChange={(e) => setElectronicCapacity(e.target.value)} placeholder="e.g. 7 kg, 500 L" className={inputStyle} /></div>
               </div>
             )}
 
             {selectedCategory.name === "Furniture" && (
               <div className="grid grid-cols-2 gap-6">
-                <div><label className="text-sm font-medium text-gray-700">Furniture Type</label><input value={furnitureTypeInput} onChange={(e)=>setFurnitureTypeInput(e.target.value)} placeholder="e.g. Sofa, Dining Table" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Material</label><input value={furnitureMaterial} onChange={(e)=>setFurnitureMaterial(e.target.value)} placeholder="e.g. Wood, Metal" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Condition</label><select value={furnitureCondition} onChange={(e)=>setFurnitureCondition(e.target.value)} className={inputStyle}><option value="">Select Condition</option><option value="New">New</option><option value="Like New">Like New</option><option value="Fair">Fair</option></select></div>
-                <div><label className="text-sm font-medium text-gray-700">Seating Capacity / Size</label><input value={furnitureSize} onChange={(e)=>setFurnitureSize(e.target.value)} placeholder="e.g. 3 seater / 6ft x 3ft" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Furniture Type</label><input value={furnitureTypeInput} onChange={(e) => setFurnitureTypeInput(e.target.value)} placeholder="e.g. Sofa, Dining Table" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Material</label><input value={furnitureMaterial} onChange={(e) => setFurnitureMaterial(e.target.value)} placeholder="e.g. Wood, Metal" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Condition</label><select value={furnitureCondition} onChange={(e) => setFurnitureCondition(e.target.value)} className={inputStyle}><option value="">Select Condition</option><option value="New">New</option><option value="Like New">Like New</option><option value="Fair">Fair</option></select></div>
+                <div><label className="text-sm font-medium text-gray-700">Seating Capacity / Size</label><input value={furnitureSize} onChange={(e) => setFurnitureSize(e.target.value)} placeholder="e.g. 3 seater / 6ft x 3ft" className={inputStyle} /></div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">Price</label>
                   <input
@@ -975,91 +1164,91 @@ export default function PostAdForm({
                     className={inputStyle}
                   />
                 </div>
-                <div className="flex items-center gap-3"><input type="checkbox" checked={furnitureNegotiable} onChange={(e)=>setFurnitureNegotiable(e.target.checked)} className="w-4 h-4" /><span className="text-sm font-medium text-gray-700">Price Negotiable</span></div>
+                <div className="flex items-center gap-3"><input type="checkbox" checked={furnitureNegotiable} onChange={(e) => setFurnitureNegotiable(e.target.checked)} className="w-4 h-4" /><span className="text-sm font-medium text-gray-700">Price Negotiable</span></div>
               </div>
             )}
 
             {selectedCategory.name === "Greetings & Tributes" && selectedSub === "Greetings" && (
               <div className="grid grid-cols-2 gap-6">
-                <div><label className="text-sm font-medium text-gray-700">Name of the Person</label><input value={greetingPersonName} onChange={(e)=>setGreetingPersonName(e.target.value)} placeholder="e.g. John" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Age Turning</label><input value={greetingAgeTurning} onChange={(e)=>setGreetingAgeTurning(e.target.value)} placeholder="e.g. 25" className={inputStyle} /></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Date of Birthday</label><div className="relative"><input type="text" placeholder="Click to select date" readOnly className={inputStyle + " cursor-pointer"} value={greetingBirthday ? formatDate(greetingBirthday) : ""} onClick={() => setOpenCalendar(openCalendar === "greetingBday" ? null : "greetingBday")} />{openCalendar === "greetingBday" && (<div className="absolute top-14 left-0 bg-[#FFF3D6] p-4 rounded-2xl border border-gray-200 shadow-xl z-20"><DayPicker mode="single" selected={greetingBirthday} onSelect={(date) => {setGreetingBirthday(date); setOpenCalendar(null);}} month={calendarDateMonth} onMonthChange={setCalendarDateMonth} /></div>)}</div></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Your Message / Wishes</label><textarea value={greetingMessage} onChange={(e)=>setGreetingMessage(e.target.value)} placeholder="Share your heartfelt message and wishes..." className={inputStyle + " resize-none h-24"} /></div>
-                <div><label className="text-sm font-medium text-gray-700">From (Your Name)</label><input value={greetingFromName} onChange={(e)=>setGreetingFromName(e.target.value)} placeholder="Your name" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Relationship</label><select value={greetingRelationship} onChange={(e)=>setGreetingRelationship(e.target.value)} className={inputStyle}><option value="">Select Relationship</option><option value="Friend">Friend</option><option value="Sister">Sister</option><option value="Brother">Brother</option><option value="Parent">Parent</option><option value="Relative">Relative</option><option value="Colleague">Colleague</option><option value="Other">Other</option></select></div>
+                <div><label className="text-sm font-medium text-gray-700">Name of the Person</label><input value={greetingPersonName} onChange={(e) => setGreetingPersonName(e.target.value)} placeholder="e.g. John" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Age Turning</label><input value={greetingAgeTurning} onChange={(e) => setGreetingAgeTurning(e.target.value)} placeholder="e.g. 25" className={inputStyle} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Date of Birthday</label><div className="relative"><input type="text" placeholder="Click to select date" readOnly className={inputStyle + " cursor-pointer"} value={greetingBirthday ? formatDate(greetingBirthday) : ""} onClick={() => setOpenCalendar(openCalendar === "greetingBday" ? null : "greetingBday")} />{openCalendar === "greetingBday" && (<div className="absolute top-14 left-0 bg-[#FFF3D6] p-4 rounded-2xl border border-gray-200 shadow-xl z-20"><DayPicker mode="single" selected={greetingBirthday} onSelect={(date) => { setGreetingBirthday(date); setOpenCalendar(null); }} month={calendarDateMonth} onMonthChange={setCalendarDateMonth} /></div>)}</div></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Your Message / Wishes</label><textarea value={greetingMessage} onChange={(e) => setGreetingMessage(e.target.value)} placeholder="Share your heartfelt message and wishes..." className={inputStyle + " resize-none h-24"} /></div>
+                <div><label className="text-sm font-medium text-gray-700">From (Your Name)</label><input value={greetingFromName} onChange={(e) => setGreetingFromName(e.target.value)} placeholder="Your name" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Relationship</label><select value={greetingRelationship} onChange={(e) => setGreetingRelationship(e.target.value)} className={inputStyle}><option value="">Select Relationship</option><option value="Friend">Friend</option><option value="Sister">Sister</option><option value="Brother">Brother</option><option value="Parent">Parent</option><option value="Relative">Relative</option><option value="Colleague">Colleague</option><option value="Other">Other</option></select></div>
               </div>
             )}
 
             {selectedCategory.name === "Greetings & Tributes" && selectedSub === "Tributes" && (
               <div className="grid grid-cols-2 gap-6">
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Full Name of Deceased</label><input value={tributeFullName} onChange={(e)=>setTributeFullName(e.target.value)} placeholder="Full name of the deceased" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Date of Birth</label><div className="relative"><input type="text" placeholder="Click to select date" readOnly className={inputStyle + " cursor-pointer"} value={tributeDateOfBirth ? formatDate(tributeDateOfBirth) : ""} onClick={() => setOpenCalendar(openCalendar === "tributeDob" ? null : "tributeDob")} />{openCalendar === "tributeDob" && (<div className="absolute top-14 left-0 bg-[#FFF3D6] p-4 rounded-2xl border border-gray-200 shadow-xl z-20"><DayPicker mode="single" selected={tributeDateOfBirth} onSelect={(date) => {setTributeDateOfBirth(date); setOpenCalendar(null);}} month={calendarDateMonth} onMonthChange={setCalendarDateMonth} /></div>)}</div></div>
-                <div><label className="text-sm font-medium text-gray-700">Age</label><input value={tributeAge} onChange={(e)=>setTributeAge(e.target.value)} placeholder="Age at the time of passing" className={inputStyle} /></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Short Biography / Life Summary</label><textarea value={tributeBiography} onChange={(e)=>setTributeBiography(e.target.value)} placeholder="Share memories and life achievements..." className={inputStyle + " resize-none h-32"} /></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Funeral / Prayer Meeting Details (Optional)</label><textarea value={tributeFuneralDetails} onChange={(e)=>setTributeFuneralDetails(e.target.value)} placeholder="Venue, date, time, and other details (optional)" className={inputStyle + " resize-none h-20"} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Full Name of Deceased</label><input value={tributeFullName} onChange={(e) => setTributeFullName(e.target.value)} placeholder="Full name of the deceased" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Date of Birth</label><div className="relative"><input type="text" placeholder="Click to select date" readOnly className={inputStyle + " cursor-pointer"} value={tributeDateOfBirth ? formatDate(tributeDateOfBirth) : ""} onClick={() => setOpenCalendar(openCalendar === "tributeDob" ? null : "tributeDob")} />{openCalendar === "tributeDob" && (<div className="absolute top-14 left-0 bg-[#FFF3D6] p-4 rounded-2xl border border-gray-200 shadow-xl z-20"><DayPicker mode="single" selected={tributeDateOfBirth} onSelect={(date) => { setTributeDateOfBirth(date); setOpenCalendar(null); }} month={calendarDateMonth} onMonthChange={setCalendarDateMonth} /></div>)}</div></div>
+                <div><label className="text-sm font-medium text-gray-700">Age</label><input value={tributeAge} onChange={(e) => setTributeAge(e.target.value)} placeholder="Age at the time of passing" className={inputStyle} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Short Biography / Life Summary</label><textarea value={tributeBiography} onChange={(e) => setTributeBiography(e.target.value)} placeholder="Share memories and life achievements..." className={inputStyle + " resize-none h-32"} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Funeral / Prayer Meeting Details (Optional)</label><textarea value={tributeFuneralDetails} onChange={(e) => setTributeFuneralDetails(e.target.value)} placeholder="Venue, date, time, and other details (optional)" className={inputStyle + " resize-none h-20"} /></div>
               </div>
             )}
 
             {selectedCategory.name === "Other" && (
               <div className="grid grid-cols-2 gap-6">
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Title</label><input value={otherTitle} onChange={(e)=>setOtherTitle(e.target.value)} placeholder="Title for your listing" className={inputStyle} /></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Description</label><textarea value={otherDescription} onChange={(e)=>setOtherDescription(e.target.value)} placeholder="Describe the item" className={inputStyle + " resize-none h-24"} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Price</label><input value={otherPrice} onChange={(e)=>setOtherPrice(e.target.value)} placeholder="₹ (optional)" className={inputStyle} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Title</label><input value={otherTitle} onChange={(e) => setOtherTitle(e.target.value)} placeholder="Title for your listing" className={inputStyle} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Description</label><textarea value={otherDescription} onChange={(e) => setOtherDescription(e.target.value)} placeholder="Describe the item" className={inputStyle + " resize-none h-24"} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Price</label><input value={otherPrice} onChange={(e) => setOtherPrice(e.target.value)} placeholder="₹ (optional)" className={inputStyle} /></div>
               </div>
             )}
           </div>
         )}
 
         {/* Media Upload */}
-        {(templateId === 1 || templateId === 2) && (
+        {(!templateId || templateId === 1 || templateId === 2) && (
           <div className="bg-white p-8 rounded-3xl shadow-md border border-gray-100">
             <h3 className="font-semibold text-2xl mb-6 text-gray-800">
               Media & Photos
             </h3>
 
             <div className="grid grid-cols-4 gap-6">
-            {uploadedImages.map((image, index) => (
-              <div
-                key={index}
-                className="h-32 border border-gray-200 rounded-2xl relative overflow-hidden shadow-sm"
-              >
-                <img
-                  src={image.url}
-                  alt={`uploaded-${index}`}
-                  className="h-full w-full object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeImage(index)}
-                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs hover:bg-red-600"
+              {uploadedImages.map((image, index) => (
+                <div
+                  key={index}
+                  className="h-32 border border-gray-200 rounded-2xl relative overflow-hidden shadow-sm"
                 >
-                  Remove
-                </button>
-              </div>
-            ))}
+                  <img
+                    src={image.url}
+                    alt={`uploaded-${index}`}
+                    className="h-full w-full object-contain bg-gray-50"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(index)}
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs hover:bg-red-600"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
 
-            <label 
-              className="h-32 flex items-center justify-center border-2 border-dashed rounded-2xl cursor-pointer text-gray-400 hover:border-[#157A4F] hover:text-[#157A4F] transition bg-[#FFF3D6]"
-              onClick={(e) => {
-                // prevent opening dialog if already at limit for single-media templates
-                if (templateId === 2 && uploadedImages.length >= 1) {
-                  e.preventDefault();
-                  setMediaError("You can only upload one media for this template.");
-                }
-              }}
-            >
-              + Add
-              <input
-                type="file"
-                multiple={templateId === 1}
-                accept="image/*"
-                className="hidden"
-                onChange={handleFileUpload}
-              />
-            </label>
-            {mediaError && (
-              <p className="col-span-full text-red-500 text-sm mt-1">{mediaError}</p>
-            )}
+              <label
+                className="h-32 flex items-center justify-center border-2 border-dashed rounded-2xl cursor-pointer text-gray-400 hover:border-[#157A4F] hover:text-[#157A4F] transition bg-[#FFF3D6]"
+                onClick={(e) => {
+                  // prevent opening dialog if already at limit for single-media templates
+                  if (templateId === 2 && uploadedImages.length >= 1) {
+                    e.preventDefault();
+                    setMediaError("You can only upload one media for this template.");
+                  }
+                }}
+              >
+                + Add
+                <input
+                  type="file"
+                  multiple={templateId === 1}
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                />
+              </label>
+              {mediaError && (
+                <p className="col-span-full text-red-500 text-sm mt-1">{mediaError}</p>
+              )}
             </div>
           </div>
         )}

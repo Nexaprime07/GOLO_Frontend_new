@@ -1,12 +1,52 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ProfileSidebar from "../components/ProfileSidebar";
 import AdCard from "../components/AdCard";
 import Link from "next/link";
+import { useAuth } from "../context/AuthContext";
+import { getMyAds } from "../lib/api";
 
 export default function MyAds() {
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const [ads, setAds] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const limit = 9;
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    async function fetchMyAds() {
+      setLoading(true);
+      try {
+        const response = await getMyAds({ page, limit });
+        if (response.success) {
+          setAds(response.data || []);
+          setTotalPages(response.pagination?.pages || 1);
+        }
+      } catch {
+        setAds([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchMyAds();
+  }, [isAuthenticated, page]);
+
+  if (authLoading) return null;
+
   return (
     <>
       <Navbar />
@@ -34,55 +74,82 @@ export default function MyAds() {
                 </div>
 
                 <Link
-  href="/i-want"
-  className="group relative inline-flex items-center justify-center px-7 py-3 rounded-full bg-[#157A4F] text-white font-semibold shadow-md transition-all duration-300 hover:shadow-xl hover:-translate-y-1 active:scale-95"
->
+                  href="/i-want"
+                  className="group relative inline-flex items-center justify-center px-7 py-3 rounded-full bg-[#157A4F] text-white font-semibold shadow-md transition-all duration-300 hover:shadow-xl hover:-translate-y-1 active:scale-95"
+                >
                   <span className="relative z-10">I Want</span>
-
-                  <span className="absolute inset-0 rounded-full bg-[#1c9460] opacity-0 
-                                   group-hover:opacity-20 blur-md transition duration-300"></span>
+                  <span className="absolute inset-0 rounded-full bg-[#1c9460] opacity-0 group-hover:opacity-20 blur-md transition duration-300"></span>
                 </Link>
               </div>
 
+              {/* Loading State */}
+              {loading && (
+                <div className="flex justify-center py-20">
+                  <p className="text-gray-500">Loading your ads...</p>
+                </div>
+              )}
+
+              {/* Empty State */}
+              {!loading && ads.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-20">
+                  <p className="text-gray-500 text-lg mb-4">You haven&apos;t posted any ads yet</p>
+                  <Link
+                    href="/post-ad"
+                    className="px-6 py-3 rounded-full bg-[#157A4F] text-white font-semibold transition hover:bg-[#0f5c3a]"
+                  >
+                    Post Your First Ad
+                  </Link>
+                </div>
+              )}
+
               {/* Ads Grid */}
-              <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-8">
-
-                <AdCard image="/images/sofa.jpg" title="Vintage Leather Sofa - Excellent Condition" price="450" date="Oct 26, 2023" />
-                <AdCard image="/images/bike.jpg" title="Mountain Bike - Trek Marlin 5 (Used)" price="300" date="Oct 20, 2023" />
-                <AdCard image="/images/pc.jpg" title="Gaming PC - i7, RTX 3070, 16GB RAM" price="1200" date="Oct 18, 2023" />
-                <AdCard image="/images/dresser.jpg" title="Antique Wooden Dresser with Mirror" price="280" date="Oct 15, 2023" />
-                <AdCard image="/images/guitar.jpg" title="Electric Guitar - Fender Stratocaster" price="700" date="Sep 28, 2023" />
-                <AdCard image="/images/tv.jpg" title="Samsung 4K Smart TV 55-inch" price="550" date="Oct 10, 2023" />
-                <AdCard image="/images/vinyl.jpg" title="Collection of Classic Vinyl Records" price="150" date="Oct 05, 2023" />
-                <AdCard image="/images/washer.jpg" title="Used Washing Machine - Whirlpool" price="200" date="Oct 01, 2023" />
-                <AdCard image="/images/handbag.jpg" title="Designer Handbag - barely used" price="350" date="Sep 25, 2023" />
-
-              </div>
+              {!loading && ads.length > 0 && (
+                <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-8">
+                  {ads.map((ad) => (
+                    <AdCard
+                      key={ad._id}
+                      ad={ad}
+                      onDelete={(deletedId) => {
+                        setAds(prev => prev.filter(a => (a.adId || a._id) !== deletedId));
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
 
               {/* Pagination */}
-              <div className="flex justify-center items-center gap-3 mt-16">
+              {!loading && totalPages > 1 && (
+                <div className="flex justify-center items-center gap-3 mt-16">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="px-4 py-2 rounded-lg border border-gray-300 bg-white hover:border-[#157A4F] hover:text-[#157A4F] transition disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
 
-                <button className="px-4 py-2 rounded-lg border border-gray-300 bg-white hover:border-[#157A4F] hover:text-[#157A4F] transition">
-                  Previous
-                </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      className={`px-4 py-2 rounded-lg ${p === page
+                        ? "bg-[#157A4F] text-white font-semibold shadow-sm"
+                        : "border border-gray-300 bg-white hover:border-[#157A4F] hover:text-[#157A4F] transition"
+                        }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
 
-                <button className="px-4 py-2 rounded-lg bg-[#157A4F] text-white font-semibold shadow-sm">
-                  1
-                </button>
-
-                <button className="px-4 py-2 rounded-lg border border-gray-300 bg-white hover:border-[#157A4F] hover:text-[#157A4F] transition">
-                  2
-                </button>
-
-                <button className="px-4 py-2 rounded-lg border border-gray-300 bg-white hover:border-[#157A4F] hover:text-[#157A4F] transition">
-                  3
-                </button>
-
-                <button className="px-4 py-2 rounded-lg border border-gray-300 bg-white hover:border-[#157A4F] hover:text-[#157A4F] transition">
-                  Next
-                </button>
-
-              </div>
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    className="px-4 py-2 rounded-lg border border-gray-300 bg-white hover:border-[#157A4F] hover:text-[#157A4F] transition disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
 
             </div>
 
