@@ -98,7 +98,10 @@ export default function ProfilePage() {
                       : "India"}
                   </p>
 
-                  <button className="mt-4 bg-[#F5B849] hover:bg-[#e0a631] transition px-6 py-2 rounded-lg text-black font-medium">
+                  <button 
+                    onClick={() => router.push('/profile/edit')}
+                    className="mt-4 bg-[#157A4F] hover:bg-[#0f5c3a] transition px-6 py-2 rounded-lg text-white font-medium"
+                  >
                     Edit Profile
                   </button>
                 </div>

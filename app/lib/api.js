@@ -133,6 +133,26 @@ export async function updateProfile(data) {
     });
 }
 
+export async function sendPasswordChangeOTP() {
+    return apiClient('/users/send-password-otp', {
+        method: 'POST',
+    });
+}
+
+export async function verifyPasswordChangeOTP(otp) {
+    return apiClient('/users/verify-password-otp', {
+        method: 'POST',
+        body: JSON.stringify({ otp }),
+    });
+}
+
+export async function changePasswordWithOTP(otp, newPassword) {
+    return apiClient('/users/change-password-otp', {
+        method: 'POST',
+        body: JSON.stringify({ otp, newPassword }),
+    });
+}
+
 // ============================================================
 // ADS — PUBLIC APIs (no auth required)
 // ============================================================
