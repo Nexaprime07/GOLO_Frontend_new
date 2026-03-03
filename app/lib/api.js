@@ -18,7 +18,11 @@ async function apiClient(endpoint, options = {}) {
     if (typeof window !== 'undefined') {
         const token = localStorage.getItem('accessToken');
         if (token) {
+            // Debug token format
+            console.log(`[API] Using token for ${endpoint}: ${token.substring(0, 20)}...`);
             headers['Authorization'] = `Bearer ${token}`;
+        } else {
+            console.warn(`[API] No token found in localStorage for ${endpoint}`);
         }
     }
 
@@ -27,10 +31,16 @@ async function apiClient(endpoint, options = {}) {
         headers,
     };
 
+    console.log(`[API] ${options.method || 'GET'} ${endpoint} with headers:`, {
+        'Content-Type': headers['Content-Type'],
+        'Authorization': headers['Authorization'] ? 'Present' : 'Missing',
+    });
+
     const response = await fetch(url, config);
 
     // Handle 401 — try to refresh token
     if (response.status === 401 && typeof window !== 'undefined') {
+        console.warn(`[API] Got 401 for ${endpoint} - attempting token refresh`);
         const refreshed = await tryRefreshToken();
         if (refreshed) {
             // Retry original request with new token
