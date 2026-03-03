@@ -92,34 +92,36 @@ export default function CategoryBar() {
     <>
       {/* MAIN BAR */}
       <div ref={wrapperRef} style={{ width: "100%", background: "#fff", borderBottom: "1px solid #e5e7eb", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
-        <div style={{ maxWidth: "1440px", margin: "0 auto", display: "flex", alignItems: "center", height: "52px", padding: "0 24px", overflowX: "auto", gap: "4px" }}>
+        <div style={{ maxWidth: "1440px", margin: "0 auto", display: "flex", alignItems: "center", height: "56px", padding: "0 24px", gap: "10px" }}>
 
-          {mainCategories.map((cat) => (
-            <div key={cat.name} style={{ flexShrink: 0 }}>
-              <button
-                ref={(el) => (buttonRefs.current[cat.name] = el)}
-                onClick={() => handleCategoryClick(cat)}
-                style={{
-                  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px",
-                  padding: "8px 14px", borderRadius: "12px", border: "none",
-                  background: activeDropdown === cat.name ? "#e6f4ee" : "transparent",
-                  color: activeDropdown === cat.name ? "#157A4F" : "#374151",
-                  fontWeight: 600, fontSize: "13px", cursor: "pointer", lineHeight: 1,
-                  whiteSpace: "nowrap", transition: "all 0.15s",
-                }}
-                onMouseEnter={e => { if (activeDropdown !== cat.name) { e.currentTarget.style.background = "#f9fafb"; e.currentTarget.style.color = "#157A4F"; } }}
-                onMouseLeave={e => { if (activeDropdown !== cat.name) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#374151"; } }}
-              >
-                <span>{cat.name}</span>
-                {cat.sub && (
-                  <ChevronDown size={12} style={{ transition: "transform 0.25s", transform: activeDropdown === cat.name ? "rotate(180deg)" : "none" }} />
-                )}
-              </button>
-            </div>
-          ))}
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", minWidth: 0, gap: "6px", overflowX: "auto" }}>
+            {mainCategories.map((cat) => (
+              <div key={cat.name} style={{ flex: 1, minWidth: "max-content", display: "flex", justifyContent: "center" }}>
+                <button
+                  ref={(el) => (buttonRefs.current[cat.name] = el)}
+                  onClick={() => handleCategoryClick(cat)}
+                  style={{
+                    display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px",
+                    padding: "8px 12px", borderRadius: "12px", border: "none",
+                    background: activeDropdown === cat.name ? "#e6f4ee" : "transparent",
+                    color: activeDropdown === cat.name ? "#157A4F" : "#374151",
+                    fontWeight: 600, fontSize: "14px", cursor: "pointer", lineHeight: 1,
+                    whiteSpace: "nowrap", transition: "all 0.15s",
+                  }}
+                  onMouseEnter={e => { if (activeDropdown !== cat.name) { e.currentTarget.style.background = "#f9fafb"; e.currentTarget.style.color = "#157A4F"; } }}
+                  onMouseLeave={e => { if (activeDropdown !== cat.name) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#374151"; } }}
+                >
+                  <span>{cat.name}</span>
+                  {cat.sub && (
+                    <ChevronDown size={12} style={{ transition: "transform 0.25s", transform: activeDropdown === cat.name ? "rotate(180deg)" : "none" }} />
+                  )}
+                </button>
+              </div>
+            ))}
+          </div>
 
           {/* See All */}
-          <div style={{ flexShrink: 0, marginLeft: "auto", paddingLeft: "12px" }}>
+          <div style={{ flexShrink: 0 }}>
             <button
               onClick={() => setShowAllModal(true)}
               style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "6px 16px", borderRadius: "20px", border: "1.5px solid #e5e7eb", background: "#fff", color: "#374151", fontWeight: 600, fontSize: "13px", cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.15s" }}
