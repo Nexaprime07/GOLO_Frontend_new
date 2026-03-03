@@ -100,17 +100,16 @@ export default function CategoryBar() {
                 ref={(el) => (buttonRefs.current[cat.name] = el)}
                 onClick={() => handleCategoryClick(cat)}
                 style={{
-                  display: "inline-flex", alignItems: "center", gap: "4px",
-                  padding: "6px 14px", borderRadius: "20px", border: "none",
+                  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px",
+                  padding: "8px 14px", borderRadius: "12px", border: "none",
                   background: activeDropdown === cat.name ? "#e6f4ee" : "transparent",
                   color: activeDropdown === cat.name ? "#157A4F" : "#374151",
-                  fontWeight: 600, fontSize: "13px", cursor: "pointer",
+                  fontWeight: 600, fontSize: "13px", cursor: "pointer", lineHeight: 1,
                   whiteSpace: "nowrap", transition: "all 0.15s",
                 }}
                 onMouseEnter={e => { if (activeDropdown !== cat.name) { e.currentTarget.style.background = "#f9fafb"; e.currentTarget.style.color = "#157A4F"; } }}
                 onMouseLeave={e => { if (activeDropdown !== cat.name) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#374151"; } }}
               >
-                <span>{allIconMap[cat.name] || "📂"}</span>
                 <span>{cat.name}</span>
                 {cat.sub && (
                   <ChevronDown size={12} style={{ transition: "transform 0.25s", transform: activeDropdown === cat.name ? "rotate(180deg)" : "none" }} />
@@ -160,7 +159,7 @@ export default function CategoryBar() {
               onMouseEnter={e => e.currentTarget.style.background = "#f0fdf4"}
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}
             >
-              {allIconMap[activeDropdown]} All {activeDropdown}
+              All {activeDropdown}
             </button>
             <div style={{ height: "1px", background: "#e5e7eb", margin: "4px 0" }} />
             {mainCategories

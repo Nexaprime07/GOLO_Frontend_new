@@ -25,8 +25,10 @@ export default function ProfileSidebar() {
     }`;
 
   const handleLogout = () => {
-    // Add logout logic here if needed (clear tokens, etc.)
-    router.push("/register");
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("user");
+    router.push("/login");
   };
 
   return (
@@ -59,7 +61,7 @@ export default function ProfileSidebar() {
         </Link>
 
         <Link href="/profile/transactions" className={transactionLinkStyle}>
-          <span className="text-lg">🧾</span>
+          <span className="text-lg">•</span>
           <span>Transactions</span>
         </Link>
 
