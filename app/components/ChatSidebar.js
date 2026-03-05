@@ -30,7 +30,7 @@ export default function ChatSidebar({
   const [openMenuId, setOpenMenuId] = useState(null);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0 overflow-hidden">
 
       {/* Header */}
       <div className="p-6 border-b border-gray-200">
@@ -40,7 +40,7 @@ export default function ChatSidebar({
       </div>
 
       {/* Chat List */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
 
         {!loading && conversations.length === 0 && (
           <div className="text-sm text-gray-500 text-center py-8">

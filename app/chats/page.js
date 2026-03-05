@@ -4,7 +4,6 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ChatSidebar from "../components/ChatSidebar";
 import ChatWindow from "../components/ChatWindow";
-import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -50,6 +49,13 @@ function ChatsPageContent() {
   const socketRef = useRef(null);
   const selectedConversationIdRef = useRef(null);
   const typingStopTimeoutRef = useRef(null);
+
+  const joinSelectedConversationRoom = () => {
+    const activeConversationId = selectedConversationIdRef.current;
+    if (!socketRef.current?.connected || !activeConversationId) return;
+    socketRef.current.emit("join_conversation", { conversationId: activeConversationId });
+    socketRef.current.emit("mark_read", { conversationId: activeConversationId });
+  };
 
   const adId = searchParams.get("adId");
   const sellerId = searchParams.get("sellerId");
@@ -157,6 +163,7 @@ function ChatsPageContent() {
 
       socket.on("connect", () => {
         setPageError("");
+        joinSelectedConversationRoom();
       });
 
       socket.on("connect_error", () => {
@@ -290,7 +297,9 @@ function ChatsPageContent() {
 
   useEffect(() => {
     if (!socketRef.current || !selectedConversationId) return;
-    socketRef.current.emit("join_conversation", { conversationId: selectedConversationId });
+    if (socketRef.current.connected) {
+      socketRef.current.emit("join_conversation", { conversationId: selectedConversationId });
+    }
     return () => {
       socketRef.current?.emit("leave_conversation", { conversationId: selectedConversationId });
     };
@@ -442,16 +451,16 @@ function ChatsPageContent() {
   );
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-100">
+    <div className="flex flex-col h-screen bg-gray-100 overflow-hidden">
 
       {/* NAVBAR */}
       <Navbar />
 
       {/* CHAT SECTION */}
-      <div className="flex flex-1 min-h-[85vh]">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
 
         {/* SIDEBAR */}
-        <aside className="w-[360px] bg-white border-r border-gray-200 flex flex-col">
+        <aside className="w-[360px] bg-white border-r border-gray-200 flex flex-col h-full min-h-0 overflow-hidden">
           <ChatSidebar
             conversations={conversations}
             selectedId={selectedConversationId}
@@ -462,7 +471,7 @@ function ChatsPageContent() {
         </aside>
 
         {/* CHAT WINDOW */}
-        <main className="flex-1 flex flex-col bg-[#F8F6F2]">
+        <main className="flex-1 flex flex-col bg-[#F8F6F2] h-full min-h-0 overflow-hidden">
           {pageError && (
             <div className="mx-8 mt-4 bg-red-50 border border-red-200 text-red-700 text-sm font-semibold rounded-lg px-4 py-2">
               {pageError}
@@ -482,9 +491,6 @@ function ChatsPageContent() {
         </main>
 
       </div>
-
-      {/* FOOTER */}
-      <Footer />
     </div>
   );
 }
