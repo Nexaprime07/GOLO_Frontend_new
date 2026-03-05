@@ -13,6 +13,7 @@ import {
   getMyConversations,
   sendConversationMessage,
   startConversation,
+  uploadChatAttachment,
 } from "../lib/api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
@@ -43,9 +44,12 @@ function ChatsPageContent() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [pageError, setPageError] = useState("");
+  const [typingMap, setTypingMap] = useState({});
+  const [presenceMap, setPresenceMap] = useState({});
 
   const socketRef = useRef(null);
   const selectedConversationIdRef = useRef(null);
+  const typingStopTimeoutRef = useRef(null);
 
   const adId = searchParams.get("adId");
   const sellerId = searchParams.get("sellerId");
@@ -142,10 +146,17 @@ function ChatsPageContent() {
       if (!mounted) return;
 
       const socket = io(`${API_BASE}/chat`, {
-        transports: ["websocket"],
+        transports: ["websocket", "polling"],
+        reconnection: true,
+        reconnectionAttempts: 20,
+        reconnectionDelay: 1000,
         auth: {
           token,
         },
+      });
+
+      socket.on("connect", () => {
+        setPageError("");
       });
 
       socket.on("connect_error", () => {
@@ -167,7 +178,7 @@ function ChatsPageContent() {
               conversation.id === incoming.conversationId
                 ? {
                     ...conversation,
-                    lastMessageText: incoming.text,
+                    lastMessageText: incoming.text || (incoming.attachments?.length ? "📎 Attachment" : ""),
                     lastMessageAt: incoming.createdAt,
                     lastMessageAdId: incoming.adId || conversation.lastMessageAdId,
                     lastMessageAdTitle: incoming.adTitle || conversation.lastMessageAdTitle,
@@ -192,7 +203,7 @@ function ChatsPageContent() {
               conversation.id === event.conversationId
                 ? {
                     ...conversation,
-                    lastMessageText: event.lastMessageText,
+                    lastMessageText: event.lastMessageText || (event?.message?.attachments?.length ? "📎 Attachment" : ""),
                     lastMessageAt: event.lastMessageAt,
                     lastMessageAdId: event.lastMessageAdId || conversation.lastMessageAdId,
                     lastMessageAdTitle: event.lastMessageAdTitle || conversation.lastMessageAdTitle,
@@ -218,6 +229,51 @@ function ChatsPageContent() {
         }
       });
 
+      socket.on("typing_state", (event) => {
+        if (!event?.conversationId || !event?.userId) return;
+        setTypingMap((prev) => {
+          const existing = prev[event.conversationId] || {};
+          return {
+            ...prev,
+            [event.conversationId]: {
+              ...existing,
+              [event.userId]: Boolean(event.isTyping),
+            },
+          };
+        });
+      });
+
+      socket.on("presence_state", (event) => {
+        if (!event?.userId) return;
+        setPresenceMap((prev) => ({
+          ...prev,
+          [event.userId]: {
+            online: Boolean(event.online),
+            lastSeenAt: event.lastSeenAt || null,
+          },
+        }));
+      });
+
+      socket.on("messages_read", (event) => {
+        if (!event?.conversationId || !Array.isArray(event?.messageIds) || !event?.readerId) return;
+        if (event.conversationId !== selectedConversationIdRef.current) return;
+
+        const readSet = new Set(event.messageIds.map(String));
+        setMessages((prev) =>
+          prev.map((message) => {
+            if (!readSet.has(String(message.id))) return message;
+            const readBy = Array.isArray(message.readBy) ? [...message.readBy] : [];
+            if (!readBy.includes(event.readerId)) {
+              readBy.push(event.readerId);
+            }
+            return {
+              ...message,
+              readBy,
+            };
+          })
+        );
+      });
+
       socketRef.current = socket;
     };
 
@@ -240,8 +296,23 @@ function ChatsPageContent() {
     };
   }, [selectedConversationId]);
 
-  const handleSendMessage = async (text) => {
-    if (!selectedConversationId || !text?.trim()) return;
+  useEffect(() => {
+    if (!socketRef.current || !selectedConversationId || messages.length === 0) return;
+    socketRef.current.emit("mark_read", { conversationId: selectedConversationId });
+  }, [messages, selectedConversationId]);
+
+  useEffect(() => {
+    return () => {
+      if (typingStopTimeoutRef.current) {
+        clearTimeout(typingStopTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleSendMessage = async ({ text, files = [] }) => {
+    if (!selectedConversationId) return;
+    const trimmedText = (text || "").trim();
+    if (!trimmedText && (!files || files.length === 0)) return;
 
     setSending(true);
     setPageError("");
@@ -249,28 +320,43 @@ function ChatsPageContent() {
       const adContextId =
         selectedConversation?.ad?.id || selectedConversation?.lastMessageAdId || selectedConversation?.adId;
 
+      const attachments = files.length
+        ? await Promise.all(files.map((file) => uploadChatAttachment(file)))
+        : [];
+
       let message;
 
       if (socketRef.current?.connected) {
-        message = await new Promise((resolve, reject) => {
-          socketRef.current.emit(
-            "send_message",
-            {
-              conversationId: selectedConversationId,
-              text,
-              adId: adContextId,
-            },
-            (ack) => {
-              if (!ack || ack.success === false) {
-                reject(new Error(ack?.message || "Failed to send message."));
-                return;
-              }
-              resolve(ack.data);
-            }
-          );
-        });
+        try {
+          message = await Promise.race([
+            new Promise((resolve, reject) => {
+              socketRef.current.emit(
+                "send_message",
+                {
+                  conversationId: selectedConversationId,
+                  text: trimmedText,
+                  adId: adContextId,
+                  attachments,
+                },
+                (ack) => {
+                  if (!ack || ack.success === false) {
+                    reject(new Error(ack?.message || "Failed to send message."));
+                    return;
+                  }
+                  resolve(ack.data);
+                }
+              );
+            }),
+            new Promise((_, reject) => {
+              setTimeout(() => reject(new Error("Socket ack timeout")), 2500);
+            }),
+          ]);
+        } catch {
+          const response = await sendConversationMessage(selectedConversationId, trimmedText, adContextId, attachments);
+          message = response?.data;
+        }
       } else {
-        const response = await sendConversationMessage(selectedConversationId, text, adContextId);
+        const response = await sendConversationMessage(selectedConversationId, trimmedText, adContextId, attachments);
         message = response?.data;
       }
 
@@ -286,7 +372,7 @@ function ChatsPageContent() {
             conversation.id === selectedConversationId
               ? {
                   ...conversation,
-                  lastMessageText: message.text,
+                  lastMessageText: message.text || (message.attachments?.length ? "📎 Attachment" : ""),
                   lastMessageAt: message.createdAt,
                   lastMessageAdId: message.adId || conversation.lastMessageAdId,
                   lastMessageAdTitle: message.adTitle || conversation.lastMessageAdTitle,
@@ -328,6 +414,33 @@ function ChatsPageContent() {
     }
   };
 
+  const handleTyping = (isTyping) => {
+    if (!selectedConversationId || !socketRef.current?.connected) return;
+    if (isTyping) {
+      socketRef.current.emit("typing_start", { conversationId: selectedConversationId });
+      if (typingStopTimeoutRef.current) clearTimeout(typingStopTimeoutRef.current);
+      typingStopTimeoutRef.current = setTimeout(() => {
+        socketRef.current?.emit("typing_stop", { conversationId: selectedConversationId });
+      }, 1300);
+      return;
+    }
+
+    if (typingStopTimeoutRef.current) {
+      clearTimeout(typingStopTimeoutRef.current);
+      typingStopTimeoutRef.current = null;
+    }
+    socketRef.current.emit("typing_stop", { conversationId: selectedConversationId });
+  };
+
+  const otherUserId = selectedConversation?.otherUser?.id;
+  const selectedPresence = otherUserId ? presenceMap[otherUserId] : null;
+  const isOtherUserTyping = Boolean(
+    selectedConversationId &&
+      otherUserId &&
+      typingMap[selectedConversationId] &&
+      typingMap[selectedConversationId][otherUserId]
+  );
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-100">
 
@@ -361,7 +474,10 @@ function ChatsPageContent() {
             currentUserId={user?.id}
             loading={loadingMessages}
             sending={sending}
+            presence={selectedPresence}
+            isOtherUserTyping={isOtherUserTyping}
             onSendMessage={handleSendMessage}
+            onTyping={handleTyping}
           />
         </main>
 

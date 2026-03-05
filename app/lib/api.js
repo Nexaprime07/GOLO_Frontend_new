@@ -426,11 +426,36 @@ export async function getConversationMessages(conversationId, { page = 1, limit 
     return apiClient(`/chats/conversations/${conversationId}/messages?${params.toString()}`);
 }
 
-export async function sendConversationMessage(conversationId, text, adId) {
+export async function sendConversationMessage(conversationId, text, adId, attachments = []) {
     return apiClient(`/chats/conversations/${conversationId}/messages`, {
         method: 'POST',
-        body: JSON.stringify({ text, adId }),
+        body: JSON.stringify({ text, adId, attachments }),
     });
+}
+
+export async function uploadChatAttachment(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', 'choja_preset');
+    formData.append('cloud_name', 'dcm1plq42');
+
+    const uploadResponse = await fetch('https://api.cloudinary.com/v1_1/dcm1plq42/auto/upload', {
+        method: 'POST',
+        body: formData,
+    });
+
+    const uploadData = await uploadResponse.json();
+    if (!uploadResponse.ok || !uploadData?.secure_url) {
+        throw new Error(uploadData?.error?.message || 'Attachment upload failed');
+    }
+
+    return {
+        name: file.name,
+        mimeType: file.type || 'application/octet-stream',
+        size: file.size,
+        type: (file.type || '').startsWith('image/') ? 'image' : 'file',
+        url: uploadData.secure_url,
+    };
 }
 
 export async function deleteConversation(conversationId) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { Send, Link } from "lucide-react";
+import { Check, CheckCheck, Paperclip, Send, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 const formatTime = (value) => {
@@ -15,16 +15,35 @@ const getAvatarUrl = (avatar, name) => {
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || "User")}&background=157A4F&color=ffffff&size=128`;
 };
 
+const formatLastSeen = (presence) => {
+  if (!presence) return "Offline";
+  if (presence.online) return "Online";
+  if (!presence.lastSeenAt) return "Offline";
+  const date = new Date(presence.lastSeenAt);
+  if (Number.isNaN(date.getTime())) return "Offline";
+  return `Last seen ${date.toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
+};
+
 export default function ChatWindow({
   conversation,
   messages = [],
   currentUserId,
   loading = false,
   sending = false,
+  presence,
+  isOtherUserTyping = false,
   onSendMessage,
+  onTyping,
 }) {
   const [text, setText] = useState("");
+  const [attachments, setAttachments] = useState([]);
   const bottomRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -32,9 +51,11 @@ export default function ChatWindow({
 
   const handleSend = () => {
     const message = text.trim();
-    if (!message || !conversation || sending) return;
-    onSendMessage?.(message);
+    if ((!message && attachments.length === 0) || !conversation || sending) return;
+    onSendMessage?.({ text: message, files: attachments });
     setText("");
+    setAttachments([]);
+    onTyping?.(false);
   };
 
   const onKeyDown = (event) => {
@@ -42,6 +63,26 @@ export default function ChatWindow({
       event.preventDefault();
       handleSend();
     }
+  };
+
+  const onTextChange = (event) => {
+    setText(event.target.value);
+    onTyping?.(Boolean(event.target.value.trim()));
+  };
+
+  const handleAttachClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event) => {
+    const selectedFiles = Array.from(event.target.files || []);
+    if (selectedFiles.length === 0) return;
+    setAttachments((prev) => [...prev, ...selectedFiles].slice(0, 5));
+    event.target.value = "";
+  };
+
+  const removeAttachment = (indexToRemove) => {
+    setAttachments((prev) => prev.filter((_, index) => index !== indexToRemove));
   };
 
   if (!conversation) {
@@ -65,9 +106,14 @@ export default function ChatWindow({
             alt={conversation?.otherUser?.name || "User"}
             className="rounded-full object-cover"
           />
-          <h3 className="font-semibold text-lg text-gray-800">
-            {conversation?.otherUser?.name || "User"}
-          </h3>
+          <div>
+            <h3 className="font-semibold text-lg text-gray-800">
+              {conversation?.otherUser?.name || "User"}
+            </h3>
+            <p className="text-xs text-gray-500 -mt-0.5">
+              {isOtherUserTyping ? "Typing..." : formatLastSeen(presence)}
+            </p>
+          </div>
         </div>
 
         <div className="text-xs text-gray-500 text-right">
@@ -126,11 +172,59 @@ export default function ChatWindow({
                   isMine
                     ? "bg-[#157A4F] text-white ml-auto"
                     : "bg-white border border-gray-200 text-gray-800"
-                } p-4 rounded-2xl w-fit max-w-sm shadow-sm`}
+                } p-4 rounded-2xl w-fit max-w-md shadow-sm`}
               >
-                {message.text}
-                <div className={`text-xs mt-2 ${isMine ? "text-green-100" : "text-gray-400"}`}>
-                  {formatTime(message.createdAt)}
+                {message.text ? <p className="whitespace-pre-wrap">{message.text}</p> : null}
+
+                {Array.isArray(message.attachments) && message.attachments.length > 0 && (
+                  <div className={`${message.text ? "mt-3" : ""} space-y-2`}>
+                    {message.attachments.map((attachment, attachmentIndex) => {
+                      const isImage = (attachment?.type === "image") || (attachment?.mimeType || "").startsWith("image/");
+                      if (isImage) {
+                        return (
+                          <a
+                            key={`${message.id}-attachment-${attachmentIndex}`}
+                            href={attachment.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="block"
+                          >
+                            <img
+                              src={attachment.url}
+                              alt={attachment.name || "attachment"}
+                              className="rounded-xl border border-black/10 max-h-64 object-cover"
+                            />
+                          </a>
+                        );
+                      }
+
+                      return (
+                        <a
+                          key={`${message.id}-attachment-${attachmentIndex}`}
+                          href={attachment.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={`flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs ${
+                            isMine ? "bg-white/15" : "bg-gray-100"
+                          }`}
+                        >
+                          <span className="truncate max-w-[220px]">📎 {attachment.name || "Attachment"}</span>
+                          <span className="font-semibold">Open</span>
+                        </a>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className={`text-xs mt-2 flex items-center gap-1 justify-end ${isMine ? "text-green-100" : "text-gray-400"}`}>
+                  <span>{formatTime(message.createdAt)}</span>
+                  {isMine && (
+                    (Array.isArray(message.readBy) && message.readBy.some((id) => String(id) !== String(currentUserId))) ? (
+                      <CheckCheck size={14} />
+                    ) : (
+                      <Check size={14} />
+                    )
+                  )}
                 </div>
               </div>
             </div>
@@ -142,28 +236,53 @@ export default function ChatWindow({
       </div>
 
       {/* INPUT (Fixed) */}
-      <div className="px-8 py-4 bg-white border-t border-gray-200 flex items-center gap-4 shrink-0">
-        <Link
-          size={20}
-          className="text-gray-400 cursor-pointer hover:text-[#F5B849] transition"
-        />
+      <div className="px-8 py-4 bg-white border-t border-gray-200 shrink-0 sticky bottom-0">
+        {attachments.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {attachments.map((file, index) => (
+              <div key={`${file.name}-${index}`} className="bg-[#F8F6F2] border border-gray-200 rounded-full pl-3 pr-2 py-1 text-xs text-gray-700 flex items-center gap-2">
+                <span className="max-w-[180px] truncate">{file.name}</span>
+                <button onClick={() => removeAttachment(index)} className="text-gray-500 hover:text-red-500">
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
-        <input
-          type="text"
-          placeholder="Type your message..."
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          onKeyDown={onKeyDown}
-          className="flex-1 bg-[#F8F6F2] rounded-full px-6 py-3 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#157A4F]"
-        />
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleAttachClick}
+            className="text-gray-400 hover:text-[#F5B849] transition"
+            type="button"
+          >
+            <Paperclip size={20} />
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={handleFileChange}
+          />
 
-        <button
-          onClick={handleSend}
-          disabled={sending || !text.trim()}
-          className="bg-[#F5B849] text-white p-3 rounded-full hover:bg-[#e0a837] transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Send size={18} />
-        </button>
+          <input
+            type="text"
+            placeholder="Type your message..."
+            value={text}
+            onChange={onTextChange}
+            onKeyDown={onKeyDown}
+            className="flex-1 bg-[#F8F6F2] rounded-full px-6 py-3 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#157A4F]"
+          />
+
+          <button
+            onClick={handleSend}
+            disabled={sending || (!text.trim() && attachments.length === 0)}
+            className="bg-[#F5B849] text-white p-3 rounded-full hover:bg-[#e0a837] transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Send size={18} />
+          </button>
+        </div>
       </div>
 
     </div>
