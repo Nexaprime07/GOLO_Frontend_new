@@ -81,34 +81,6 @@ export default function ChatWindow({
       {/* SCROLLABLE MESSAGES AREA */}
       <div className="flex-1 overflow-y-auto px-10 py-8 space-y-6">
 
-        {(conversation?.ad?.title || conversation?.lastMessageAdTitle) && (
-          <div className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-3 shadow-sm">
-            {conversation?.ad?.image ? (
-              <img
-                src={conversation.ad.image}
-                alt={conversation?.ad?.title || conversation?.lastMessageAdTitle || "Ad"}
-                className="w-16 h-16 rounded-lg object-cover border border-gray-200"
-              />
-            ) : (
-              <div className="w-16 h-16 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-xs text-gray-500">
-                Ad
-              </div>
-            )}
-            <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-wide text-gray-400 font-semibold">Chat about this ad</p>
-              <p className="text-sm font-semibold text-gray-800 truncate">
-                {conversation?.lastMessageAdTitle || conversation?.ad?.title}
-              </p>
-              <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-2">
-                {conversation?.ad?.price !== undefined && conversation?.ad?.price !== null && (
-                  <span className="font-semibold text-[#157A4F]">₹{Number(conversation.ad.price).toLocaleString("en-IN")}</span>
-                )}
-                {conversation?.ad?.location && <span className="truncate">{conversation.ad.location}</span>}
-              </div>
-            </div>
-          </div>
-        )}
-
         {loading && (
           <div className="text-sm text-gray-500">Loading messages...</div>
         )}
@@ -117,25 +89,49 @@ export default function ChatWindow({
           <div className="text-sm text-gray-500">No messages yet. Say hi 👋</div>
         )}
 
-        {messages.map((message) => {
+        {messages.map((message, index) => {
           const isMine = String(message.senderId) === String(currentUserId);
+          const previousMessage = index > 0 ? messages[index - 1] : null;
+          const isNewAdContext = !previousMessage || previousMessage.adId !== message.adId;
           return (
-            <div
-              key={message.id}
-              className={`${
-                isMine
-                  ? "bg-[#157A4F] text-white ml-auto"
-                  : "bg-white border border-gray-200 text-gray-800"
-              } p-4 rounded-2xl w-fit max-w-sm shadow-sm`}
-            >
-              {message.adTitle && (
-                <div className={`text-[10px] mb-1 ${isMine ? "text-green-100" : "text-gray-500"}`}>
-                  Regarding: {message.adTitle}
+            <div key={message.id} className="space-y-2">
+              {isNewAdContext && (
+                <div className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-3 shadow-sm max-w-md">
+                  {message.adImage ? (
+                    <img
+                      src={message.adImage}
+                      alt={message.adTitle || "Ad"}
+                      className="w-16 h-16 rounded-lg object-cover border border-gray-200"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-xs text-gray-500">
+                      Ad
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-[10px] uppercase tracking-wide text-gray-400 font-semibold">Chat about this ad</p>
+                    <p className="text-sm font-semibold text-gray-800 truncate">{message.adTitle || "Ad context"}</p>
+                    <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-2">
+                      {message.adPrice !== undefined && message.adPrice !== null && (
+                        <span className="font-semibold text-[#157A4F]">₹{Number(message.adPrice).toLocaleString("en-IN")}</span>
+                      )}
+                      {message.adLocation && <span className="truncate">{message.adLocation}</span>}
+                    </div>
+                  </div>
                 </div>
               )}
-              {message.text}
-              <div className={`text-xs mt-2 ${isMine ? "text-green-100" : "text-gray-400"}`}>
-                {formatTime(message.createdAt)}
+
+              <div
+                className={`${
+                  isMine
+                    ? "bg-[#157A4F] text-white ml-auto"
+                    : "bg-white border border-gray-200 text-gray-800"
+                } p-4 rounded-2xl w-fit max-w-sm shadow-sm`}
+              >
+                {message.text}
+                <div className={`text-xs mt-2 ${isMine ? "text-green-100" : "text-gray-400"}`}>
+                  {formatTime(message.createdAt)}
+                </div>
               </div>
             </div>
           );
