@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
+import { createAd } from "../lib/api";
 
 export default function FormSidebar({
   adTitleState,
@@ -195,25 +196,11 @@ export default function FormSidebar({
         adData[categoryKey] = categoryDetails;
       }
 
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(
-          'pendingAdPost',
-          JSON.stringify({
-            adData,
-            payment: {
-              amount: total,
-              subtotal,
-              gst,
-              featured: isFeatured,
-              daysCount,
-              templateId: templateId || 1,
-            },
-            createdAt: Date.now(),
-          })
-        );
-      }
-
-      router.push('/post-ad/payment');
+      await createAd(adData);
+      setSubmitSuccess(true);
+      setTimeout(() => {
+        router.push('/my-ads');
+      }, 1200);
     } catch (error) {
       const status = error.status || error.data?.statusCode;
       // Token expired — clear session and redirect to login
