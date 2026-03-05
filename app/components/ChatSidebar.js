@@ -70,9 +70,9 @@ export default function ChatSidebar({ conversations = [], selectedId, onSelectCo
                 <p className="text-sm text-gray-500 truncate w-[160px]">
                   {chat.lastMessageText || "No messages yet"}
                 </p>
-                {chat?.ad?.title && (
+                {(chat?.lastMessageAdTitle || chat?.ad?.title) && (
                   <p className="text-xs text-gray-400 truncate w-[160px] mt-0.5">
-                    {chat.ad.title}
+                    Regarding: {chat.lastMessageAdTitle || chat.ad.title}
                   </p>
                 )}
               </div>

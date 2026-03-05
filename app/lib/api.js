@@ -426,9 +426,9 @@ export async function getConversationMessages(conversationId, { page = 1, limit 
     return apiClient(`/chats/conversations/${conversationId}/messages?${params.toString()}`);
 }
 
-export async function sendConversationMessage(conversationId, text) {
+export async function sendConversationMessage(conversationId, text, adId) {
     return apiClient(`/chats/conversations/${conversationId}/messages`, {
         method: 'POST',
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, adId }),
     });
 }

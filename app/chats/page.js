@@ -44,6 +44,7 @@ function ChatsPageContent() {
   const [pageError, setPageError] = useState("");
 
   const socketRef = useRef(null);
+  const selectedConversationIdRef = useRef(null);
 
   const adId = searchParams.get("adId");
   const sellerId = searchParams.get("sellerId");
@@ -52,6 +53,10 @@ function ChatsPageContent() {
     () => selectedConversation?.id || null,
     [selectedConversation]
   );
+
+  useEffect(() => {
+    selectedConversationIdRef.current = selectedConversationId;
+  }, [selectedConversationId]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -147,11 +152,13 @@ function ChatsPageContent() {
       });
 
       socket.on("new_message", (incoming) => {
-        setMessages((prev) => {
-          const exists = prev.some((item) => item.id === incoming.id);
-          if (exists) return prev;
-          return [...prev, incoming];
-        });
+        if (incoming.conversationId === selectedConversationIdRef.current) {
+          setMessages((prev) => {
+            const exists = prev.some((item) => item.id === incoming.id);
+            if (exists) return prev;
+            return [...prev, incoming];
+          });
+        }
 
         setConversations((prev) =>
           prev
@@ -161,11 +168,53 @@ function ChatsPageContent() {
                     ...conversation,
                     lastMessageText: incoming.text,
                     lastMessageAt: incoming.createdAt,
+                    lastMessageAdId: incoming.adId || conversation.lastMessageAdId,
+                    lastMessageAdTitle: incoming.adTitle || conversation.lastMessageAdTitle,
+                    ad: conversation.ad
+                      ? {
+                          ...conversation.ad,
+                          id: incoming.adId || conversation.ad.id,
+                          title: incoming.adTitle || conversation.ad.title,
+                        }
+                      : conversation.ad,
                   }
                 : conversation
             )
             .sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt))
         );
+      });
+
+      socket.on("conversation_updated", (event) => {
+        setConversations((prev) =>
+          prev
+            .map((conversation) =>
+              conversation.id === event.conversationId
+                ? {
+                    ...conversation,
+                    lastMessageText: event.lastMessageText,
+                    lastMessageAt: event.lastMessageAt,
+                    lastMessageAdId: event.lastMessageAdId || conversation.lastMessageAdId,
+                    lastMessageAdTitle: event.lastMessageAdTitle || conversation.lastMessageAdTitle,
+                    ad: conversation.ad
+                      ? {
+                          ...conversation.ad,
+                          id: event.lastMessageAdId || conversation.ad.id,
+                          title: event.lastMessageAdTitle || conversation.ad.title,
+                        }
+                      : conversation.ad,
+                  }
+                : conversation
+            )
+            .sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt))
+        );
+
+        if (event.conversationId === selectedConversationIdRef.current && event.message) {
+          setMessages((prev) => {
+            const exists = prev.some((item) => item.id === event.message.id);
+            if (exists) return prev;
+            return [...prev, event.message];
+          });
+        }
       });
 
       socketRef.current = socket;
@@ -196,8 +245,33 @@ function ChatsPageContent() {
     setSending(true);
     setPageError("");
     try {
-      const response = await sendConversationMessage(selectedConversationId, text);
-      const message = response?.data;
+      const adContextId =
+        selectedConversation?.ad?.id || selectedConversation?.lastMessageAdId || selectedConversation?.adId;
+
+      let message;
+
+      if (socketRef.current?.connected) {
+        message = await new Promise((resolve, reject) => {
+          socketRef.current.emit(
+            "send_message",
+            {
+              conversationId: selectedConversationId,
+              text,
+              adId: adContextId,
+            },
+            (ack) => {
+              if (!ack || ack.success === false) {
+                reject(new Error(ack?.message || "Failed to send message."));
+                return;
+              }
+              resolve(ack.data);
+            }
+          );
+        });
+      } else {
+        const response = await sendConversationMessage(selectedConversationId, text, adContextId);
+        message = response?.data;
+      }
 
       setMessages((prev) => {
         const exists = prev.some((item) => item.id === message.id);
@@ -213,6 +287,15 @@ function ChatsPageContent() {
                   ...conversation,
                   lastMessageText: message.text,
                   lastMessageAt: message.createdAt,
+                  lastMessageAdId: message.adId || conversation.lastMessageAdId,
+                  lastMessageAdTitle: message.adTitle || conversation.lastMessageAdTitle,
+                  ad: conversation.ad
+                    ? {
+                        ...conversation.ad,
+                        id: message.adId || conversation.ad.id,
+                        title: message.adTitle || conversation.ad.title,
+                      }
+                    : conversation.ad,
                 }
               : conversation
           )

@@ -100,6 +100,11 @@ export default function ChatWindow({
                   : "bg-white border border-gray-200 text-gray-800"
               } p-4 rounded-2xl w-fit max-w-sm shadow-sm`}
             >
+              {message.adTitle && (
+                <div className={`text-[10px] mb-1 ${isMine ? "text-green-100" : "text-gray-500"}`}>
+                  Regarding: {message.adTitle}
+                </div>
+              )}
               {message.text}
               <div className={`text-xs mt-2 ${isMine ? "text-green-100" : "text-gray-400"}`}>
                 {formatTime(message.createdAt)}
