@@ -476,3 +476,8 @@ export async function deleteConversation(conversationId) {
         method: 'DELETE',
     });
 }
+
+export async function getCallHistory({ page = 1, limit = 100 } = {}) {
+    const params = new URLSearchParams({ page, limit });
+    return apiClient(`/calls/history?${params.toString()}`);
+}
