@@ -8,7 +8,6 @@ import Navbar from "../components/Navbar";
 import { useAuth } from "../context/AuthContext";
 import {
   deleteConversation,
-  getCallHistory,
   getConversationMessages,
   getMyConversations,
   sendConversationMessage,
@@ -25,8 +24,6 @@ const formatCallDuration = (value) => {
   const secs = String(total % 60).padStart(2, "0");
   return `${mins}:${secs}`;
 };
-
-const FINAL_CALL_STATUSES = new Set(["ended", "rejected", "missed", "failed", "busy"]);
 
 const getCallEventMeta = ({ status, durationSec = 0, isOutgoing = false }) => {
   if (status === "missed") {
@@ -78,30 +75,6 @@ const getCallEventMeta = ({ status, durationSec = 0, isOutgoing = false }) => {
   };
 };
 
-const toCallEventMessage = (call, currentUserId) => {
-  const isOutgoing = String(call.callerId) === String(currentUserId);
-  const status = call.status || "ended";
-  const durationSec = call.durationSec || 0;
-  const meta = getCallEventMeta({ status, durationSec, isOutgoing });
-
-  return {
-    id: `call-${call.callId}-${status}`,
-    createdAt: call.endedAt || call.answeredAt || call.startedAt || call.createdAt,
-    senderId: call.callerId,
-    text: "",
-    attachments: [],
-    __kind: "call_event",
-    callEvent: {
-      callId: call.callId,
-      status,
-      durationSec,
-      isOutgoing,
-      label: meta.label,
-      summary: meta.summary,
-    },
-  };
-};
-
 export default function ChatsPage() {
   return (
     <Suspense
@@ -130,7 +103,6 @@ function ChatsPageContent() {
   const [pageError, setPageError] = useState("");
   const [typingMap, setTypingMap] = useState({});
   const [presenceMap, setPresenceMap] = useState({});
-  const [callHistoryByConversation, setCallHistoryByConversation] = useState({});
   const [callUi, setCallUi] = useState({
     status: "idle",
     callId: null,
@@ -163,6 +135,7 @@ function ChatsPageContent() {
   const callRecoveryTimeoutRef = useRef(null);
   const callRecoveryAttemptRef = useRef(0);
   const incomingCallNotificationRef = useRef(null);
+  const pendingAutoCallRef = useRef(false);
 
   const joinSelectedConversationRoom = () => {
     const activeConversationId = selectedConversationIdRef.current;
@@ -173,6 +146,7 @@ function ChatsPageContent() {
 
   const adId = searchParams.get("adId");
   const sellerId = searchParams.get("sellerId");
+  const autoCall = searchParams.get("autoCall") === "1";
 
   const selectedConversationId = useMemo(
     () => selectedConversation?.id || null,
@@ -182,6 +156,10 @@ function ChatsPageContent() {
   useEffect(() => {
     selectedConversationIdRef.current = selectedConversationId;
   }, [selectedConversationId]);
+
+  useEffect(() => {
+    pendingAutoCallRef.current = autoCall;
+  }, [autoCall]);
 
   useEffect(() => {
     conversationsRef.current = conversations;
@@ -489,40 +467,6 @@ function ChatsPageContent() {
     );
   };
 
-  const appendCallHistoryRecord = ({
-    conversationId,
-    callId,
-    status,
-    durationSec = 0,
-    callerId,
-    calleeId,
-  }) => {
-    if (!conversationId || !callId) return;
-    const nowIso = new Date().toISOString();
-
-    setCallHistoryByConversation((prev) => {
-      const existing = prev[conversationId] || [];
-      const exists = existing.some((item) => String(item.callId) === String(callId) && item.status === status);
-      if (exists) return prev;
-
-      const nextRecord = {
-        callId,
-        conversationId,
-        status,
-        durationSec,
-        callerId: callerId || userIdRef.current,
-        calleeId: calleeId || callUiRef.current.peerUserId,
-        startedAt: nowIso,
-        endedAt: nowIso,
-      };
-
-      return {
-        ...prev,
-        [conversationId]: [...existing, nextRecord],
-      };
-    });
-  };
-
   const emitWithAck = (socket, eventName, payload, timeoutMs = 6000) =>
     new Promise((resolve, reject) => {
       if (!socket?.connected) {
@@ -718,6 +662,16 @@ function ChatsPageContent() {
   }, [isAuthenticated, adId, sellerId, router]);
 
   useEffect(() => {
+    if (!pendingAutoCallRef.current) return;
+    if (!selectedConversationId || !selectedConversation?.otherUser?.id) return;
+    if (!callSocketRef.current?.connected) return;
+    if (callUiRef.current.status !== 'idle') return;
+
+    pendingAutoCallRef.current = false;
+    handleStartCall();
+  }, [selectedConversationId, selectedConversation]);
+
+  useEffect(() => {
     if (!selectedConversationId) {
       setMessages([]);
       return;
@@ -728,15 +682,7 @@ function ChatsPageContent() {
       setPageError("");
       try {
         const response = await getConversationMessages(selectedConversationId, { page: 1, limit: 100 });
-        const textMessages = response?.data?.items || [];
-        const callEvents = (callHistoryByConversation[selectedConversationId] || [])
-          .filter((call) => FINAL_CALL_STATUSES.has(call?.status))
-          .map((call) => toCallEventMessage(call, userIdRef.current));
-
-        const merged = [...textMessages, ...callEvents].sort(
-          (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
-        );
-        setMessages(merged);
+        setMessages(response?.data?.items || []);
       } catch (error) {
         setPageError(error?.data?.message || error.message || "Failed to load messages.");
       } finally {
@@ -745,30 +691,7 @@ function ChatsPageContent() {
     };
 
     loadMessages();
-  }, [selectedConversationId, callHistoryByConversation]);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const loadCallHistory = async () => {
-      try {
-        const response = await getCallHistory({ page: 1, limit: 300 });
-        const items = (response?.data?.items || []).filter((item) => FINAL_CALL_STATUSES.has(item?.status));
-        const map = items.reduce((acc, item) => {
-          if (!item?.conversationId) return acc;
-          if (!acc[item.conversationId]) acc[item.conversationId] = [];
-          acc[item.conversationId].push(item);
-          return acc;
-        }, {});
-
-        setCallHistoryByConversation(map);
-      } catch {
-        // Keep chat functional even if call history endpoint is temporarily unavailable
-      }
-    };
-
-    loadCallHistory();
-  }, [isAuthenticated]);
+  }, [selectedConversationId]);
 
   useEffect(() => {
     if (!isAuthenticated || typeof document === "undefined") return;
@@ -979,6 +902,15 @@ function ChatsPageContent() {
         setIsCallRecovering(true);
         setCallError("Call reconnected. Syncing media...");
         attemptCallRecovery(socket);
+
+        if (
+          pendingAutoCallRef.current &&
+          selectedConversationIdRef.current &&
+          callUiRef.current.status === 'idle'
+        ) {
+          pendingAutoCallRef.current = false;
+          handleStartCall();
+        }
       });
 
       socket.on("disconnect", () => {
@@ -1042,14 +974,6 @@ function ChatsPageContent() {
           durationSec: 0,
           callerId: userIdRef.current,
         });
-        appendCallHistoryRecord({
-          conversationId: current.conversationId,
-          callId: busyCallId,
-          status: "missed",
-          durationSec: 0,
-          callerId: userIdRef.current,
-          calleeId: current.peerUserId,
-        });
         updateConversationFromCallEvent({
           conversationId: current.conversationId,
           status: "missed",
@@ -1069,14 +993,6 @@ function ChatsPageContent() {
           status: "rejected",
           durationSec: 0,
           callerId: userIdRef.current,
-        });
-        appendCallHistoryRecord({
-          conversationId: current.conversationId,
-          callId: event.callId,
-          status: "rejected",
-          durationSec: 0,
-          callerId: userIdRef.current,
-          calleeId: current.peerUserId,
         });
         updateConversationFromCallEvent({
           conversationId: current.conversationId,
@@ -1099,20 +1015,16 @@ function ChatsPageContent() {
           durationSec: event?.durationSec || 0,
           callerId: event?.by,
         });
-        appendCallHistoryRecord({
-          conversationId: current.conversationId,
-          callId: event.callId,
-          status: finalStatus,
-          durationSec: event?.durationSec || 0,
-          callerId: event?.by,
-          calleeId: current.peerUserId,
-        });
         updateConversationFromCallEvent({
           conversationId: current.conversationId,
           status: finalStatus,
           durationSec: event?.durationSec || 0,
           callerId: event?.by,
         });
+        if (event?.reason === 'timeout') {
+          resetCallUi({ error: `${current.peerName || 'User'} did not pick the call.` });
+          return;
+        }
         resetCallUi({ error: "Call ended." });
       });
 

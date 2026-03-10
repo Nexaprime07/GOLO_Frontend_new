@@ -53,7 +53,11 @@ export default function AdTemplateCard({ ad, isBento = false }) {
                 Chat
             </button>
             <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); console.log("Call clicked"); }}
+                onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    router.push(`/chats?adId=${linkId}&sellerId=${sellerId}&autoCall=1`);
+                }}
                 style={{
                     background: "#FBBF24", color: "#fff", border: "none", borderRadius: "8px",
                     padding: "8px 24px", fontWeight: 600, fontSize: "14px", cursor: "pointer",

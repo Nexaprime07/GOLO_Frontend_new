@@ -369,7 +369,10 @@ export default function ProductDetails({ params }) {
                     Chat with Seller
                   </button>
 
-                  <button className="w-full mt-4 py-3 rounded-xl bg-[#F5B849] hover:bg-[#e0a837] text-white font-semibold flex items-center justify-center gap-2 transition">
+                  <button
+                    onClick={() => router.push(`/chats?adId=${ad?.adId || ad?._id || adId}&sellerId=${ad?.userId || ''}&autoCall=1`)}
+                    className="w-full mt-4 py-3 rounded-xl bg-[#F5B849] hover:bg-[#e0a837] text-white font-semibold flex items-center justify-center gap-2 transition"
+                  >
                     <Phone size={18} />
                     Call for Details
                   </button>
