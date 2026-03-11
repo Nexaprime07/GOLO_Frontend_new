@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../../context/AuthContext";
+import SocialButtons from "../../components/SocialButtons";
 
 export default function LoginPage() {
   const quotes = [
@@ -242,17 +243,7 @@ export default function LoginPage() {
               </div>
 
               {/* Social Buttons */}
-              <div className="social-buttons">
-                <button className="social-btn google">
-                  <span className="icon">G</span> Google
-                </button>
-                <button className="social-btn facebook">
-                  <span className="icon">f</span> Facebook
-                </button>
-                <button className="social-btn apple">
-                  <span className="icon"></span> Apple
-                </button>
-              </div>
+              <SocialButtons redirectPath={redirectPath} />
 
               <div className="divider">
                 <span>or sign in with</span>

@@ -6,8 +6,8 @@ import { createPortal } from "react-dom";
 
 const mainCategories = [
   { name: "Education" },
-  { name: "Vehicle", sub: ["Rent", "Sell"] },
-  { name: "Property", sub: ["Rent", "Sell"] },
+  { name: "Vehicle", sub: ["Rent", "Buy"] },
+  { name: "Property", sub: ["Rent", "Buy"] },
   { name: "Employment" },
   { name: "Mobiles" },
   { name: "Electronics & Home appliances" },
@@ -43,10 +43,13 @@ export default function CategoryBar() {
 
   const buttonRefs = useRef({});
   const wrapperRef = useRef(null);
+  const dropdownRef = useRef(null);
 
   useEffect(() => {
     function handleClickOutside(e) {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+      const clickedInsideWrapper = wrapperRef.current?.contains(e.target);
+      const clickedInsideDropdown = dropdownRef.current?.contains(e.target);
+      if (!clickedInsideWrapper && !clickedInsideDropdown) {
         setActiveDropdown(null);
       }
     }
@@ -141,6 +144,7 @@ export default function CategoryBar() {
       {activeDropdown && dropdownPosition && typeof window !== "undefined" &&
         createPortal(
           <div
+            ref={dropdownRef}
             style={{
               position: "absolute",
               top: dropdownPosition.top,

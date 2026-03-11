@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { getRecommendedDeals } from "../lib/api";
 
 const fallbackDeals = [
@@ -12,6 +13,7 @@ const fallbackDeals = [
 ];
 
 export default function Recommended() {
+  const router = useRouter();
   const [deals, setDeals] = useState(fallbackDeals);
 
   useEffect(() => {
@@ -21,7 +23,7 @@ export default function Recommended() {
         if (response.success && response.data?.length > 0) {
           setDeals(
             response.data.map((ad) => ({
-              id: ad._id,
+              id: ad.adId || ad._id,
               title: ad.title,
               img: ad.images?.[0] || "deal1.jpg",
               discount: ad.negotiable ? "Negotiable" : `₹${ad.price}`,
@@ -57,6 +59,7 @@ export default function Recommended() {
           {deals.map((deal, i) => (
             <div
               key={deal.id || i}
+              onClick={() => deal.id && router.push(`/product/${deal.id}`)}
               className="group rounded-xl shadow-md p-4 transition-all duration-300 theme-card hover:-translate-y-2 hover:shadow-xl"
             >
               {/* Image */}
@@ -90,7 +93,14 @@ export default function Recommended() {
                 {deal.discount}
               </p>
 
-              <button className="mt-4 px-4 py-2 rounded-full w-full theme-button-accent transition">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (deal.id) router.push(`/product/${deal.id}`);
+                }}
+                className="mt-4 px-4 py-2 rounded-full w-full theme-button-accent transition"
+              >
                 View Deal
               </button>
             </div>

@@ -107,6 +107,13 @@ export async function loginUser(email, password) {
     });
 }
 
+export async function socialAuthUser(payload) {
+    return apiClient('/users/social-auth', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+    });
+}
+
 export async function registerUser({ name, email, password, phone }) {
     return apiClient('/users/register', {
         method: 'POST',
