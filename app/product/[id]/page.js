@@ -55,12 +55,19 @@ export default function ProductDetails({ params }) {
       setLoading(true);
       try {
         const response = await getAdById(adId);
+        console.log('[Product Page] Ad loaded:', {
+          adId,
+          views: response.data?.views,
+          viewHistoryLength: response.data?.viewHistory?.length,
+          hasToken: !!localStorage.getItem('accessToken'),
+        });
         if (response.success && response.data) {
           setAd(response.data);
         } else {
           setError("Ad not found");
         }
       } catch (err) {
+        console.error('[Product Page] Error loading ad:', err);
         setError("Failed to load ad details");
       } finally {
         setLoading(false);
