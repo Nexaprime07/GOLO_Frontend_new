@@ -173,6 +173,24 @@ export async function changePasswordWithOTP(otp, newPassword) {
 }
 
 // ============================================================
+// WISHLIST APIs
+// ============================================================
+
+export async function toggleWishlist(adId) {
+    return apiClient(`/users/wishlist/${adId}`, {
+        method: 'POST',
+    });
+}
+
+export async function getWishlistIds() {
+    return apiClient('/users/wishlist/ids');
+}
+
+export async function getWishlistAds() {
+    return apiClient('/users/wishlist');
+}
+
+// ============================================================
 // ADS — PUBLIC APIs (no auth required)
 // ============================================================
 
@@ -194,7 +212,26 @@ export async function searchAds({ q = '', category, location, minPrice, maxPrice
 }
 
 export async function getAdById(adId) {
-    return apiClient(`/ads/${adId}`);
+    // Attach a stable visitor ID so the backend counts only unique views.
+    // Prefer userId (logged-in) → falls back to a persisted anonymous UUID.
+    let visitorId = '';
+    if (typeof window !== 'undefined') {
+        try {
+            const userJson = localStorage.getItem('user');
+            const user = userJson ? JSON.parse(userJson) : null;
+            visitorId = user?.id || user?._id || '';
+        } catch { /* ignore parse errors */ }
+
+        if (!visitorId) {
+            visitorId = localStorage.getItem('golo_vid') || '';
+            if (!visitorId) {
+                visitorId = 'v-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+                localStorage.setItem('golo_vid', visitorId);
+            }
+        }
+    }
+    const params = visitorId ? `?vid=${encodeURIComponent(visitorId)}` : '';
+    return apiClient(`/ads/${adId}${params}`);
 }
 
 export async function getAdsByCategory(category, { page = 1, limit = 10 } = {}) {
@@ -256,6 +293,14 @@ export async function getMyAds({ page = 1, limit = 10 } = {}) {
 export async function getAdsByUser(userId, { page = 1, limit = 10 } = {}) {
     const params = new URLSearchParams({ page, limit });
     return apiClient(`/ads/user/${userId}?${params}`);
+}
+
+export async function getAdWishlistCount(adId) {
+    return apiClient(`/ads/wishlist-count/${adId}`);
+}
+
+export async function getMyAnalytics() {
+    return apiClient('/ads/analytics/my');
 }
 
 export async function promoteAd(adId, { promotionPackage, duration }) {

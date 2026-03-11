@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { User, Package, Heart, LogOut } from "lucide-react";
+import { User, Package, Heart, LogOut, BarChart2 } from "lucide-react";
 
 export default function ProfileSidebar() {
   const pathname = usePathname();
@@ -53,6 +53,11 @@ export default function ProfileSidebar() {
         <Link href="/my-ads" className={linkStyle("/my-ads")}>
           <Package size={18} />
           <span>My Ads</span>
+        </Link>
+
+        <Link href="/analytics" className={linkStyle("/analytics")}>
+          <BarChart2 size={18} />
+          <span>Analytics</span>
         </Link>
 
         <Link href="/wishlist" className={linkStyle("/wishlist")}>

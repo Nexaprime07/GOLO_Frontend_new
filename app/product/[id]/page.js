@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import Navbar from "./../../components/Navbar";
 import Footer from "./../../components/Footer";
 import Recommended from "@/app/components/Recommended";
-import { getAdById } from "../../lib/api";
+import { getAdById, toggleWishlist, getWishlistIds, getAdWishlistCount } from "../../lib/api";
+import { useAuth } from "../../context/AuthContext";
 import {
   Heart,
   Share2,
@@ -26,6 +27,10 @@ export default function ProductDetails({ params }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedImage, setSelectedImage] = useState(0);
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [isTogglingWishlist, setIsTogglingWishlist] = useState(false);
+  const [wishlistCount, setWishlistCount] = useState(null);
+  const { isAuthenticated } = useAuth();
 
   // Fallback data
   const fallbackImages = [
@@ -63,6 +68,93 @@ export default function ProductDetails({ params }) {
     }
     fetchAd();
   }, [adId]);
+
+  // Fetch public wishlist count — must use ad.adId (UUID), NOT the URL param which may be a MongoDB _id
+  useEffect(() => {
+    async function fetchWishlistCount() {
+      // Wait until ad is loaded so we have the real UUID adId
+      const wishlistAdId = ad?.adId || adId;
+      if (!wishlistAdId) return;
+      try {
+        const res = await getAdWishlistCount(wishlistAdId);
+        if (res.success) {
+          setWishlistCount(res.data.wishlistCount ?? 0);
+        }
+      } catch {
+        // silently ignore
+      }
+    }
+    fetchWishlistCount();
+  }, [ad?.adId, adId]);
+
+  // Fetch wishlist status — runs when auth state changes OR when ad data loads
+  // We check against both the URL param (adId) and the ad's UUID field (ad.adId)
+  // because the wishlist page can navigate using either MongoDB _id or the UUID adId
+  useEffect(() => {
+    async function checkWishlist() {
+      if (!adId || !isAuthenticated) return;
+      try {
+        const response = await getWishlistIds();
+        if (response.success && Array.isArray(response.data)) {
+          const ids = response.data;
+          // Match against URL param OR the ad's actual adId UUID field
+          const wishlisted = ids.includes(adId) || (ad?.adId && ids.includes(ad.adId));
+          setIsWishlisted(!!wishlisted);
+        }
+      } catch (err) {
+        console.error("Failed to fetch wishlist status:", err);
+      }
+    }
+    checkWishlist();
+  }, [adId, ad, isAuthenticated]);
+
+  const handleToggleWishlist = async () => {
+    if (!isAuthenticated) {
+      router.push("/login");
+      return;
+    }
+    
+    // Always use the UUID adId field — not the MongoDB _id from the URL
+    const wishlistId = ad?.adId || adId;
+
+    setIsTogglingWishlist(true);
+    try {
+      const response = await toggleWishlist(wishlistId);
+      // When wishlist is toggled, optimistically update the public count
+      if (response.success) {
+        setIsWishlisted(response.data.added);
+        setWishlistCount((prev) =>
+          prev === null ? null : response.data.added ? prev + 1 : Math.max(0, prev - 1)
+        );
+      }
+    } catch (err) {
+      console.error("Failed to toggle wishlist:", err);
+    } finally {
+      setIsTogglingWishlist(false);
+    }
+  };
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: ad?.title || "Check out this ad",
+          text: `Check out ${ad?.title} on GOLO`,
+          url: window.location.href,
+        });
+      } catch (error) {
+        console.error("Error sharing:", error);
+      }
+    } else {
+      // Fallback for browsers that don't support native share
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        alert("Link copied to clipboard!");
+      } catch (err) {
+        console.error("Failed to copy link:", err);
+      }
+    }
+  };
 
   const images = ad?.images?.length > 0 ? ad.images.map(getSafeImageSrc) : fallbackImages;
   const isExternalImage = ad?.images?.length > 0;
@@ -275,9 +367,23 @@ export default function ProductDetails({ params }) {
                   {ad?.title || "Product Title"}
                 </h1>
 
-                <div className="flex gap-3 text-gray-400">
-                  <Heart className="cursor-pointer hover:text-[#F5B849] transition" size={20} />
-                  <Share2 className="cursor-pointer hover:text-[#F5B849] transition" size={20} />
+                <div className="flex flex-col items-end gap-2">
+                  <div className="flex gap-3 text-gray-400">
+                    <button 
+                      onClick={handleToggleWishlist} 
+                      disabled={isTogglingWishlist}
+                      className="focus:outline-none"
+                      title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+                    >
+                      <Heart 
+                        className={`cursor-pointer transition ${isWishlisted ? "text-red-500 fill-red-500" : "hover:text-[#F5B849]"}`} 
+                        size={20} 
+                      />
+                    </button>
+                    <button onClick={handleShare} className="focus:outline-none" title="Share">
+                      <Share2 className="cursor-pointer hover:text-[#F5B849] transition" size={20} />
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -299,8 +405,14 @@ export default function ProductDetails({ params }) {
                 </span>
                 <span className="flex items-center gap-1">
                   <Star size={14} className="text-[#F5B849] fill-[#F5B849]" />
-                  {ad?.views || 0} views
+                  {(ad?.viewHistory?.length ?? ad?.views ?? 0)} views
                 </span>
+                {wishlistCount !== null && (
+                  <span className="flex items-center gap-1 text-rose-500">
+                    <Heart size={14} className="fill-rose-400 text-rose-400" />
+                    {wishlistCount.toLocaleString()}
+                  </span>
+                )}
               </div>
 
               {/* Category Specific Details */}
@@ -353,7 +465,7 @@ export default function ProductDetails({ params }) {
                     </p>
                     <div className="flex items-center gap-1 text-sm text-gray-600">
                       <Star size={14} className="text-[#F5B849] fill-[#F5B849]" />
-                      {ad?.views || 0}
+                      {ad?.viewHistory?.length ?? ad?.views ?? 0}
                     </div>
                   </div>
 
