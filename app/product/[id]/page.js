@@ -409,7 +409,6 @@ export default function ProductDetails({ params }) {
                     {wishlistCount.toLocaleString()}
                   </span>
                 )}
-                <span className="text-xs text-gray-400 ml-2">• Authenticated users only</span>
               </div>
 
               {/* Category Specific Details */}
