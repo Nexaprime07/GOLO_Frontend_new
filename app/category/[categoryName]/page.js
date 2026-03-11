@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Navbar from "../../components/Navbar";
@@ -35,6 +35,28 @@ const SORT_OPTIONS = [
     { label: "Price: Low to High", value: "price_asc" },
     { label: "Price: High to Low", value: "price_desc" },
 ];
+
+const normalizeSubFilter = (value) => {
+    if (!value) return "";
+    const lowered = String(value).trim().toLowerCase();
+    if (lowered === "buy") return "sell";
+    return lowered;
+};
+
+const getAdListingType = (ad) => {
+    const candidates = [
+        ad?.categorySpecificData?.listingType,
+        ad?.categorySpecificData?.type,
+        ad?.propertyData?.listingType,
+        ad?.vehicleData?.listingType,
+        ad?.vehicleData?.type,
+        ad?.listingType,
+        ad?.type,
+    ];
+
+    const found = candidates.find((item) => typeof item === "string" && item.trim().length > 0);
+    return found ? found.trim().toLowerCase() : "";
+};
 
 // Same bento pattern as RecentListings:
 // Group A (ads 0–5): big(6col×2row), small, small, text, small, text
@@ -98,16 +120,17 @@ export default function CategoryPage() {
         setAds([]);
     }, [categoryName]);
 
-    useEffect(() => {
-        if (!categoryName) return;
-        fetchAds();
-    }, [categoryName, page, sortBy, sortOrder]);
-
-    async function fetchAds() {
+    const fetchAds = useCallback(async () => {
         setLoading(true);
         setError("");
         try {
-            const response = await getAdsByCategory(categoryName, { page, limit: LIMIT, sortBy, sortOrder });
+            const shouldApplySubFilter = Boolean(subFromUrl);
+            const response = await getAdsByCategory(categoryName, {
+                page: shouldApplySubFilter ? 1 : page,
+                limit: shouldApplySubFilter ? 300 : LIMIT,
+                sortBy,
+                sortOrder,
+            });
             if (response.success) {
                 setAds(response.data?.ads || response.data || []);
                 setTotal(response.data?.total || response.total || 0);
@@ -120,9 +143,14 @@ export default function CategoryPage() {
         } finally {
             setLoading(false);
         }
-    }
+    }, [categoryName, page, sortBy, sortOrder, subFromUrl]);
 
-    const totalPages = Math.max(1, Math.ceil(total / LIMIT));
+    useEffect(() => {
+        if (!categoryName) return;
+        fetchAds();
+    }, [categoryName, fetchAds]);
+
+    const totalPages = subFromUrl ? 1 : Math.max(1, Math.ceil(total / LIMIT));
     const icon = CATEGORY_ICONS[categoryName] || "📂";
 
     const handleSort = (val) => {
@@ -132,7 +160,12 @@ export default function CategoryPage() {
         setPage(1);
     };
 
-    const layoutAds = assignBentoLayout(ads);
+    const subFilter = normalizeSubFilter(subFromUrl);
+    const filteredAds = subFilter
+        ? ads.filter((ad) => getAdListingType(ad) === subFilter)
+        : ads;
+
+    const layoutAds = assignBentoLayout(filteredAds);
 
     return (
         <>
@@ -149,8 +182,8 @@ export default function CategoryPage() {
                         {icon} {categoryName}
                     </h2>
                     <p className="text-gray-500 mt-3 text-sm md:text-base max-w-2xl mx-auto">
-                        {total > 0
-                            ? `${total} ad${total !== 1 ? "s" : ""} found${subFromUrl ? ` · ${subFromUrl}` : ""}`
+                        {filteredAds.length > 0
+                            ? `${filteredAds.length} ad${filteredAds.length !== 1 ? "s" : ""} found${subFromUrl ? ` · ${subFromUrl}` : ""}`
                             : `Browse listings in ${categoryName}`}
                     </p>
 
@@ -201,10 +234,10 @@ export default function CategoryPage() {
                 )}
 
                 {/* Empty State */}
-                {!loading && !error && ads.length === 0 && (
+                {!loading && !error && filteredAds.length === 0 && (
                     <div className="text-center py-20 px-5">
                         <div className="text-6xl mb-4">{icon}</div>
-                        <h2 className="text-gray-700 font-bold text-xl">No ads in {categoryName} yet</h2>
+                        <h2 className="text-gray-700 font-bold text-xl">No matching ads in {categoryName} yet</h2>
                         <p className="text-gray-400 mb-6">Be the first to post an ad in this category!</p>
                         <button
                             onClick={() => router.push("/post-ad")}
@@ -216,7 +249,7 @@ export default function CategoryPage() {
                 )}
 
                 {/* Bento Grid — identical structure to RecentListings */}
-                {!loading && !error && ads.length > 0 && (
+                {!loading && !error && filteredAds.length > 0 && (
                     <div className="w-full px-6 lg:px-8">
                         <div className="grid grid-cols-12 auto-rows-[220px] gap-6">
                             {layoutAds.map((ad, index) => {
@@ -234,7 +267,7 @@ export default function CategoryPage() {
                 )}
 
                 {/* Pagination */}
-                {!loading && totalPages > 1 && (
+                {!loading && !subFromUrl && totalPages > 1 && (
                     <div className="flex justify-center items-center gap-2 mt-10">
                         <button
                             onClick={() => setPage(p => Math.max(1, p - 1))}

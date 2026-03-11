@@ -122,12 +122,8 @@ export default function ProductDetails({ params }) {
   const basicInformationEntries = [
     ["Title", ad?.title],
     ["Description", ad?.description],
+    ["Contact", ad?.primaryContact || ad?.contactInfo?.phone],
     ["Category", ad?.category],
-    ["Sub Category", ad?.subCategory],
-    ["Primary Contact", ad?.primaryContact || ad?.contactInfo?.phone],
-    ["City", ad?.city],
-    ["All Cities", ad?.cities],
-    ["Location", ad?.location],
   ].filter(([, value]) => hasDisplayValue(value));
 
   const categoryDataSource =
@@ -376,6 +372,33 @@ export default function ProductDetails({ params }) {
                     <Phone size={18} />
                     Call for Details
                   </button>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+                  <p className="text-sm font-semibold text-gray-800 mb-3">Ad Uploader Details</p>
+                  <div className="flex items-start gap-3">
+                    <div className="w-11 h-11 rounded-full bg-[#ecf8f1] text-[#157A4F] font-bold flex items-center justify-center shrink-0">
+                      {(ad?.contactInfo?.name || ad?.contactInfo?.sellerName || ad?.sellerName || ad?.title || "U").charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-gray-800 truncate">
+                        {ad?.contactInfo?.name || ad?.contactInfo?.sellerName || ad?.sellerName || "Seller"}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5 break-all">
+                        {ad?.contactInfo?.phone || ad?.primaryContact || "Phone not provided"}
+                      </p>
+                      {ad?.contactInfo?.email && (
+                        <p className="text-xs text-gray-500 mt-0.5 break-all">
+                          {ad.contactInfo.email}
+                        </p>
+                      )}
+                      {ad?.contactInfo?.city && (
+                        <p className="text-xs text-gray-400 mt-1">
+                          📍 {ad.contactInfo.city}
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
               </div>

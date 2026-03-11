@@ -1457,7 +1457,7 @@ export default function PostAdForm({
 
                 {selectedDates.length > 0 ? (
                   <div className="flex flex-wrap gap-3">
-                    {selectedDates.map((date, index) => (
+                    {[...selectedDates].sort((a, b) => new Date(a) - new Date(b)).map((date, index) => (
                       <span
                         key={index}
                         className="bg-[#157A4F] text-white px-4 py-2 rounded-full text-sm shadow-md hover:scale-105 transition"
