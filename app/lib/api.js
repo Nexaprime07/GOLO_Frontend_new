@@ -219,26 +219,9 @@ export async function searchAds({ q = '', category, location, minPrice, maxPrice
 }
 
 export async function getAdById(adId) {
-    // Attach a stable visitor ID so the backend counts only unique views.
-    // Prefer userId (logged-in) → falls back to a persisted anonymous UUID.
-    let visitorId = '';
-    if (typeof window !== 'undefined') {
-        try {
-            const userJson = localStorage.getItem('user');
-            const user = userJson ? JSON.parse(userJson) : null;
-            visitorId = user?.id || user?._id || '';
-        } catch { /* ignore parse errors */ }
-
-        if (!visitorId) {
-            visitorId = localStorage.getItem('golo_vid') || '';
-            if (!visitorId) {
-                visitorId = 'v-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
-                localStorage.setItem('golo_vid', visitorId);
-            }
-        }
-    }
-    const params = visitorId ? `?vid=${encodeURIComponent(visitorId)}` : '';
-    return apiClient(`/ads/${adId}${params}`);
+    // Backend automatically tracks views for authenticated users via JWT
+    // No visitorId needed - anonymous views are not tracked
+    return apiClient(`/ads/${adId}`);
 }
 
 export async function getAdsByCategory(category, { page = 1, limit = 10 } = {}) {

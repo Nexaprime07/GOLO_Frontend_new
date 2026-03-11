@@ -418,7 +418,7 @@ export default function AnalyticsPage() {
             <div>
               <h1 className="text-3xl font-semibold text-black">Analytics</h1>
               <p className="text-gray-500 mt-1">
-                Track performance of your posted ads
+                Track performance of your posted ads (authenticated users only)
               </p>
             </div>
 
