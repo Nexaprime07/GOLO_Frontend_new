@@ -16,7 +16,9 @@ import {
   Phone,
   MessageCircle,
   Loader2,
+  Flag,
 } from "lucide-react";
+import ReportModal from "@/app/components/ReportModal";
 
 export default function ProductDetails({ params }) {
   const resolvedParams = use(params);
@@ -30,6 +32,7 @@ export default function ProductDetails({ params }) {
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isTogglingWishlist, setIsTogglingWishlist] = useState(false);
   const [wishlistCount, setWishlistCount] = useState(null);
+  const [showReportModal, setShowReportModal] = useState(false);
   const { isAuthenticated } = useAuth();
 
   // Fallback data
@@ -520,6 +523,15 @@ export default function ProductDetails({ params }) {
                   </div>
                 </div>
 
+                {/* Report Button - Below Ad Uploader Details */}
+                <button
+                  onClick={() => setShowReportModal(true)}
+                  className="w-full mt-4 py-3 rounded-xl border-2 border-red-500 text-red-500 hover:bg-red-500 hover:text-white hover:border-red-600 font-semibold flex items-center justify-center gap-2 transition-all duration-200 transform hover:scale-[1.02]"
+                >
+                  <Flag size={18} />
+                  Report this Ad
+                </button>
+
               </div>
             </div>
 
@@ -529,6 +541,14 @@ export default function ProductDetails({ params }) {
       </div>
       <Recommended />
       <Footer />
+      
+      {/* Report Modal */}
+      <ReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        adId={adId}
+        adTitle={ad?.title}
+      />
     </>
   );
 }

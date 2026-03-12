@@ -516,3 +516,49 @@ export async function getCallHistory({ page = 1, limit = 100 } = {}) {
     const params = new URLSearchParams({ page, limit });
     return apiClient(`/calls/history?${params.toString()}`);
 }
+
+// ==================== AD REPORTING & MODERATION ====================
+
+/**
+ * Submit a report for an ad
+ */
+export async function submitReport(adId, reason, description) {
+    return apiClient(`/ads/${adId}/report`, {
+        method: 'POST',
+        body: JSON.stringify({ reason, description }),
+    });
+}
+
+/**
+ * Get all reports for a specific ad (admin only)
+ */
+export async function getAdReports(adId) {
+    return apiClient(`/ads/reports/${adId}`);
+}
+
+/**
+ * Get pending reports queue (admin only)
+ */
+export async function getPendingReports() {
+    return apiClient('/ads/reports/pending');
+}
+
+/**
+ * Update report status (admin only)
+ */
+export async function updateReportStatus(reportId, status, adminNotes) {
+    return apiClient(`/ads/reports/${reportId}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status, adminNotes }),
+    });
+}
+
+/**
+ * Admin review decision on flagged ad (admin only)
+ */
+export async function reviewAd(adId, decision, adminNotes) {
+    return apiClient(`/ads/admin/${adId}/review`, {
+        method: 'POST',
+        body: JSON.stringify({ decision, adminNotes }),
+    });
+}
