@@ -35,14 +35,6 @@ export default function ProductDetails({ params }) {
   const [showReportModal, setShowReportModal] = useState(false);
   const { isAuthenticated } = useAuth();
 
-  // Fallback data
-  const fallbackImages = [
-    "/images/listing1.webp",
-    "/images/listing2.webp",
-    "/images/listing3.webp",
-    "/images/listing4.webp",
-  ];
-
   const getSafeImageSrc = (value) => {
     if (!value || typeof value !== "string") return "/images/placeholder.webp";
     const src = value.trim();
@@ -166,8 +158,10 @@ export default function ProductDetails({ params }) {
     }
   };
 
-  const images = ad?.images?.length > 0 ? ad.images.map(getSafeImageSrc) : fallbackImages;
-  const isExternalImage = ad?.images?.length > 0;
+  const hasRealImages = Array.isArray(ad?.images) && ad.images.length > 0;
+  const isTextOnlyAd = ad?.templateId === 3 || !hasRealImages;
+  const images = hasRealImages ? ad.images.map(getSafeImageSrc) : [];
+  const isExternalImage = hasRealImages;
 
   const formatFieldLabel = (key) =>
     key
@@ -306,72 +300,110 @@ export default function ProductDetails({ params }) {
             {/* ================= LEFT SECTION ================= */}
             <div className="md:col-span-2">
 
-              {/* Image + Thumbnails */}
-              <div className="flex gap-6">
+              {/* Media / Text Hero */}
+              {isTextOnlyAd ? (
+                <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
+                  <div className="flex flex-wrap items-center gap-3 mb-6">
+                    <span className="text-xs font-semibold bg-[#EAF6F0] text-[#157A4F] px-3 py-1 rounded-full">
+                      Text Only Ad
+                    </span>
+                    <span className="text-xs font-semibold bg-gray-100 text-gray-600 px-3 py-1 rounded-full">
+                      {ad?.category || "General"}
+                    </span>
+                    {ad?.subCategory && (
+                      <span className="text-xs font-semibold bg-gray-100 text-gray-600 px-3 py-1 rounded-full">
+                        {ad.subCategory}
+                      </span>
+                    )}
+                  </div>
 
-                {/* Thumbnails */}
-                <div className="flex flex-col gap-4">
-                  {images.map((img, index) => (
-                    <div
-                      key={index}
-                      onClick={() => setSelectedImage(index)}
-                      className={`w-20 h-20 rounded-xl overflow-hidden border-2 cursor-pointer transition
-                        ${selectedImage === index
-                          ? "border-[#157A4F]"
-                          : "border-gray-200 hover:border-[#157A4F]"
-                        }`}
-                    >
-                      <Image
-                        src={img}
-                        width={100}
-                        height={100}
-                        alt={`thumbnail-${index}`}
-                        className="object-cover w-full h-full"
-                        unoptimized={isExternalImage}
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                {/* Main Image */}
-                <div className="flex-1 bg-white p-6 rounded-2xl shadow-sm relative border border-gray-200">
-                  <Image
-                    src={images[selectedImage]}
-                    width={900}
-                    height={600}
-                    alt={ad?.title || "Product"}
-                    className="rounded-xl w-full object-cover transition-all duration-300"
-                    unoptimized={isExternalImage}
-                  />
-                  <div className="absolute bottom-8 right-10 bg-[#157A4F] text-white text-xs px-3 py-1 rounded-full">
-                    {selectedImage + 1} / {images.length} Photos
+                  <div className="max-w-4xl">
+                    <h1 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
+                      {ad?.title || "Text Ad"}
+                    </h1>
+                    {ad?.description && (
+                      <div className="mt-6 rounded-2xl bg-[#F8F6F2] border border-gray-200 p-6">
+                        <p className="text-xs uppercase tracking-[0.2em] text-gray-400 font-semibold mb-3">
+                          Posted Content
+                        </p>
+                        <p className="text-base md:text-lg text-gray-700 leading-8 whitespace-pre-wrap break-words">
+                          {ad.description}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
+              ) : (
+                <div className="flex gap-6">
 
-              </div>
+                  {/* Thumbnails */}
+                  <div className="flex flex-col gap-4">
+                    {images.map((img, index) => (
+                      <div
+                        key={index}
+                        onClick={() => setSelectedImage(index)}
+                        className={`w-20 h-20 rounded-xl overflow-hidden border-2 cursor-pointer transition
+                          ${selectedImage === index
+                            ? "border-[#157A4F]"
+                            : "border-gray-200 hover:border-[#157A4F]"
+                          }`}
+                      >
+                        <Image
+                          src={img}
+                          width={100}
+                          height={100}
+                          alt={`thumbnail-${index}`}
+                          className="object-cover w-full h-full"
+                          unoptimized={isExternalImage}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Main Image */}
+                  <div className="flex-1 bg-white p-6 rounded-2xl shadow-sm relative border border-gray-200">
+                    <Image
+                      src={images[selectedImage]}
+                      width={900}
+                      height={600}
+                      alt={ad?.title || "Product"}
+                      className="rounded-xl w-full object-cover transition-all duration-300"
+                      unoptimized={isExternalImage}
+                    />
+                    <div className="absolute bottom-8 right-10 bg-[#157A4F] text-white text-xs px-3 py-1 rounded-full">
+                      {selectedImage + 1} / {images.length} Photos
+                    </div>
+                  </div>
+
+                </div>
+              )}
 
               {/* Tags */}
-              <div className="flex gap-3 mt-8">
-                {ad?.isPromoted && (
-                  <span className="text-xs font-semibold bg-[#FFF3D6] text-[#157A4F] px-3 py-1 rounded-full">
-                    Featured Ad
-                  </span>
-                )}
-                <span className="text-xs font-semibold bg-gray-200 text-gray-700 px-3 py-1 rounded-full">
-                  {ad?.category || "General"}
-                </span>
-                {ad?.subCategory && (
+              {!isTextOnlyAd && (
+                <div className="flex gap-3 mt-8">
+                  {ad?.isPromoted && (
+                    <span className="text-xs font-semibold bg-[#FFF3D6] text-[#157A4F] px-3 py-1 rounded-full">
+                      Featured Ad
+                    </span>
+                  )}
                   <span className="text-xs font-semibold bg-gray-200 text-gray-700 px-3 py-1 rounded-full">
-                    {ad.subCategory}
+                    {ad?.category || "General"}
                   </span>
-                )}
-              </div>
+                  {ad?.subCategory && (
+                    <span className="text-xs font-semibold bg-gray-200 text-gray-700 px-3 py-1 rounded-full">
+                      {ad.subCategory}
+                    </span>
+                  )}
+                </div>
+              )}
 
               {/* Title */}
-              <div className="flex justify-between items-start mt-4">
-                <h1 className="text-2xl font-bold text-gray-800 w-4/5">
-                  {ad?.title || "Product Title"}
-                </h1>
+              <div className={`flex justify-between items-start ${isTextOnlyAd ? "mt-6" : "mt-4"}`}>
+                {!isTextOnlyAd && (
+                  <h1 className="text-2xl font-bold text-gray-800 w-4/5">
+                    {ad?.title || "Product Title"}
+                  </h1>
+                )}
 
                 <div className="flex flex-col items-end gap-2">
                   <div className="flex gap-3 text-gray-400">

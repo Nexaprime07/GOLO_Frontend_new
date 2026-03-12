@@ -58,34 +58,27 @@ const getAdListingType = (ad) => {
     return found ? found.trim().toLowerCase() : "";
 };
 
-// Same bento pattern as RecentListings:
-// Group A (ads 0–5): big(6col×2row), small, small, text, small, text
-// Group B (ads 6–11): small, text, big(6col×2row), text, small, text
-const BENTO_PATTERNS = [
-    [
-        { type: "big", col: "col-span-12 lg:col-span-6", row: "row-span-2" },
-        { type: "small", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-        { type: "small", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-        { type: "text", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-        { type: "small", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-        { type: "text", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-    ],
-    [
-        { type: "small", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-        { type: "text", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-        { type: "big", col: "col-span-12 lg:col-span-6", row: "row-span-2" },
-        { type: "text", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-        { type: "small", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-        { type: "text", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-    ],
-];
+const BIG_CARD_LAYOUT = {
+    col: "col-span-12 lg:col-span-6",
+    row: "row-span-2",
+};
+
+const SMALL_CARD_LAYOUT = {
+    col: "col-span-12 sm:col-span-6 lg:col-span-3",
+    row: "row-span-1",
+};
+
+function getAdTemplateType(ad) {
+    if (ad?.templateId === 1) return "big";
+    if (ad?.templateId === 3) return "text";
+    return "small";
+}
 
 function assignBentoLayout(adsList) {
-    return adsList.map((ad, i) => {
-        const patternIndex = Math.floor(i / 6) % 2;
-        const positionInGroup = i % 6;
-        const layout = BENTO_PATTERNS[patternIndex][positionInGroup];
-        return { ...ad, ...layout };
+    return adsList.map((ad) => {
+        const type = getAdTemplateType(ad);
+        const layout = type === "big" ? BIG_CARD_LAYOUT : SMALL_CARD_LAYOUT;
+        return { ...ad, ...layout, type };
     });
 }
 
@@ -174,22 +167,17 @@ export default function CategoryPage() {
             {/* Your existing CategoryBar — already has working "See All" modal & dropdowns */}
             <CategoryBar />
 
-            <section className="w-full py-20">
+            <section className="w-full pt-4 pb-10">
 
-                {/* Page heading — same style as RecentListings */}
-                <div className="w-full mb-14 px-6 lg:px-8 text-center">
-                    <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
-                        {icon} {categoryName}
-                    </h2>
-                    <p className="text-gray-500 mt-3 text-sm md:text-base max-w-2xl mx-auto">
-                        {filteredAds.length > 0
-                            ? `${filteredAds.length} ad${filteredAds.length !== 1 ? "s" : ""} found${subFromUrl ? ` · ${subFromUrl}` : ""}`
-                            : `Browse listings in ${categoryName}`}
+                {/* Compact sort + count bar */}
+                <div className="w-full px-6 lg:px-8 mb-6 flex items-center justify-between gap-3 flex-wrap">
+                    <p className="text-sm text-gray-400 font-medium">
+                        {loading ? "Loading…" : filteredAds.length > 0
+                            ? `${filteredAds.length} ad${filteredAds.length !== 1 ? "s" : ""}${subFromUrl ? ` · ${subFromUrl}` : ""}`
+                            : `No ads found`}
                     </p>
-
-                    {/* Sort — inline below subtitle */}
-                    <div className="flex justify-center items-center gap-2.5 mt-5">
-                        <label className="text-xs text-gray-400 font-semibold">Sort by:</label>
+                    <div className="flex items-center gap-2">
+                        <label className="text-xs text-gray-400 font-semibold">Sort:</label>
                         <select
                             value={`${sortBy}_${sortOrder}`}
                             onChange={e => handleSort(e.target.value)}
