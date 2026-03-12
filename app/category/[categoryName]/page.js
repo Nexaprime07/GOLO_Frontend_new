@@ -174,22 +174,17 @@ export default function CategoryPage() {
             {/* Your existing CategoryBar — already has working "See All" modal & dropdowns */}
             <CategoryBar />
 
-            <section className="w-full py-20">
+            <section className="w-full pt-4 pb-10">
 
-                {/* Page heading — same style as RecentListings */}
-                <div className="w-full mb-14 px-6 lg:px-8 text-center">
-                    <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
-                        {icon} {categoryName}
-                    </h2>
-                    <p className="text-gray-500 mt-3 text-sm md:text-base max-w-2xl mx-auto">
-                        {filteredAds.length > 0
-                            ? `${filteredAds.length} ad${filteredAds.length !== 1 ? "s" : ""} found${subFromUrl ? ` · ${subFromUrl}` : ""}`
-                            : `Browse listings in ${categoryName}`}
+                {/* Compact sort + count bar */}
+                <div className="w-full px-6 lg:px-8 mb-6 flex items-center justify-between gap-3 flex-wrap">
+                    <p className="text-sm text-gray-400 font-medium">
+                        {loading ? "Loading…" : filteredAds.length > 0
+                            ? `${filteredAds.length} ad${filteredAds.length !== 1 ? "s" : ""}${subFromUrl ? ` · ${subFromUrl}` : ""}`
+                            : `No ads found`}
                     </p>
-
-                    {/* Sort — inline below subtitle */}
-                    <div className="flex justify-center items-center gap-2.5 mt-5">
-                        <label className="text-xs text-gray-400 font-semibold">Sort by:</label>
+                    <div className="flex items-center gap-2">
+                        <label className="text-xs text-gray-400 font-semibold">Sort:</label>
                         <select
                             value={`${sortBy}_${sortOrder}`}
                             onChange={e => handleSort(e.target.value)}

@@ -20,7 +20,62 @@ import {
   ArrowUp,
   ArrowDown,
   ChevronRight,
+  Download,
 } from "lucide-react";
+
+// ─── CSV Download ─────────────────────────────────────────────────────────────
+
+function downloadCSV(ads, summary) {
+  const headers = [
+    "Title",
+    "Category",
+    "Status",
+    "Ad Card Clicks (Views)",
+    "Unique Visitors",
+    "Contact Clicks",
+    "Wishlist Saves",
+    "Posted Date",
+  ];
+  const escape = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const rows = ads.map((ad) => [
+    escape(ad.title),
+    escape(ad.category),
+    ad.status || "",
+    ad.views ?? 0,
+    ad.uniqueVisitors ?? 0,
+    ad.contactClicks ?? 0,
+    ad.wishlistCount ?? 0,
+    ad.createdAt ? new Date(ad.createdAt).toLocaleDateString("en-IN") : "",
+  ]);
+
+  // Summary footer
+  const summaryRows = [
+    [],
+    ["--- SUMMARY ---"],
+    ["Total Ads", summary.totalAds ?? 0],
+    ["Active Ads", summary.activeAds ?? 0],
+    ["Total Ad Card Clicks", summary.totalViews ?? 0],
+    ["Total Unique Visitors", summary.uniqueVisitors ?? 0],
+    ["Total Contact Clicks", summary.totalContactClicks ?? 0],
+    ["Total Wishlist Saves", summary.totalWishlistSaves ?? 0],
+  ];
+
+  const csvContent = [
+    headers.join(","),
+    ...rows.map((r) => r.join(",")),
+    ...summaryRows.map((r) => r.join(",")),
+  ].join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `golo-analytics-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -332,11 +387,11 @@ function AdsTable({ ads }) {
 
                 <td className="px-4 py-3">
                   <Link
-                    href={`/product/${ad.adId}`}
-                    className="text-[#157A4F] hover:text-[#0f5c3a] transition"
-                    title="View Ad"
+                    href={`/analytics/${ad.adId || ad._id}`}
+                    className="flex items-center justify-center w-7 h-7 rounded-lg bg-[#157A4F]/10 text-[#157A4F] hover:bg-[#157A4F] hover:text-white transition"
+                    title="View Ad Analytics"
                   >
-                    <ChevronRight size={16} />
+                    <ChevronRight size={15} />
                   </Link>
                 </td>
               </tr>
@@ -395,7 +450,7 @@ export default function AnalyticsPage() {
   const CARDS = [
     { icon: Package, label: "Total Ads", value: summary.totalAds ?? 0, accent: "#157A4F" },
     { icon: TrendingUp, label: "Active Ads", value: summary.activeAds ?? 0, accent: "#22C55E" },
-    { icon: Eye, label: "Total Views", value: (summary.totalViews ?? 0).toLocaleString(), accent: "#3B82F6" },
+    { icon: Eye, label: "Ad Card Clicks", value: (summary.totalViews ?? 0).toLocaleString(), accent: "#3B82F6" },
     { icon: Users, label: "Unique Visitors", value: (summary.uniqueVisitors ?? 0).toLocaleString(), accent: "#8B5CF6" },
     { icon: MousePointerClick, label: "Contact Clicks", value: (summary.totalContactClicks ?? 0).toLocaleString(), accent: "#F5B849" },
     { icon: Heart, label: "Wishlist Saves", value: (summary.totalWishlistSaves ?? 0).toLocaleString(), accent: "#EF4444" },
@@ -415,11 +470,22 @@ export default function AnalyticsPage() {
           <div className="lg:col-span-3 space-y-8">
 
             {/* Page Header */}
-            <div>
-              <h1 className="text-3xl font-semibold text-black">Analytics</h1>
-              <p className="text-gray-500 mt-1">
-                Track performance of your posted ads
-              </p>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-semibold text-black">Analytics</h1>
+                <p className="text-gray-500 mt-1">
+                  Track performance of your posted ads
+                </p>
+              </div>
+              {!loading && !error && ads.length > 0 && (
+                <button
+                  onClick={() => downloadCSV(ads, summary)}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#157A4F] text-white text-sm font-medium hover:bg-[#0f5c3a] transition shadow-sm shrink-0"
+                >
+                  <Download size={15} />
+                  Download CSV
+                </button>
+              )}
             </div>
 
             {/* Loading */}

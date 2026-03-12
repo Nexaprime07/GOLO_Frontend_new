@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { ChevronDown, Grid } from "lucide-react";
 import { createPortal } from "react-dom";
 
@@ -44,6 +45,13 @@ export default function CategoryBar() {
   const buttonRefs = useRef({});
   const wrapperRef = useRef(null);
   const dropdownRef = useRef(null);
+
+  const pathname = usePathname();
+  // Derive active category from URL like /category/Vehicle
+  const activeCat = (() => {
+    const match = pathname?.match(/^\/category\/([^/?]+)/);
+    return match ? decodeURIComponent(match[1]) : null;
+  })();
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -108,13 +116,16 @@ export default function CategoryBar() {
                   style={{
                     display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px",
                     padding: "8px 12px", borderRadius: "12px", border: "none",
-                    background: activeDropdown === cat.name ? "#e6f4ee" : "transparent",
-                    color: activeDropdown === cat.name ? "#157A4F" : "#374151",
-                    fontWeight: 600, fontSize: "14px", cursor: "pointer", lineHeight: 1,
+                    background: activeCat === cat.name || activeDropdown === cat.name ? "#e6f4ee" : "transparent",
+                    color: activeCat === cat.name || activeDropdown === cat.name ? "#157A4F" : "#374151",
+                    fontWeight: activeCat === cat.name ? 700 : 600,
+                    fontSize: "14px", cursor: "pointer", lineHeight: 1,
                     whiteSpace: "nowrap", transition: "all 0.15s",
+                    borderBottom: activeCat === cat.name ? "2px solid #157A4F" : "2px solid transparent",
+                    borderRadius: activeCat === cat.name ? "12px 12px 0 0" : "12px",
                   }}
-                  onMouseEnter={e => { if (activeDropdown !== cat.name) { e.currentTarget.style.background = "#f9fafb"; e.currentTarget.style.color = "#157A4F"; } }}
-                  onMouseLeave={e => { if (activeDropdown !== cat.name) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#374151"; } }}
+                  onMouseEnter={e => { if (activeCat !== cat.name && activeDropdown !== cat.name) { e.currentTarget.style.background = "#f9fafb"; e.currentTarget.style.color = "#157A4F"; } }}
+                  onMouseLeave={e => { if (activeCat !== cat.name && activeDropdown !== cat.name) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#374151"; } }}
                 >
                   <span>{cat.name}</span>
                   {cat.sub && (

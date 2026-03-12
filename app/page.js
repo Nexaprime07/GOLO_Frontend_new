@@ -99,22 +99,8 @@ export default function Home() {
         if (!catAds?.length) return null;
 
         return (
-          <section key={cat} style={{ padding: "60px 0", borderBottom: "1px solid #f3f4f6", background: "#fdfdfd" }}>
+          <section key={cat} style={{ padding: "0 0 40px 0", borderBottom: "1px solid #f3f4f6" }}>
             <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "0 24px" }}>
-
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "32px" }}>
-                <h2 style={{ fontSize: "28px", fontWeight: 800, color: "#111827", margin: 0 }}>
-                  {getCatIcon(cat)} {cat}
-                </h2>
-                <button
-                  onClick={() => router.push(`/category/${encodeURIComponent(cat)}`)}
-                  style={{ padding: "10px 24px", borderRadius: "12px", border: "1.5px solid #157A4F", background: "transparent", color: "#157A4F", fontWeight: 700, fontSize: "14px", cursor: "pointer", transition: "all 0.2s" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "#157A4F"; e.currentTarget.style.color = "#fff"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#157A4F"; }}
-                >
-                  View All {cat} →
-                </button>
-              </div>
 
               {/* Bento Grid */}
               <div className="bento-grid">
@@ -137,9 +123,8 @@ export default function Home() {
 
       {/* Skeleton Loading */}
       {loadingRecent && (
-        <section style={{ padding: "60px 24px" }}>
+        <section style={{ padding: "0 24px 40px" }}>
           <div style={{ maxWidth: "1280px", margin: "0 auto" }}>
-            <div style={{ width: 220, height: 36, background: "#e5e7eb", borderRadius: 8, marginBottom: 32 }} />
             <div className="bento-grid">
               <div className="bento-item-big" style={{ background: "#f3f4f6", borderRadius: "24px", animation: "pulse 1.5s infinite" }} />
               <div className="bento-item-small" style={{ background: "#f3f4f6", borderRadius: "20px", animation: "pulse 1.5s infinite" }} />

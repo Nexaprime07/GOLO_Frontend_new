@@ -1,9 +1,16 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { getAllAds } from "../lib/api";
+
+const SORT_OPTIONS = [
+    { label: "Newest First",        value: "createdAt_desc" },
+    { label: "Oldest First",        value: "createdAt_asc"  },
+    { label: "Price: Low to High",  value: "price_asc"      },
+    { label: "Price: High to Low", value: "price_desc"     },
+];
 
 // Bento grid layout pattern: Group A and B alternate
 const BENTO_PATTERNS = [
@@ -66,12 +73,12 @@ export default function RecentListings() {
     const [ads, setAds] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [sortValue, setSortValue] = useState("createdAt_desc");
 
     useEffect(() => {
         async function fetchAds() {
             try {
                 setLoading(true);
-                // Fetch ALL ads (use very high limit to get everything)
                 const response = await getAllAds({ page: 1, limit: 10000 });
                 if (response.success) {
                     const adsList = response.data?.ads || response.data || [];
@@ -91,17 +98,39 @@ export default function RecentListings() {
         fetchAds();
     }, []);
 
-    const layoutAds = assignBentoLayout(ads);
+    const sortedAds = useMemo(() => {
+        const [by, order] = sortValue.split("_");
+        return [...ads].sort((a, b) => {
+            let va = by === "price" ? (parseFloat(a.price) || 0) : new Date(a.createdAt || 0).getTime();
+            let vb = by === "price" ? (parseFloat(b.price) || 0) : new Date(b.createdAt || 0).getTime();
+            return order === "asc" ? va - vb : vb - va;
+        });
+    }, [ads, sortValue]);
+
+    const layoutAds = assignBentoLayout(sortedAds);
 
     return (
-        <section className="w-full py-20">
-            <div className="w-full mb-14 px-6 lg:px-8 text-center">
-                <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
-                    Recent Listings
-                </h2>
-                <p className="text-gray-500 mt-3 text-sm md:text-base max-w-2xl mx-auto">
-                    Discover the latest items posted near you
+        <section className="w-full pt-4 pb-10">
+
+            {/* Compact count + sort bar */}
+            <div className="w-full px-6 lg:px-8 mb-6 flex items-center justify-between gap-3 flex-wrap">
+                <p className="text-sm text-gray-400 font-medium">
+                    {loading ? "Loading…" : ads.length > 0
+                        ? `${ads.length} ad${ads.length !== 1 ? "s" : ""}`
+                        : "No ads found"}
                 </p>
+                <div className="flex items-center gap-2">
+                    <label className="text-xs text-gray-400 font-semibold">Sort:</label>
+                    <select
+                        value={sortValue}
+                        onChange={e => setSortValue(e.target.value)}
+                        className="border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-gray-700 bg-white cursor-pointer"
+                    >
+                        {SORT_OPTIONS.map(o => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                    </select>
+                </div>
             </div>
 
             {loading && (
