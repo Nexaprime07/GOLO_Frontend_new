@@ -25,6 +25,42 @@ import {
 
 // ─── CSV Download ─────────────────────────────────────────────────────────────
 
+function csvEscape(value) {
+  return `"${String(value ?? "").replace(/"/g, '""')}"`;
+}
+
+function toDateCell(value, locale = "en-IN") {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString(locale);
+}
+
+function stringifyNested(value) {
+  if (value === null || value === undefined) return "";
+  if (Array.isArray(value)) return value.map((item) => stringifyNested(item)).join(" | ");
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return "";
+    }
+  }
+  return String(value);
+}
+
+function downloadCsvFile(fileName, rows) {
+  const csvContent = rows.map((row) => row.map(csvEscape).join(",")).join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+}
+
 function downloadCSV(ads, summary) {
   const headers = [
     "Title",
@@ -36,16 +72,15 @@ function downloadCSV(ads, summary) {
     "Wishlist Saves",
     "Posted Date",
   ];
-  const escape = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const rows = ads.map((ad) => [
-    escape(ad.title),
-    escape(ad.category),
+    ad.title,
+    ad.category,
     ad.status || "",
     ad.views ?? 0,
     ad.uniqueVisitors ?? 0,
     ad.contactClicks ?? 0,
     ad.wishlistCount ?? 0,
-    ad.createdAt ? new Date(ad.createdAt).toLocaleDateString("en-IN") : "",
+    toDateCell(ad.createdAt),
   ]);
 
   // Summary footer
@@ -60,21 +95,150 @@ function downloadCSV(ads, summary) {
     ["Total Wishlist Saves", summary.totalWishlistSaves ?? 0],
   ];
 
-  const csvContent = [
-    headers.join(","),
-    ...rows.map((r) => r.join(",")),
-    ...summaryRows.map((r) => r.join(",")),
-  ].join("\n");
+  downloadCsvFile(`golo-analytics-${new Date().toISOString().slice(0, 10)}.csv`, [
+    headers,
+    ...rows,
+    ...summaryRows,
+  ]);
+}
 
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `golo-analytics-${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+function downloadAdminCSV(ads, summary) {
+  const headers = [
+    "ad_id",
+    "title",
+    "description",
+    "category",
+    "sub_category",
+    "status",
+    "template_id",
+    "price",
+    "negotiable",
+    "language",
+    "location",
+    "city",
+    "state",
+    "pincode",
+    "cities",
+    "primary_contact",
+    "contact_name",
+    "contact_phone",
+    "contact_email",
+    "contact_whatsapp",
+    "preferred_contact_method",
+    "owner_name",
+    "owner_email",
+    "owner_role",
+    "owner_profile_city",
+    "owner_profile_state",
+    "owner_profile_pincode",
+    "owner_profile_phone",
+    "views",
+    "unique_visitors",
+    "viewer_ids_count",
+    "viewer_ids",
+    "contact_clicks",
+    "wishlist_saves",
+    "click_through_rate_pct",
+    "wishlist_rate_pct",
+    "is_promoted",
+    "promoted_until",
+    "expiry_date",
+    "image_count",
+    "video_count",
+    "selected_dates_count",
+    "selected_dates",
+    "tags",
+    "report_count",
+    "is_under_review",
+    "auto_disabled",
+    "disabled_at",
+    "disabled_reason",
+    "created_at",
+    "updated_at",
+    "ad_metadata_json",
+    "location_coordinates_json",
+    "category_specific_data_json",
+    "owner_profile_json",
+    "owner_metadata_json",
+  ];
+
+  const rows = ads.map((ad) => [
+    ad.adId || "",
+    ad.title || "",
+    ad.description || "",
+    ad.category || "",
+    ad.subCategory || "",
+    ad.status || "",
+    ad.templateId ?? "",
+    ad.price ?? "",
+    ad.negotiable ? "yes" : "no",
+    ad.language || "",
+    ad.location || "",
+    ad.city || "",
+    ad.state || "",
+    ad.pincode || "",
+    stringifyNested(ad.cities || []),
+    ad.primaryContact || "",
+    ad.contactInfo?.name || "",
+    ad.contactInfo?.phone || "",
+    ad.contactInfo?.email || "",
+    ad.contactInfo?.whatsapp || "",
+    ad.contactInfo?.preferredContactMethod || "",
+    ad.ownerName || "",
+    ad.ownerEmail || "",
+    ad.ownerRole || "",
+    ad.ownerProfile?.city || "",
+    ad.ownerProfile?.state || "",
+    ad.ownerProfile?.pincode || "",
+    ad.ownerProfile?.phone || "",
+    ad.views ?? 0,
+    ad.uniqueVisitors ?? 0,
+    Array.isArray(ad.viewerIds) ? ad.viewerIds.length : 0,
+    stringifyNested(ad.viewerIds || []),
+    ad.contactClicks ?? 0,
+    ad.wishlistCount ?? 0,
+    ad.clickThroughRate ?? 0,
+    ad.wishlistRate ?? 0,
+    ad.isPromoted ? "yes" : "no",
+    toDateCell(ad.promotedUntil),
+    toDateCell(ad.expiryDate),
+    ad.imageCount ?? 0,
+    ad.videoCount ?? 0,
+    Array.isArray(ad.selectedDates) ? ad.selectedDates.length : 0,
+    stringifyNested(ad.selectedDates || []),
+    stringifyNested(ad.tags || []),
+    ad.reportCount ?? 0,
+    ad.isUnderReview ? "yes" : "no",
+    ad.autoDisabled ? "yes" : "no",
+    toDateCell(ad.disabledAt),
+    ad.disabledReason || "",
+    toDateCell(ad.createdAt),
+    toDateCell(ad.updatedAt),
+    stringifyNested(ad.metadata),
+    stringifyNested(ad.locationCoordinates),
+    stringifyNested(ad.categorySpecificData),
+    stringifyNested(ad.ownerProfile),
+    stringifyNested(ad.ownerMetadata),
+  ]);
+
+  const summaryRows = [
+    [],
+    ["dataset", "owner_analytics_export"],
+    ["generated_at", new Date().toISOString()],
+    ["total_ads", summary.totalAds ?? 0],
+    ["active_ads", summary.activeAds ?? 0],
+    ["total_ad_card_clicks", summary.totalViews ?? 0],
+    ["total_unique_visitors", summary.uniqueVisitors ?? 0],
+    ["total_contact_clicks", summary.totalContactClicks ?? 0],
+    ["total_wishlist_saves", summary.totalWishlistSaves ?? 0],
+    ["intended_use", "recommendation_model|customer_behavior_analysis|trend_analysis"],
+  ];
+
+  downloadCsvFile(`golo-admin-analytics-${new Date().toISOString().slice(0, 10)}.csv`, [
+    headers,
+    ...rows,
+    ...summaryRows,
+  ]);
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -478,13 +642,22 @@ export default function AnalyticsPage() {
                 </p>
               </div>
               {!loading && !error && ads.length > 0 && (
-                <button
-                  onClick={() => downloadCSV(ads, summary)}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#157A4F] text-white text-sm font-medium hover:bg-[#0f5c3a] transition shadow-sm shrink-0"
-                >
-                  <Download size={15} />
-                  Download CSV
-                </button>
+                <div className="flex items-center gap-3 shrink-0">
+                  <button
+                    onClick={() => downloadAdminCSV(ads, summary)}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-[#157A4F] text-sm font-semibold border border-[#157A4F]/20 hover:border-[#157A4F] hover:bg-[#F4FBF7] transition shadow-sm"
+                  >
+                    <Download size={15} />
+                    Admin CSV
+                  </button>
+                  <button
+                    onClick={() => downloadCSV(ads, summary)}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#157A4F] text-white text-sm font-medium hover:bg-[#0f5c3a] transition shadow-sm"
+                  >
+                    <Download size={15} />
+                    Download CSV
+                  </button>
+                </div>
               )}
             </div>
 
