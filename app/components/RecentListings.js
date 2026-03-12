@@ -12,32 +12,20 @@ const SORT_OPTIONS = [
     { label: "Price: High to Low", value: "price_desc"     },
 ];
 
-// Bento grid layout pattern: Group A and B alternate
-const BENTO_PATTERNS = [
-    [
-        { type: "big", col: "col-span-12 lg:col-span-6", row: "row-span-2" },
-        { type: "small", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-        { type: "small", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-        { type: "text", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-        { type: "small", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-        { type: "text", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-    ],
-    [
-        { type: "small", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-        { type: "text", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-        { type: "big", col: "col-span-12 lg:col-span-6", row: "row-span-2" },
-        { type: "text", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-        { type: "small", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-        { type: "text", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-    ],
-];
+const BIG_CARD_LAYOUT = {
+    col: "col-span-12 lg:col-span-6",
+    row: "row-span-2",
+};
 
-function getAdTemplate(ad) {
-    if (!ad) return "text";
-    const imageCount = ad.images?.length || 0;
-    if (imageCount >= 2) return "big";
-    if (imageCount === 1) return "small";
-    return "text";
+const SMALL_CARD_LAYOUT = {
+    col: "col-span-12 sm:col-span-6 lg:col-span-3",
+    row: "row-span-1",
+};
+
+function getAdTemplateType(ad) {
+    if (ad?.templateId === 1) return "big";
+    if (ad?.templateId === 3) return "text";
+    return "small";
 }
 
 function getSafeImageSrc(value) {
@@ -50,22 +38,10 @@ function getSafeImageSrc(value) {
 }
 
 function assignBentoLayout(adsList) {
-    return adsList.map((ad, i) => {
-        const patternIndex = Math.floor(i / 6) % 2;
-        const adTemplate = getAdTemplate(ad);
-        
-        // Find next layout position of the right type in this group
-        const pattern = BENTO_PATTERNS[patternIndex];
-        const posInGroup = i % 6;
-        const layout = pattern[posInGroup];
-        
-        // Override big slots with actual template if ad doesn't have multiple images
-        let finalLayout = layout;
-        if (layout.type === "big" && adTemplate !== "big") {
-            finalLayout = { ...layout, type: adTemplate };
-        }
-        
-        return { ...ad, ...finalLayout };
+    return adsList.map((ad) => {
+        const type = getAdTemplateType(ad);
+        const layout = type === "big" ? BIG_CARD_LAYOUT : SMALL_CARD_LAYOUT;
+        return { ...ad, ...layout, type };
     });
 }
 

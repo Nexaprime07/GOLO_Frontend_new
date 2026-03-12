@@ -58,34 +58,27 @@ const getAdListingType = (ad) => {
     return found ? found.trim().toLowerCase() : "";
 };
 
-// Same bento pattern as RecentListings:
-// Group A (ads 0–5): big(6col×2row), small, small, text, small, text
-// Group B (ads 6–11): small, text, big(6col×2row), text, small, text
-const BENTO_PATTERNS = [
-    [
-        { type: "big", col: "col-span-12 lg:col-span-6", row: "row-span-2" },
-        { type: "small", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-        { type: "small", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-        { type: "text", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-        { type: "small", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-        { type: "text", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-    ],
-    [
-        { type: "small", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-        { type: "text", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-        { type: "big", col: "col-span-12 lg:col-span-6", row: "row-span-2" },
-        { type: "text", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-        { type: "small", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-        { type: "text", col: "col-span-12 sm:col-span-6 lg:col-span-3", row: "row-span-1" },
-    ],
-];
+const BIG_CARD_LAYOUT = {
+    col: "col-span-12 lg:col-span-6",
+    row: "row-span-2",
+};
+
+const SMALL_CARD_LAYOUT = {
+    col: "col-span-12 sm:col-span-6 lg:col-span-3",
+    row: "row-span-1",
+};
+
+function getAdTemplateType(ad) {
+    if (ad?.templateId === 1) return "big";
+    if (ad?.templateId === 3) return "text";
+    return "small";
+}
 
 function assignBentoLayout(adsList) {
-    return adsList.map((ad, i) => {
-        const patternIndex = Math.floor(i / 6) % 2;
-        const positionInGroup = i % 6;
-        const layout = BENTO_PATTERNS[patternIndex][positionInGroup];
-        return { ...ad, ...layout };
+    return adsList.map((ad) => {
+        const type = getAdTemplateType(ad);
+        const layout = type === "big" ? BIG_CARD_LAYOUT : SMALL_CARD_LAYOUT;
+        return { ...ad, ...layout, type };
     });
 }
 
