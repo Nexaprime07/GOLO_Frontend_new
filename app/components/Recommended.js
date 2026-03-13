@@ -49,7 +49,10 @@ export default function Recommended() {
             Recommended Deals
           </h2>
 
-          <button className="theme-button-accent px-4 py-2 rounded-full text-sm transition">
+          <button 
+            className="theme-button-accent px-4 py-2 rounded-full text-sm transition"
+            suppressHydrationWarning={true}
+          >
             View More →
           </button>
         </div>
@@ -100,6 +103,7 @@ export default function Recommended() {
                   if (deal.id) router.push(`/product/${deal.id}`);
                 }}
                 className="mt-4 px-4 py-2 rounded-full w-full theme-button-accent transition"
+                suppressHydrationWarning={true}
               >
                 View Deal
               </button>

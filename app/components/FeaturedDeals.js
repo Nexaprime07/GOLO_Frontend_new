@@ -50,7 +50,10 @@ export default function FeaturedDeals() {
             Featured Deals
           </h2>
 
-          <button className="theme-button-accent px-4 py-2 rounded-full text-sm transition">
+          <button 
+            className="theme-button-accent px-4 py-2 rounded-full text-sm transition"
+            suppressHydrationWarning={true}
+          >
             View More →
           </button>
         </div>
@@ -90,7 +93,10 @@ export default function FeaturedDeals() {
                     {deal.discount}
                   </p>
 
-                  <button className="mt-5 w-full py-2.5 rounded-full theme-button-accent">
+                  <button 
+                    className="mt-5 w-full py-2.5 rounded-full theme-button-accent"
+                    suppressHydrationWarning={true}
+                  >
                     View Deal
                   </button>
                 </div>

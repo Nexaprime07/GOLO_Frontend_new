@@ -41,7 +41,10 @@ export default function Trending({ setSearchQuery }) {
             Trending Searches Near You
           </h2>
 
-          <button className="theme-button-accent px-4 py-2 rounded-full text-sm transition">
+          <button 
+            className="theme-button-accent px-4 py-2 rounded-full text-sm transition"
+            suppressHydrationWarning={true}
+          >
             View More →
           </button>
         </div>
@@ -60,6 +63,7 @@ export default function Trending({ setSearchQuery }) {
                 }}
                 className={`px-6 py-3 rounded-full text-sm font-medium border transition-all duration-300 ${isActive ? "theme-button-primary" : "theme-card"
                   }`}
+                suppressHydrationWarning={true}
               >
                 {tagText}
               </button>

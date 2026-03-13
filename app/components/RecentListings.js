@@ -3,13 +3,15 @@
 import Image from "next/image";
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { getAllAds } from "../lib/api";
+import { useSearchParams } from "next/navigation";
+import { getAllAds, searchAds } from "../lib/api";
 
 const SORT_OPTIONS = [
-    { label: "Newest First",        value: "createdAt_desc" },
-    { label: "Oldest First",        value: "createdAt_asc"  },
-    { label: "Price: Low to High",  value: "price_asc"      },
-    { label: "Price: High to Low", value: "price_desc"     },
+    { label: "Newest First", value: "createdAt_desc" },
+    { label: "Oldest First", value: "createdAt_asc" },
+    { label: "Price: Low to High", value: "price_asc" },
+    { label: "Price: High to Low", value: "price_desc" },
+    { label: "Nearby", value: "distance_asc" },
 ];
 
 const BIG_CARD_LAYOUT = {
@@ -46,44 +48,76 @@ function assignBentoLayout(adsList) {
 }
 
 export default function RecentListings() {
+    const searchParams = useSearchParams();
     const [ads, setAds] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [sortValue, setSortValue] = useState("createdAt_desc");
+    const [userLocation, setUserLocation] = useState(null);
+
+    const q = searchParams.get("q") || "";
+    const category = searchParams.get("category") || "";
+    const location = searchParams.get("location") || "";
+
+    // Get user location for proximity sorting
+    useEffect(() => {
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition((position) => {
+                setUserLocation({
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                });
+            });
+        }
+    }, []);
 
     useEffect(() => {
         async function fetchAds() {
             try {
                 setLoading(true);
-                const response = await getAllAds({ page: 1, limit: 10000 });
+                const [sortBy, sortOrder] = sortValue.split("_");
+                
+                let response;
+                if (q || category || location || sortBy === 'distance') {
+                    response = await searchAds({
+                        q,
+                        category,
+                        location,
+                        sortBy,
+                        sortOrder,
+                        lat: userLocation?.lat,
+                        lng: userLocation?.lng,
+                        page: 1,
+                        limit: 50
+                    });
+                } else {
+                    response = await getAllAds({ 
+                        page: 1, 
+                        limit: 50,
+                        sortBy,
+                        sortOrder
+                    });
+                }
+
                 if (response.success) {
                     const adsList = response.data?.ads || response.data || [];
                     setAds(adsList);
                 } else {
-                    setError("Could not load recent listings.");
+                    setError("Could not load listings.");
                     setAds([]);
                 }
             } catch (err) {
                 console.error("Error fetching ads:", err);
-                setError("Failed to load recent listings.");
+                setError("Failed to load listings.");
                 setAds([]);
             } finally {
                 setLoading(false);
             }
         }
         fetchAds();
-    }, []);
+    }, [q, category, sortValue, userLocation]);
 
-    const sortedAds = useMemo(() => {
-        const [by, order] = sortValue.split("_");
-        return [...ads].sort((a, b) => {
-            let va = by === "price" ? (parseFloat(a.price) || 0) : new Date(a.createdAt || 0).getTime();
-            let vb = by === "price" ? (parseFloat(b.price) || 0) : new Date(b.createdAt || 0).getTime();
-            return order === "asc" ? va - vb : vb - va;
-        });
-    }, [ads, sortValue]);
-
-    const layoutAds = assignBentoLayout(sortedAds);
+    const layoutAds = assignBentoLayout(ads);
 
     return (
         <section className="w-full pt-4 pb-10">
@@ -94,6 +128,7 @@ export default function RecentListings() {
                     {loading ? "Loading…" : ads.length > 0
                         ? `${ads.length} ad${ads.length !== 1 ? "s" : ""}`
                         : "No ads found"}
+                    {q && <span> for &quot;{q}&quot;</span>}
                 </p>
                 <div className="flex items-center gap-2">
                     <label className="text-xs text-gray-400 font-semibold">Sort:</label>

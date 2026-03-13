@@ -1,14 +1,29 @@
 "use client";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
-import { Search, MapPin, User, X, LogOut, ChevronDown } from "lucide-react";
+import { Search, MapPin, User, X, LogOut, ChevronDown, Shield, ShieldCheck, FileText } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
-import { useRouter } from "next/navigation";
 
 export default function Navbar({
-  searchQuery = "",
-  setSearchQuery = () => { },
+  searchQuery: externalSearchQuery = "",
+  setSearchQuery: setExternalSearchQuery = () => { },
 }) {
+  const searchParams = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState(externalSearchQuery || searchParams.get("q") || "");
+
+  // Sync with external prop if it changes
+  useEffect(() => {
+    if (externalSearchQuery !== undefined) {
+      setSearchQuery(externalSearchQuery);
+    }
+  }, [externalSearchQuery]);
+
+  const handleSearchChange = (val) => {
+    setSearchQuery(val);
+    setExternalSearchQuery(val);
+  };
+
   const [location, setLocation] = useState("Kolhapur");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -48,7 +63,9 @@ export default function Navbar({
 
   const handleSearch = (e) => {
     if (e.key === "Enter" && searchQuery.trim()) {
-      router.push(`/choja?q=${encodeURIComponent(searchQuery.trim())}`);
+      let url = `/choja?q=${encodeURIComponent(searchQuery.trim())}`;
+      if (location) url += `&location=${encodeURIComponent(location)}`;
+      router.push(url);
     }
   };
 
@@ -92,7 +109,7 @@ export default function Navbar({
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               onKeyDown={handleSearch}
               placeholder="Search listings..."
               className="flex-1 outline-none text-sm bg-transparent text-black placeholder-gray-500 focus:outline-none"
@@ -232,15 +249,25 @@ export default function Navbar({
                     onClick={() => setShowProfileMenu(false)}
                     className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
                   >
-                    📋 My Ads
+                    <FileText size={16} /> My Ads
                   </Link>
                   <Link
                     href="/wishlist"
                     onClick={() => setShowProfileMenu(false)}
                     className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
                   >
-                    ❤️ Wishlist
+                    <ShieldCheck size={16} className="text-red-500" /> Wishlist
                   </Link>
+
+                  {user?.role === "admin" && (
+                    <Link
+                      href="/admin"
+                      onClick={() => setShowProfileMenu(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-[#157A4F] hover:bg-green-50 transition border-t border-gray-100 mt-1"
+                    >
+                      <Shield size={16} /> Admin Dashboard
+                    </Link>
+                  )}
                   <div className="border-t border-gray-100 mt-1">
                     <button
                       onClick={handleLogout}

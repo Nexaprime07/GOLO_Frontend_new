@@ -209,12 +209,16 @@ export async function getAllAds({ page = 1, limit = 10, category, sortBy, sortOr
     return apiClient(`/ads?${params}`);
 }
 
-export async function searchAds({ q = '', category, location, minPrice, maxPrice, page = 1, limit = 10 } = {}) {
+export async function searchAds({ q = '', category, location, minPrice, maxPrice, sortBy, sortOrder, lat, lng, page = 1, limit = 10 } = {}) {
     const params = new URLSearchParams({ q, page, limit });
     if (category) params.append('category', category);
     if (location) params.append('location', location);
     if (minPrice) params.append('minPrice', minPrice);
     if (maxPrice) params.append('maxPrice', maxPrice);
+    if (sortBy) params.append('sortBy', sortBy);
+    if (sortOrder) params.append('sortOrder', sortOrder);
+    if (lat) params.append('lat', lat);
+    if (lng) params.append('lng', lng);
     return apiClient(`/ads/search?${params}`);
 }
 
@@ -561,4 +565,61 @@ export async function reviewAd(adId, decision, adminNotes) {
         method: 'POST',
         body: JSON.stringify({ decision, adminNotes }),
     });
+}
+
+/**
+ * Admin: Update any ad
+ */
+export async function adminUpdateAd(adId, updateData) {
+    return apiClient(`/ads/admin/${adId}`, {
+        method: 'PUT',
+        body: JSON.stringify(updateData),
+    });
+}
+
+/**
+ * Admin: Delete any ad
+ */
+export async function adminDeleteAd(adId) {
+    return apiClient(`/ads/admin/${adId}`, {
+        method: 'DELETE',
+    });
+}
+
+/**
+ * Admin: Get all ads
+ */
+export async function adminGetAllAds() {
+    return apiClient('/ads/admin/all');
+}
+
+/**
+ * Admin: Manage Users
+ */
+export async function adminGetAllUsers(page = 1, limit = 10) {
+    return apiClient(`/users/admin/users?page=${page}&limit=${limit}`);
+}
+
+export async function adminBanUser(userId, reason) {
+    return apiClient(`/users/admin/users/${userId}/ban`, {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+    });
+}
+
+export async function adminUnbanUser(userId) {
+    return apiClient(`/users/admin/users/${userId}/unban`, {
+        method: 'POST',
+    });
+}
+
+/**
+ * Admin: Stats & Logs
+ */
+export async function getAdminStats() {
+    return apiClient('/users/admin/stats');
+}
+
+export async function getAdminLogs(page = 1, limit = 50) {
+    return apiClient(`/admin/logs?page=${page}&limit=${limit}`);
 }

@@ -37,7 +37,10 @@ export default function Discover() {
             Discover What's Nearby
           </h2>
 
-          <button className="theme-button-accent px-4 py-2 rounded-full text-sm transition">
+          <button 
+            className="theme-button-accent px-4 py-2 rounded-full text-sm transition"
+            suppressHydrationWarning={true}
+          >
   View More →
 </button>
 
