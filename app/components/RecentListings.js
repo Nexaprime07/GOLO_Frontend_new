@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { getAllAds, searchAds } from "../lib/api";
@@ -47,7 +47,7 @@ function assignBentoLayout(adsList) {
     });
 }
 
-export default function RecentListings() {
+function RecentListingsContent() {
     const searchParams = useSearchParams();
     const [ads, setAds] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -189,6 +189,28 @@ export default function RecentListings() {
                 </div>
             )}
         </section>
+    );
+}
+
+export default function RecentListings() {
+    return (
+        <Suspense fallback={
+            <div className="w-full px-6 lg:px-8 py-10">
+                <div className="grid grid-cols-12 auto-rows-[220px] gap-6">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                        <div
+                            key={i}
+                            className={`rounded-3xl bg-gray-100 animate-pulse ${i === 0
+                                ? "col-span-12 lg:col-span-6 row-span-2"
+                                : "col-span-12 sm:col-span-6 lg:col-span-3 row-span-1"
+                                }`}
+                        />
+                    ))}
+                </div>
+            </div>
+        }>
+            <RecentListingsContent />
+        </Suspense>
     );
 }
 

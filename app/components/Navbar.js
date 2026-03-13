@@ -1,11 +1,11 @@
 "use client";
 import Link from "next/link";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import { Search, MapPin, User, X, LogOut, ChevronDown, Shield, ShieldCheck, FileText } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
 
-export default function Navbar({
+function NavbarContent({
   searchQuery: externalSearchQuery = "",
   setSearchQuery: setExternalSearchQuery = () => { },
 }) {
@@ -292,5 +292,17 @@ export default function Navbar({
         </div>
       </div>
     </header>
+  );
+}
+
+export default function Navbar(props) {
+  return (
+    <Suspense fallback={
+      <header className="theme-footer shadow-sm sticky top-0 z-[9999] border-b border-gray-200 h-16">
+        <div className="w-full px-8 h-16 bg-gray-50 animate-pulse" />
+      </header>
+    }>
+      <NavbarContent {...props} />
+    </Suspense>
   );
 }

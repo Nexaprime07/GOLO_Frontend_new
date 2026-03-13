@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Navbar from "../../components/Navbar";
@@ -91,7 +91,7 @@ function getSafeImageSrc(value) {
     return "/images/placeholder.webp";
 }
 
-export default function CategoryPage() {
+function CategoryPageContent() {
     const params = useParams();
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -161,138 +161,144 @@ export default function CategoryPage() {
     const layoutAds = assignBentoLayout(filteredAds);
 
     return (
-        <>
-            <Navbar />
+        <section className="w-full pt-4 pb-10">
 
-            {/* Your existing CategoryBar — already has working "See All" modal & dropdowns */}
-            <CategoryBar />
+            {/* Compact sort + count bar */}
+            <div className="w-full px-6 lg:px-8 mb-6 flex items-center justify-between gap-3 flex-wrap">
+                <p className="text-sm text-gray-400 font-medium">
+                    {loading ? "Loading…" : filteredAds.length > 0
+                        ? `${filteredAds.length} ad${filteredAds.length !== 1 ? "s" : ""}${subFromUrl ? ` · ${subFromUrl}` : ""}`
+                        : `No ads found`}
+                </p>
+                <div className="flex items-center gap-2">
+                    <label className="text-xs text-gray-400 font-semibold">Sort:</label>
+                    <select
+                        value={`${sortBy}_${sortOrder}`}
+                        onChange={e => handleSort(e.target.value)}
+                        className="border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-gray-700 bg-white cursor-pointer"
+                    >
+                        {SORT_OPTIONS.map(o => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
 
-            <section className="w-full pt-4 pb-10">
-
-                {/* Compact sort + count bar */}
-                <div className="w-full px-6 lg:px-8 mb-6 flex items-center justify-between gap-3 flex-wrap">
-                    <p className="text-sm text-gray-400 font-medium">
-                        {loading ? "Loading…" : filteredAds.length > 0
-                            ? `${filteredAds.length} ad${filteredAds.length !== 1 ? "s" : ""}${subFromUrl ? ` · ${subFromUrl}` : ""}`
-                            : `No ads found`}
-                    </p>
-                    <div className="flex items-center gap-2">
-                        <label className="text-xs text-gray-400 font-semibold">Sort:</label>
-                        <select
-                            value={`${sortBy}_${sortOrder}`}
-                            onChange={e => handleSort(e.target.value)}
-                            className="border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-gray-700 bg-white cursor-pointer"
-                        >
-                            {SORT_OPTIONS.map(o => (
-                                <option key={o.value} value={o.value}>{o.label}</option>
-                            ))}
-                        </select>
+            {/* Loading Skeleton */}
+            {loading && (
+                <div className="w-full px-6 lg:px-8">
+                    <div className="grid grid-cols-12 auto-rows-[220px] gap-6">
+                        {Array.from({ length: 8 }).map((_, i) => (
+                            <div
+                                key={i}
+                                className={`rounded-3xl bg-gray-100 animate-pulse ${i === 0
+                                    ? "col-span-12 lg:col-span-6 row-span-2"
+                                    : "col-span-12 sm:col-span-6 lg:col-span-3 row-span-1"
+                                    }`}
+                            />
+                        ))}
                     </div>
                 </div>
+            )}
 
-                {/* Loading Skeleton */}
-                {loading && (
-                    <div className="w-full px-6 lg:px-8">
-                        <div className="grid grid-cols-12 auto-rows-[220px] gap-6">
-                            {Array.from({ length: 8 }).map((_, i) => (
-                                <div
-                                    key={i}
-                                    className={`rounded-3xl bg-gray-100 animate-pulse ${i === 0
-                                        ? "col-span-12 lg:col-span-6 row-span-2"
-                                        : "col-span-12 sm:col-span-6 lg:col-span-3 row-span-1"
-                                        }`}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                )}
+            {/* Error State */}
+            {!loading && error && (
+                <div className="text-center py-16 px-5 text-red-400">
+                    <div className="text-5xl mb-3">⚠️</div>
+                    <p>{error}</p>
+                    <button
+                        onClick={fetchAds}
+                        className="mt-4 px-7 py-2.5 rounded-xl font-bold text-white border-none cursor-pointer bg-green-700"
+                    >
+                        Retry
+                    </button>
+                </div>
+            )}
 
-                {/* Error State */}
-                {!loading && error && (
-                    <div className="text-center py-16 px-5 text-red-400">
-                        <div className="text-5xl mb-3">⚠️</div>
-                        <p>{error}</p>
-                        <button
-                            onClick={fetchAds}
-                            className="mt-4 px-7 py-2.5 rounded-xl font-bold text-white border-none cursor-pointer bg-green-700"
-                        >
-                            Retry
-                        </button>
-                    </div>
-                )}
+            {/* Empty State */}
+            {!loading && !error && filteredAds.length === 0 && (
+                <div className="text-center py-20 px-5">
+                    <div className="text-6xl mb-4">{icon}</div>
+                    <h2 className="text-gray-700 font-bold text-xl">No matching ads in {categoryName} yet</h2>
+                    <p className="text-gray-400 mb-6">Be the first to post an ad in this category!</p>
+                    <button
+                        onClick={() => router.push("/post-ad")}
+                        className="px-8 py-3 rounded-2xl font-bold text-base text-white border-none cursor-pointer bg-green-700"
+                    >
+                        Post an Ad →
+                    </button>
+                </div>
+            )}
 
-                {/* Empty State */}
-                {!loading && !error && filteredAds.length === 0 && (
-                    <div className="text-center py-20 px-5">
-                        <div className="text-6xl mb-4">{icon}</div>
-                        <h2 className="text-gray-700 font-bold text-xl">No matching ads in {categoryName} yet</h2>
-                        <p className="text-gray-400 mb-6">Be the first to post an ad in this category!</p>
-                        <button
-                            onClick={() => router.push("/post-ad")}
-                            className="px-8 py-3 rounded-2xl font-bold text-base text-white border-none cursor-pointer bg-green-700"
-                        >
-                            Post an Ad →
-                        </button>
-                    </div>
-                )}
-
-                {/* Bento Grid — identical structure to RecentListings */}
-                {!loading && !error && filteredAds.length > 0 && (
-                    <div className="w-full px-6 lg:px-8">
-                        <div className="grid grid-cols-12 auto-rows-[220px] gap-6">
-                            {layoutAds.map((ad, index) => {
-                                const cls = `${ad.col} ${ad.row}`;
-                                if (ad.type === "big") {
-                                    return <MultiImageAd key={ad._id || ad.adId || index} ad={ad} className={cls} />;
-                                } else if (ad.type === "small") {
-                                    return <SingleImageAd key={ad._id || ad.adId || index} ad={ad} className={cls} />;
-                                } else {
-                                    return <TextAd key={ad._id || ad.adId || index} ad={ad} className={cls} />;
-                                }
-                            })}
-                        </div>
-                    </div>
-                )}
-
-                {/* Pagination */}
-                {!loading && !subFromUrl && totalPages > 1 && (
-                    <div className="flex justify-center items-center gap-2 mt-10">
-                        <button
-                            onClick={() => setPage(p => Math.max(1, p - 1))}
-                            disabled={page === 1}
-                            className="px-5 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                            ← Prev
-                        </button>
-                        {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-                            const p = i + 1;
-                            return (
-                                <button
-                                    key={p}
-                                    onClick={() => setPage(p)}
-                                    className="px-3.5 py-2 rounded-xl border font-bold cursor-pointer"
-                                    style={{
-                                        borderColor: page === p ? "#157A4F" : "#e5e7eb",
-                                        background: page === p ? "#157A4F" : "#fff",
-                                        color: page === p ? "#fff" : "#374151",
-                                    }}
-                                >
-                                    {p}
-                                </button>
-                            );
+            {/* Bento Grid — identical structure to RecentListings */}
+            {!loading && !error && filteredAds.length > 0 && (
+                <div className="w-full px-6 lg:px-8">
+                    <div className="grid grid-cols-12 auto-rows-[220px] gap-6">
+                        {layoutAds.map((ad, index) => {
+                            const cls = `${ad.col} ${ad.row}`;
+                            if (ad.type === "big") {
+                                return <MultiImageAd key={ad._id || ad.adId || index} ad={ad} className={cls} />;
+                            } else if (ad.type === "small") {
+                                return <SingleImageAd key={ad._id || ad.adId || index} ad={ad} className={cls} />;
+                            } else {
+                                return <TextAd key={ad._id || ad.adId || index} ad={ad} className={cls} />;
+                            }
                         })}
-                        <button
-                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                            disabled={page === totalPages}
-                            className="px-5 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                            Next →
-                        </button>
                     </div>
-                )}
+                </div>
+            )}
 
-            </section>
+            {/* Pagination */}
+            {!loading && !subFromUrl && totalPages > 1 && (
+                <div className="flex justify-center items-center gap-2 mt-10">
+                    <button
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                        className="px-5 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                        ← Prev
+                    </button>
+                    {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                        const p = i + 1;
+                        return (
+                            <button
+                                key={p}
+                                onClick={() => setPage(p)}
+                                className="px-3.5 py-2 rounded-xl border font-bold cursor-pointer"
+                                style={{
+                                    borderColor: page === p ? "#157A4F" : "#e5e7eb",
+                                    background: page === p ? "#157A4F" : "#fff",
+                                    color: page === p ? "#fff" : "#374151",
+                                }}
+                            >
+                                {p}
+                            </button>
+                        );
+                    })}
+                    <button
+                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                        disabled={page === totalPages}
+                        className="px-5 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                        Next →
+                    </button>
+                </div>
+            )}
 
+        </section>
+    );
+}
+
+export default function CategoryPage() {
+    return (
+        <>
+            <Navbar />
+            <CategoryBar />
+            <Suspense fallback={
+                <div className="w-full px-6 lg:px-8 py-20 bg-gray-50 animate-pulse rounded-3xl mx-auto max-w-7xl mt-10 h-96" />
+            }>
+                <CategoryPageContent />
+            </Suspense>
             <Footer />
         </>
     );
