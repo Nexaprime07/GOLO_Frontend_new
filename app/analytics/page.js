@@ -570,7 +570,7 @@ function AdsTable({ ads }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
   const router = useRouter();
 
   const [analytics, setAnalytics] = useState(null);
@@ -643,13 +643,15 @@ export default function AnalyticsPage() {
               </div>
               {!loading && !error && ads.length > 0 && (
                 <div className="flex items-center gap-3 shrink-0">
-                  <button
-                    onClick={() => downloadAdminCSV(ads, summary)}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-[#157A4F] text-sm font-semibold border border-[#157A4F]/20 hover:border-[#157A4F] hover:bg-[#F4FBF7] transition shadow-sm"
-                  >
-                    <Download size={15} />
-                    Admin CSV
-                  </button>
+                  {user?.role === "admin" && (
+                    <button
+                      onClick={() => downloadAdminCSV(ads, summary)}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-[#157A4F] text-sm font-semibold border border-[#157A4F]/20 hover:border-[#157A4F] hover:bg-[#F4FBF7] transition shadow-sm"
+                    >
+                      <Download size={15} />
+                      Admin CSV
+                    </button>
+                  )}
                   <button
                     onClick={() => downloadCSV(ads, summary)}
                     className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#157A4F] text-white text-sm font-medium hover:bg-[#0f5c3a] transition shadow-sm"

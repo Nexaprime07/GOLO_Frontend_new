@@ -1,11 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/app/components/Navbar';
 import Footer from '@/app/components/Footer';
-import { getPendingReports, updateReportStatus, reviewAd } from '@/app/lib/api';
-import { AlertTriangle, Eye, CheckCircle, XCircle, Edit2, Filter, RefreshCw } from 'lucide-react';
+import { getAllReports, updateReportStatus, reviewAd } from '@/app/lib/api';
+import { AlertTriangle, Eye, CheckCircle, XCircle, Edit2, Filter, RefreshCw, Bell } from 'lucide-react';
+import { useAuth } from '@/app/context/AuthContext';
+
+const STATUS_LABELS = {
+  pending: '⏳ Pending',
+  reviewed: '👁️ Reviewed',
+  action_taken: '✅ Action Taken',
+};
 
 const REASON_LABELS = {
   spam: '📢 Spam',
@@ -23,6 +30,7 @@ const STATUS_COLORS = {
 
 export default function AdminReports() {
   const router = useRouter();
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -32,24 +40,145 @@ export default function AdminReports() {
   const [adminNotes, setAdminNotes] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [filterReason, setFilterReason] = useState('all');
+  const [socketConnected, setSocketConnected] = useState(false);
+  const [newReportNotif, setNewReportNotif] = useState(0);
+  const socketRef = useRef(null);
+  const autoRefreshRef = useRef(null);
 
   useEffect(() => {
-    fetchReports();
-  }, []);
+    // Check if user is authenticated and is admin
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+      return;
+    }
+    
+    if (!authLoading && isAuthenticated && user?.role !== 'admin') {
+      router.push('/');
+      return;
+    }
+    
+    if (!authLoading && isAuthenticated && user?.role === 'admin') {
+      fetchReports();
+      setupSocketConnection();
+      setupAutoRefresh();
+    }
+
+    return () => {
+      // Cleanup on unmount
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+      if (autoRefreshRef.current) {
+        clearInterval(autoRefreshRef.current);
+      }
+    };
+  }, [isAuthenticated, authLoading, user, router]);
+
+  // Setup Socket.IO connection for real-time report notifications
+  const setupSocketConnection = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        console.warn('⚠️ No token available for socket connection');
+        return;
+      }
+
+      const { io } = await import('socket.io-client');
+      // Use correct backend port (3002)
+      const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3002';
+      console.log(`📡 Connecting to WebSocket at ${API_BASE}/reports`);
+      
+      const socket = io(`${API_BASE}/reports`, {
+        auth: { token },
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        reconnectionAttempts: Infinity,
+        reconnectionDelayFn: (attempt) => Math.min(attempt * 1000, 3000),
+      });
+
+      socket.on('connect', () => {
+        setSocketConnected(true);
+        console.log('✅ Connected to report notifications');
+      });
+
+      socket.on('disconnect', (reason) => {
+        setSocketConnected(false);
+        console.log(`❌ Disconnected from report notifications. Reason: ${reason}`);
+      });
+
+      socket.on('connected', (data) => {
+        console.log('✅ Server confirmation:', data);
+      });
+
+      // Listen for new report events
+      socket.on('new_report', (data) => {
+        console.log('🔔 New report notification:', data);
+        setNewReportNotif(prev => prev + 1);
+        // Auto-fetch new reports
+        fetchReports();
+      });
+
+      socket.on('report_submitted', (data) => {
+        console.log('📋 Report submitted:', data);
+        fetchReports();
+      });
+
+      socket.on('error', (err) => {
+        console.error('❌ Socket error:', err);
+        if (err?.message) {
+          console.error(`   Message: ${err.message}`);
+        }
+      });
+
+      socket.on('connect_error', (error) => {
+        console.error('❌ Socket connection error:', {
+          message: error.message,
+          data: error.data,
+        });
+      });
+
+      socketRef.current = socket;
+    } catch (err) {
+      console.error('❌ Failed to setup socket connection:', err);
+    }
+  };
+
+  // Setup auto-refresh every 30 seconds as a fallback
+  const setupAutoRefresh = () => {
+    autoRefreshRef.current = setInterval(() => {
+      fetchReports();
+    }, 30000); // 30 seconds
+  };
 
   const fetchReports = async () => {
     try {
       setLoading(true);
-      const response = await getPendingReports();
+      setError('');
+      
+      console.log('📥 Fetching reports from API...');
+      const response = await getAllReports();
+      
+      console.log('✅ API Response:', response);
       
       if (response.success) {
+        console.log(`📊 Loaded ${response.data?.length || 0} reports`);
         setReports(response.data || []);
+        setNewReportNotif(0); // Reset notification counter after refresh
       } else {
-        setError('Failed to load reports');
+        const errorMsg = response.message || response.error || 'Failed to load reports';
+        console.error('❌ API returned unsuccessful:', errorMsg);
+        setError(errorMsg);
       }
     } catch (err) {
-      console.error('Error fetching reports:', err);
-      setError('Failed to load reports. Please try again.');
+      console.error('❌ Error fetching reports:', {
+        message: err.message,
+        status: err.status,
+        data: err.data,
+        stack: err.stack,
+      });
+      setError(err.data?.message || err.message || 'Failed to load reports. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -111,6 +240,27 @@ export default function AdminReports() {
     ? reports 
     : reports.filter(r => r.reason === filterReason);
 
+  // Show loading during auth check
+  if (authLoading) {
+    return (
+      <>
+        <Navbar />
+        <div className="bg-[#F8F6F2] min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <RefreshCw size={40} className="animate-spin text-[#157A4F] mx-auto mb-4" />
+            <p className="text-gray-600">Verifying admin access...</p>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
+  // Redirect non-authenticated users
+  if (!isAuthenticated || user?.role !== 'admin') {
+    return null;
+  }
+
   if (loading) {
     return (
       <>
@@ -136,18 +286,34 @@ export default function AdminReports() {
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-gray-800">Reports Queue</h1>
+              <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
+                All Reports Queue
+                {socketConnected && (
+                  <span className="inline-block w-3 h-3 bg-green-500 rounded-full animate-pulse" title="Real-time connected" />
+                )}
+              </h1>
               <p className="text-gray-600 mt-1">
-                Review and moderate flagged ads ({filteredReports.length} pending)
+                Review and moderate all flagged ads ({filteredReports.length} total)
               </p>
             </div>
-            <button
-              onClick={fetchReports}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
-            >
-              <RefreshCw size={18} />
-              Refresh
-            </button>
+            <div className="flex items-center gap-2">
+              {newReportNotif > 0 && (
+                <div className="relative flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-xl">
+                  <Bell size={18} className="text-blue-600 animate-pulse" />
+                  <span className="text-sm font-semibold text-blue-800">
+                    {newReportNotif} new report{newReportNotif !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              )}
+              <button
+                onClick={fetchReports}
+                disabled={loading}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                Refresh
+              </button>
+            </div>
           </div>
 
           {/* Filter */}
@@ -180,12 +346,12 @@ export default function AdminReports() {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
               <CheckCircle size={64} className="mx-auto mb-4 text-green-500" />
               <h3 className="text-xl font-semibold text-gray-800 mb-2">
-                {filterReason === 'all' ? 'No pending reports!' : `No ${filterReason} reports`}
+                {filterReason === 'all' ? 'No reports found!' : `No ${filterReason} reports`}
               </h3>
               <p className="text-gray-600">
                 {filterReason === 'all' 
-                  ? 'All caught up! No ads need review at the moment.' 
-                  : `No pending reports with "${filterReason}" reason.`}
+                  ? 'No reports in the system at the moment.' 
+                  : `No reports with "${filterReason}" reason.`}
               </p>
             </div>
           ) : (
@@ -199,6 +365,9 @@ export default function AdminReports() {
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                         Reason
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Status
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                         Reported By
@@ -234,6 +403,13 @@ export default function AdminReports() {
                               : 'bg-yellow-100 text-yellow-800'
                           }`}>
                             {REASON_LABELS[report.reason]}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                            STATUS_COLORS[report.status] || 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {STATUS_LABELS[report.status] || 'Unknown'}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600">

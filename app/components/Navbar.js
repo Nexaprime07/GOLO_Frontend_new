@@ -96,10 +96,10 @@ function NavbarContent({
         </Link>
 
         {/* CENTER */}
-        <div className="hidden md:flex items-center gap-5 flex-1 mx-12 max-w-4xl">
+        <div className="hidden md:flex items-center gap-5 flex-1 mx-12 max-w-4xl" onClick={(e) => e.stopPropagation()}>
 
           {/* SEARCH */}
-          <div className="flex-[2] flex items-center rounded-full px-5 h-11 shadow-sm nav-input">
+          <div className="flex-[2] flex items-center rounded-full px-5 h-11 shadow-sm nav-input" onClick={(e) => e.stopPropagation()}>
             <Search
               size={18}
               className="mr-2"

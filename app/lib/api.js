@@ -541,10 +541,10 @@ export async function getAdReports(adId) {
 }
 
 /**
- * Get pending reports queue (admin only)
+ * Get ALL reports queue (admin only) - shows all reports regardless of status
  */
-export async function getPendingReports() {
-    return apiClient('/ads/reports/pending');
+export async function getAllReports() {
+    return apiClient('/ads/reports');
 }
 
 /**
