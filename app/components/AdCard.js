@@ -8,13 +8,53 @@ import { useState } from "react";
  * Template-aware AdCard for My Ads page.
  * templateId: 1 = Multiple images (big), 2 = Single image, 3 = Text only
  */
+function getExpiryLabel(expiryDate, status) {
+  if (status === 'expired') return { label: 'Expired', color: '#ef4444', bg: '#fee2e2' };
+  if (!expiryDate) return null;
+  const diff = new Date(expiryDate).getTime() - Date.now();
+  if (diff <= 0) return { label: 'Expired', color: '#ef4444', bg: '#fee2e2' };
+  const totalHours = Math.floor(diff / (1000 * 60 * 60));
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+  const label = days === 0
+    ? `Expires in ${hours}hr`
+    : `Expires in ${days}d ${hours}hr`;
+  const urgent = days < 2;
+  return { label, color: urgent ? '#d97706' : '#6b7280', bg: urgent ? '#fef3c7' : '#f3f4f6' };
+}
+
+function getDisplayPrice(ad) {
+  const candidates = [
+    ad?.price,
+    ad?.categorySpecificData?.price,
+    ad?.categorySpecificData?.rent,
+    ad?.categorySpecificData?.askingPrice,
+    ad?.categorySpecificData?.rentAmount,
+    ad?.categorySpecificData?.fees,
+    ad?.categorySpecificData?.pricePerPerson,
+    ad?.categorySpecificData?.consultationFee,
+    ad?.categorySpecificData?.charges,
+  ];
+
+  for (const value of candidates) {
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value;
+    if (typeof value === 'string') {
+      const normalized = value.replace(/[^0-9.]/g, '');
+      const parsed = Number(normalized);
+      if (Number.isFinite(parsed) && parsed > 0) return parsed;
+    }
+  }
+
+  return null;
+}
+
 export default function AdCard({ ad, onDelete }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [imgError, setImgError] = useState(false);
 
   if (!ad) return null;
 
-  const { adId, _id, title, price, createdAt, images = [], description, templateId = 2, category } = ad;
+  const { adId, _id, title, price, createdAt, images = [], description, templateId = 2, category, expiryDate, status } = ad;
   // Use custom adId for API calls, _id for URL if adId not present
   const apiId = adId || _id;
   const linkId = adId || _id;
@@ -22,6 +62,7 @@ export default function AdCard({ ad, onDelete }) {
   const primaryImage = !imgError && images?.[0] && !images[0].includes("placehold.co")
     ? images[0]
     : null;
+  const displayPrice = getDisplayPrice(ad);
 
   const formattedDate = createdAt
     ? new Date(createdAt).toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" })
@@ -96,12 +137,26 @@ export default function AdCard({ ad, onDelete }) {
         )}
 
         <span style={{
-          fontSize: "11px", fontWeight: 600, color: "#22c55e",
-          background: "#dcfce7", borderRadius: "20px", padding: "2px 8px",
-          display: "inline-block", marginBottom: "8px", width: "fit-content"
+          fontSize: "11px", fontWeight: 600,
+          color: status === 'expired' ? '#ef4444' : '#22c55e',
+          background: status === 'expired' ? '#fee2e2' : '#dcfce7',
+          borderRadius: "20px", padding: "2px 8px",
+          display: "inline-block", marginBottom: "4px", width: "fit-content"
         }}>
-          ● Active
+          ● {status === 'expired' ? 'Expired' : 'Active'}
         </span>
+        {(() => {
+          const exp = getExpiryLabel(expiryDate, status);
+          return exp ? (
+            <span style={{
+              fontSize: "11px", fontWeight: 600, color: exp.color,
+              background: exp.bg, borderRadius: "20px", padding: "2px 8px",
+              display: "inline-block", marginBottom: "8px", width: "fit-content"
+            }}>
+              ⏱ {exp.label}
+            </span>
+          ) : null;
+        })()}
 
         <Link href={`/product/${linkId}`} style={{ textDecoration: "none" }}>
           <h3 style={{
@@ -124,9 +179,11 @@ export default function AdCard({ ad, onDelete }) {
           </p>
         )}
 
-        <div style={{ fontSize: "16px", fontWeight: 700, color: "#157A4F", marginBottom: "4px" }}>
-          ₹{price?.toLocaleString("en-IN") || "0"}
-        </div>
+        {displayPrice !== null && (
+          <div style={{ fontSize: "16px", fontWeight: 700, color: "#157A4F", marginBottom: "4px" }}>
+            ₹{displayPrice.toLocaleString("en-IN")}
+          </div>
+        )}
         <div style={{ fontSize: "12px", color: "#9ca3af", marginBottom: "12px" }}>
           Posted: {formattedDate}
         </div>

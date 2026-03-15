@@ -11,6 +11,31 @@ const fallbackDeals = [
   { img: "deal4.jpg", title: "Weekend Getaway", discount: "40% OFF" },
 ];
 
+function getDisplayPrice(ad) {
+  const candidates = [
+    ad?.price,
+    ad?.categorySpecificData?.price,
+    ad?.categorySpecificData?.rent,
+    ad?.categorySpecificData?.askingPrice,
+    ad?.categorySpecificData?.rentAmount,
+    ad?.categorySpecificData?.fees,
+    ad?.categorySpecificData?.pricePerPerson,
+    ad?.categorySpecificData?.consultationFee,
+    ad?.categorySpecificData?.charges,
+  ];
+
+  for (const value of candidates) {
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value;
+    if (typeof value === 'string') {
+      const normalized = value.replace(/[^0-9.]/g, '');
+      const parsed = Number(normalized);
+      if (Number.isFinite(parsed) && parsed > 0) return parsed;
+    }
+  }
+
+  return 0;
+}
+
 export default function FeaturedDeals() {
   const [activeIndex, setActiveIndex] = useState(null);
   const [deals, setDeals] = useState(fallbackDeals);
@@ -26,7 +51,7 @@ export default function FeaturedDeals() {
               id: ad._id,
               img: ad.images?.[0] || "deal1.jpg",
               title: ad.title,
-              discount: ad.negotiable ? "Negotiable" : `₹${ad.price}`,
+              discount: ad.negotiable ? "Negotiable" : `₹${getDisplayPrice(ad)}`,
               isFromApi: true,
             }))
           );

@@ -413,7 +413,23 @@ const COLUMNS = [
   { key: "contactClicks", label: "Clicks" },
   { key: "wishlistCount", label: "Wishlist" },
   { key: "createdAt", label: "Posted" },
+  { key: "expiryDate", label: "Expiry" },
 ];
+
+function getExpiryLabel(expiryDate, status) {
+  if (status === 'expired') return { label: 'Expired', cls: 'text-red-500 font-medium' };
+  if (!expiryDate) return null;
+  const diff = new Date(expiryDate).getTime() - Date.now();
+  if (diff <= 0) return { label: 'Expired', cls: 'text-red-500 font-medium' };
+  const totalHours = Math.floor(diff / (1000 * 60 * 60));
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+  const label = days === 0
+    ? `${hours}hr left`
+    : `${days}d ${hours}hr left`;
+  const cls = days < 2 ? 'text-amber-600 font-semibold' : 'text-gray-500';
+  return { label, cls };
+}
 
 function SortIcon({ col, sortKey, sortDir }) {
   if (col !== sortKey) return <ArrowUpDown size={13} className="text-gray-400" />;
@@ -480,7 +496,7 @@ function AdsTable({ ads }) {
           <tbody className="divide-y divide-gray-50">
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={9} className="text-center py-12 text-gray-400">
+                <td colSpan={10} className="text-center py-12 text-gray-400">
                   No ads found
                 </td>
               </tr>
@@ -547,6 +563,15 @@ function AdsTable({ ads }) {
                         year: "numeric",
                       })
                     : "—"}
+                </td>
+
+                <td className="px-4 py-3 whitespace-nowrap text-xs">
+                  {(() => {
+                    const exp = getExpiryLabel(ad.expiryDate, ad.status);
+                    return exp
+                      ? <span className={exp.cls}>⏱ {exp.label}</span>
+                      : <span className="text-gray-300">—</span>;
+                  })()}
                 </td>
 
                 <td className="px-4 py-3">

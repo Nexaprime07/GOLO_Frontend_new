@@ -2,8 +2,9 @@
 import Link from "next/link";
 import { useState, useRef, useEffect, Suspense } from "react";
 import { Search, MapPin, User, X, LogOut, ChevronDown, Shield, ShieldCheck, FileText } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
+import AuthRequiredModal from "./AuthRequiredModal";
 
 function NavbarContent({
   searchQuery: externalSearchQuery = "",
@@ -11,6 +12,7 @@ function NavbarContent({
 }) {
   const searchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(externalSearchQuery || searchParams.get("q") || "");
+  const [location, setLocation] = useState(searchParams.get("location") || "");
 
   // Sync with external prop if it changes
   useEffect(() => {
@@ -19,18 +21,28 @@ function NavbarContent({
     }
   }, [externalSearchQuery]);
 
+  useEffect(() => {
+    setLocation(searchParams.get("location") || "");
+  }, [searchParams]);
+
   const handleSearchChange = (val) => {
     setSearchQuery(val);
     setExternalSearchQuery(val);
   };
 
-  const [location, setLocation] = useState("Kolhapur");
+  const handleLocationChange = (val) => {
+    setLocation(val);
+    setShowSuggestions(true);
+  };
+
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
 
   const dropdownRef = useRef(null);
   const profileRef = useRef(null);
   const router = useRouter();
+  const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuth();
 
   const locations = [
@@ -61,11 +73,26 @@ function NavbarContent({
       document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const runSearch = (nextSearch = searchQuery, nextLocation = location) => {
+    if (!isAuthenticated) {
+      setShowAuthPrompt(true);
+      return;
+    }
+
+    const trimmedSearch = nextSearch.trim();
+    const trimmedLocation = nextLocation.trim();
+
+    const params = new URLSearchParams();
+    if (trimmedSearch) params.set("q", trimmedSearch);
+    if (trimmedLocation) params.set("location", trimmedLocation);
+
+    router.push(params.toString() ? `/choja?${params.toString()}` : "/choja");
+  };
+
   const handleSearch = (e) => {
-    if (e.key === "Enter" && searchQuery.trim()) {
-      let url = `/choja?q=${encodeURIComponent(searchQuery.trim())}`;
-      if (location) url += `&location=${encodeURIComponent(location)}`;
-      router.push(url);
+    if (e.key === "Enter") {
+      runSearch();
+      setShowSuggestions(false);
     }
   };
 
@@ -75,9 +102,21 @@ function NavbarContent({
     router.push("/");
   };
 
+  const requireAuth = (callback) => (event) => {
+    if (!isAuthenticated) {
+      if (event?.preventDefault) event.preventDefault();
+      if (event?.stopPropagation) event.stopPropagation();
+      setShowAuthPrompt(true);
+      return;
+    }
+
+    if (callback) callback(event);
+  };
+
   return (
-    <header className="theme-footer shadow-sm sticky top-0 z-[9999] border-b border-gray-200">
-      <div className="w-full px-8 h-16 flex items-center justify-between">
+    <>
+      <header className="theme-footer shadow-sm sticky top-0 z-[9999] border-b border-gray-200">
+        <div className="w-full px-8 h-16 flex items-center justify-between">
 
         {/* LOGO */}
         <Link
@@ -111,13 +150,17 @@ function NavbarContent({
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
               onKeyDown={handleSearch}
+              onFocus={() => {
+                if (!isAuthenticated) setShowAuthPrompt(true);
+              }}
               placeholder="Search listings..."
               className="flex-1 outline-none text-sm bg-transparent text-black placeholder-gray-500 focus:outline-none"
+              readOnly={!isAuthenticated}
             />
 
             {searchQuery && (
               <button
-                onClick={() => setSearchQuery("")}
+                onClick={() => handleSearchChange("")}
                 className="ml-2 transition opacity-70"
                 style={{ color: "var(--color-text-muted)" }}
               >
@@ -138,13 +181,18 @@ function NavbarContent({
               <input
                 type="text"
                 value={location}
-                onChange={(e) => {
-                  setLocation(e.target.value);
+                onChange={(e) => handleLocationChange(e.target.value)}
+                onKeyDown={handleSearch}
+                onFocus={() => {
+                  if (!isAuthenticated) {
+                    setShowAuthPrompt(true);
+                    return;
+                  }
                   setShowSuggestions(true);
                 }}
-                onFocus={() => setShowSuggestions(true)}
                 placeholder="Location"
                 className="w-full outline-none text-sm bg-transparent text-black placeholder-gray-500 focus:outline-none"
+                readOnly={!isAuthenticated}
               />
 
               {location && (
@@ -152,6 +200,7 @@ function NavbarContent({
                   onClick={() => {
                     setLocation("");
                     setShowSuggestions(false);
+                    runSearch(searchQuery, "");
                   }}
                   className="ml-2 transition opacity-70"
                   style={{ color: "var(--color-text-muted)" }}
@@ -164,12 +213,15 @@ function NavbarContent({
             {/* LOCATION DROPDOWN */}
             {showSuggestions && (
               <div className="absolute top-14 left-0 w-full rounded-xl shadow-lg py-2 z-50 bg-white border border-gray-200">
-                {locations.map((place, index) => (
+                {locations
+                  .filter((place) => !location.trim() || place.city.toLowerCase().includes(location.trim().toLowerCase()))
+                  .map((place, index) => (
                   <div key={index}>
                     <div
                       onClick={() => {
                         setLocation(place.city);
                         setShowSuggestions(false);
+                        runSearch(searchQuery, place.city);
                       }}
                       className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-gray-100 transition"
                     >
@@ -200,10 +252,10 @@ function NavbarContent({
             <Link href="/choja" className="hover:opacity-80 transition">
               Home
             </Link>
-            <Link href="/post-ad" className="hover:opacity-80 transition">
+            <Link href="/post-ad" onClick={requireAuth()} className="hover:opacity-80 transition">
               Post Your Ad
             </Link>
-            <Link href="/chats" className="hover:opacity-80 transition">
+            <Link href="/chats" onClick={requireAuth()} className="hover:opacity-80 transition">
               Chats
             </Link>
           </nav>
@@ -280,18 +332,32 @@ function NavbarContent({
               )}
             </div>
           ) : (
-            <Link href="/login">
+            <button
+              type="button"
+              onClick={() => setShowAuthPrompt(true)}
+              className="w-9 h-9 rounded-full flex items-center justify-center shadow-md hover:scale-105 transition cursor-pointer bg-white"
+              style={{ color: "var(--color-primary)" }}
+            >
               <div
                 className="w-9 h-9 rounded-full flex items-center justify-center shadow-md hover:scale-105 transition cursor-pointer bg-white"
                 style={{ color: "var(--color-primary)" }}
               >
                 <User size={18} />
               </div>
-            </Link>
+            </button>
           )}
         </div>
-      </div>
-    </header>
+        </div>
+      </header>
+
+      <AuthRequiredModal
+        isOpen={showAuthPrompt}
+        onClose={() => setShowAuthPrompt(false)}
+        title="Login or Register"
+        description="Please log in or create an account to access GOLO listings, chats, posting, and search from the home page."
+        redirectTo={pathname || "/"}
+      />
+    </>
   );
 }
 

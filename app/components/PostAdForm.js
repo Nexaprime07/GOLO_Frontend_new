@@ -104,13 +104,33 @@ export default function PostAdForm({
   const [vehicleRentDeposit, setVehicleRentDeposit] = useState("");
   const [vehicleRentDriver, setVehicleRentDriver] = useState("");
   const [vehicleRentMinDuration, setVehicleRentMinDuration] = useState("");
+  const [businessName, setBusinessName] = useState("");
   const [businessType, setBusinessType] = useState("");
+  const [businessServicesOffered, setBusinessServicesOffered] = useState("");
+  const [businessGstNumber, setBusinessGstNumber] = useState("");
+  const [businessWebsiteUrl, setBusinessWebsiteUrl] = useState("");
+  const [businessCampaignName, setBusinessCampaignName] = useState("");
+  const [businessCampaignDescription, setBusinessCampaignDescription] = useState("");
+  const [businessShopAddress, setBusinessShopAddress] = useState("");
   const [validTillDate, setValidTillDate] = useState(null);
+  const [travelPackageType, setTravelPackageType] = useState("");
+  const [travelDestination, setTravelDestination] = useState("");
   const [travelDate, setTravelDate] = useState(null);
+  const [travelDuration, setTravelDuration] = useState("");
+  const [travelInclusions, setTravelInclusions] = useState("");
+  const [travelExclusions, setTravelExclusions] = useState("");
+  const [travelPricePerPerson, setTravelPricePerPerson] = useState("");
+  const [travelAvailableSeats, setTravelAvailableSeats] = useState("");
+  const [travelPickupLocation, setTravelPickupLocation] = useState("");
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [socialMedia, setSocialMedia] = useState([]);
   const [socialInput, setSocialInput] = useState({ platform: "", url: "" });
+  const [astrologyServiceType, setAstrologyServiceType] = useState("");
+  const [astrologyExperience, setAstrologyExperience] = useState("");
+  const [astrologyConsultationFee, setAstrologyConsultationFee] = useState("");
   const [consultationMode, setConsultationMode] = useState("");
+  const [astrologyLanguagesSpoken, setAstrologyLanguagesSpoken] = useState("");
+  const [astrologyAvailabilityTime, setAstrologyAvailabilityTime] = useState("");
   const [propertyTypeSell, setPropertyTypeSell] = useState("");
   const [bhk, setBhk] = useState("");
   const [builtUpArea, setBuiltUpArea] = useState("");
@@ -253,6 +273,12 @@ export default function PostAdForm({
     return Boolean(v);
   };
 
+  const toNumberOrUndefined = (value) => {
+    if (value === null || value === undefined || value === "") return undefined;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  };
+
   const checkCategoryCompletion = () => {
     if (!selectedCategory) {
       onCategoryDetailsChange && onCategoryDetailsChange(false);
@@ -270,8 +296,12 @@ export default function PostAdForm({
             institutionType: educationInstitutionType,
             institutionName: educationInstitutionName,
             courseName: educationCourseName || undefined,
+            modeOfEducation: educationMode || undefined,
+            demoClassAvailable: educationDemo || undefined,
             duration: educationDuration || undefined,
-            fees: educationFees ? parseInt(educationFees) : undefined,
+            fees: toNumberOrUndefined(educationFees),
+            teachingExperience: educationExperience || undefined,
+            qualification: educationQualification || undefined,
             facilities: [], // Can be expanded in UI later
             contactPerson: undefined,
             contactNumber: undefined,
@@ -297,7 +327,8 @@ export default function PostAdForm({
             annualIncome: matrimonialIncome || undefined,
             height: matrimonialHeight || undefined,
             city: matrimonialLocation || undefined,
-            about: matrimonialAboutMe ? `${matrimonialAboutMe}\nPartner Preference: ${matrimonialPartnerPref}` : undefined
+            aboutMe: matrimonialAboutMe || undefined,
+            partnerPreference: matrimonialPartnerPref || undefined,
           };
         }
         break;
@@ -309,13 +340,16 @@ export default function PostAdForm({
               type: "Sell",
               vehicleType: vehicleSellType,
               brand: vehicleSellBrand,
-              model: vehicleSellVariant ? `${vehicleSellModel} ${vehicleSellVariant}` : vehicleSellModel,
+              model: vehicleSellModel,
+              variant: vehicleSellVariant || undefined,
               year: parseInt(vehicleSellYear, 10),
               kilometersDriven: parseInt(vehicleSellKMDriven, 10),
               fuelType: vehicleSellFuelType,
               transmission: vehicleSellTransmission,
+              rcAvailable: vehicleSellRC,
+              ownership: vehicleSellOwnership || undefined,
               ownerNumber: vehicleSellOwnership === "Single Owner" ? 1 : (vehicleSellOwnership === "Second Owner" ? 2 : (vehicleSellOwnership === "Third Owner" ? 3 : undefined)),
-              insurance: vehicleSellInsurance || undefined,
+              insuranceValidTill: vehicleSellInsurance || undefined,
               condition: vehicleSellCondition || undefined,
               price: Number(vehicleSellPrice),
             };
@@ -339,7 +373,17 @@ export default function PostAdForm({
         isComplete = isFilled(businessType);
         if (isComplete) {
           categoryData = {
+            subCategory: selectedSub || undefined,
+            businessName: businessName || undefined,
             businessType,
+            servicesOffered: businessServicesOffered || undefined,
+            gstNumber: businessGstNumber || undefined,
+            websiteUrl: businessWebsiteUrl || undefined,
+            socialMedia: socialMedia.length > 0 ? socialMedia.map(({ platform, url }) => ({ platform, url })) : undefined,
+            campaignName: businessCampaignName || undefined,
+            validTillDate: validTillDate || undefined,
+            campaignDescription: businessCampaignDescription || undefined,
+            shopAddress: businessShopAddress || undefined,
           };
         }
         break;
@@ -347,7 +391,15 @@ export default function PostAdForm({
         isComplete = isFilled(travelDate);
         if (isComplete) {
           categoryData = {
+            packageType: travelPackageType || undefined,
+            destination: travelDestination || undefined,
+            duration: travelDuration || undefined,
             travelDate,
+            inclusions: travelInclusions || undefined,
+            exclusions: travelExclusions || undefined,
+            pricePerPerson: toNumberOrUndefined(travelPricePerPerson),
+            availableSeats: toNumberOrUndefined(travelAvailableSeats),
+            pickupLocation: travelPickupLocation || undefined,
           };
         }
         break;
@@ -355,7 +407,12 @@ export default function PostAdForm({
         isComplete = isFilled(consultationMode);
         if (isComplete) {
           categoryData = {
+            serviceType: astrologyServiceType || undefined,
+            experience: astrologyExperience || undefined,
+            consultationFee: toNumberOrUndefined(astrologyConsultationFee),
             consultationMode,
+            languagesSpoken: astrologyLanguagesSpoken || undefined,
+            availabilityTime: astrologyAvailabilityTime || undefined,
           };
         }
         break;
@@ -364,8 +421,29 @@ export default function PostAdForm({
         else if (selectedSub === "Sell") isComplete = isFilled(propertyTypeSell) && isFilled(bhk);
         if (isComplete) {
           categoryData = selectedSub === "Rent"
-            ? { listingType: "Rent", propertyType: propertyTypeRent, rent: Number(monthlyRent) }
-            : { listingType: "Sell", propertyType: propertyTypeSell, bhk };
+            ? {
+                listingType: "Rent",
+                propertyType: propertyTypeRent,
+                rent: Number(monthlyRent),
+                securityDeposit: toNumberOrUndefined(securityDeposit),
+                maintenanceCost: toNumberOrUndefined(maintenanceCost),
+                availableFromDate: availableFromDate || undefined,
+                preferredTenant: preferredTenant || undefined,
+                leaseDuration: leaseDuration || undefined,
+              }
+            : {
+                listingType: "Sell",
+                propertyType: propertyTypeSell,
+                bhk,
+                builtUpArea: builtUpArea || undefined,
+                furnishing: furnishing || undefined,
+                bathrooms: toNumberOrUndefined(bathrooms),
+                parkingAvailable: parkingAvailable || undefined,
+                floor: floor || undefined,
+                propertyAge: age || undefined,
+                facingSide: facingSide || undefined,
+                askingPrice: toNumberOrUndefined(askingPrice),
+              };
         }
         break;
       case "Public Notice":
@@ -375,6 +453,9 @@ export default function PostAdForm({
             noticeType,
             issuingAuthority,
             detailedNotice,
+            supportingDocuments: supportingDocuments.length > 0
+              ? supportingDocuments.map((doc) => doc.name)
+              : undefined,
           };
         }
         break;
@@ -385,8 +466,10 @@ export default function PostAdForm({
             status: lfStatus,
             itemType,
             itemName,
+            date: lfDate || undefined,
             location: lfLocation,
             description: lfDescription,
+            reward: reward || undefined,
           };
         }
         break;
@@ -400,6 +483,7 @@ export default function PostAdForm({
             serviceArea,
             availableTime,
             bio: serviceBio,
+            available24x7,
           };
         }
         break;
@@ -425,8 +509,10 @@ export default function PostAdForm({
             companyName: employmentCompanyName,
             experienceRequired: employmentExperience,
             salary: employmentSalaryRange,
+            industry: employmentIndustry,
             qualifications: employmentRequirements,
-            description: `${employmentJobDescription}\n\nIndustry: ${employmentIndustry}\nBenefits: ${employmentBenefits}`,
+            description: employmentJobDescription,
+            benefits: employmentBenefits || undefined,
             vacancies: parseInt(employmentVacancies) || 1
           };
         }
@@ -440,6 +526,8 @@ export default function PostAdForm({
             age: petAge,
             gender: petGender,
             weight: petWeight,
+            temperament: petTemperament.length > 0 ? petTemperament : undefined,
+            specialDietOrNeeds: petSpecialDiet || undefined,
           };
         }
         break;
@@ -458,6 +546,8 @@ export default function PostAdForm({
             condition: electronicCondition,
             warranty: electronicWarranty,
             price: Number(electronicPrice),
+            negotiable: electronicNegotiable,
+            capacity: electronicCapacity || undefined,
           };
         }
         break;
@@ -630,8 +720,15 @@ export default function PostAdForm({
   }, [
     selectedCategory,
     selectedSub,
+    educationInstitutionType,
+    educationInstitutionName,
+    educationCourseName,
     educationMode,
     educationDemo,
+    educationDuration,
+    educationFees,
+    educationExperience,
+    educationQualification,
     matrimonialGender,
     matrimonialMarital,
     matrimonialProfileFor,
@@ -666,26 +763,65 @@ export default function PostAdForm({
     vehicleRentDeposit,
     vehicleRentMinDuration,
     businessType,
+    businessName,
+    businessServicesOffered,
+    businessGstNumber,
+    businessWebsiteUrl,
+    businessCampaignName,
+    businessCampaignDescription,
+    businessShopAddress,
+    validTillDate,
+    socialMedia,
+    travelPackageType,
+    travelDestination,
     travelDate,
+    travelDuration,
+    travelInclusions,
+    travelExclusions,
+    travelPricePerPerson,
+    travelAvailableSeats,
+    travelPickupLocation,
+    astrologyServiceType,
+    astrologyExperience,
+    astrologyConsultationFee,
     consultationMode,
+    astrologyLanguagesSpoken,
+    astrologyAvailabilityTime,
     propertyTypeSell,
     bhk,
+    builtUpArea,
+    furnishing,
+    bathrooms,
+    parkingAvailable,
+    floor,
+    age,
+    facingSide,
+    askingPrice,
     propertyTypeRent,
     monthlyRent,
+    securityDeposit,
+    maintenanceCost,
+    availableFromDate,
+    preferredTenant,
+    leaseDuration,
     noticeType,
     issuingAuthority,
     detailedNotice,
+    supportingDocuments,
     lfStatus,
     itemType,
     itemName,
+    lfDate,
     lfLocation,
     lfDescription,
+    reward,
     serviceCategory,
     serviceExperience,
     charges,
     serviceArea,
     availableTime,
     serviceBio,
+    available24x7,
     personalName,
     personalAchievementTitle,
     personalAge,
@@ -693,6 +829,8 @@ export default function PostAdForm({
     personalDescription,
     personalContact,
     employmentType,
+    employmentJobTitle,
+    employmentCompanyName,
     employmentExperience,
     employmentSalaryRange,
     employmentIndustry,
@@ -705,22 +843,28 @@ export default function PostAdForm({
     petAge,
     petGender,
     petWeight,
+    petTemperament,
+    petSpecialDiet,
     mobileBrand,
     mobileModel,
     mobileCondition,
     mobileWarranty,
     mobilePrice,
+    mobileNegotiable,
     electronicAppliance,
     electronicBrand,
     electronicModel,
     electronicCondition,
     electronicWarranty,
     electronicPrice,
+    electronicNegotiable,
+    electronicCapacity,
     furnitureTypeInput,
     furnitureMaterial,
     furnitureCondition,
     furnitureSize,
     furniturePrice,
+    furnitureNegotiable,
     greetingPersonName,
     greetingAgeTurning,
     greetingBirthday,
@@ -731,8 +875,10 @@ export default function PostAdForm({
     tributeDateOfBirth,
     tributeAge,
     tributeBiography,
+    tributeFuneralDetails,
     otherTitle,
     otherDescription,
+    otherPrice,
   ]);
 
   // Enforce template-based media rules when template changes
@@ -1106,53 +1252,53 @@ export default function PostAdForm({
 
             {selectedCategory.name === "Business" && selectedSub === "Promotion" && (
               <div className="grid grid-cols-2 gap-6">
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Business Name</label><input placeholder="Your Business Name" className={inputStyle} /></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Business Type</label><select className={inputStyle}><option value="">Select Business Type</option><option value="Retail">Retail</option><option value="SaaS">SaaS</option><option value="Hospitality">Hospitality</option><option value="Other">Other</option></select></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Services Offered</label><input placeholder="e.g. Web Development, Consulting" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">GST Number</label><input placeholder="18AABCU9603R1Z0 (optional)" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Website URL</label><input placeholder="https://www.example.com (optional)" className={inputStyle} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Business Name</label><input value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Your Business Name" className={inputStyle} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Business Type</label><select value={businessType} onChange={(e) => setBusinessType(e.target.value)} className={inputStyle}><option value="">Select Business Type</option><option value="Retail">Retail</option><option value="SaaS">SaaS</option><option value="Hospitality">Hospitality</option><option value="Other">Other</option></select></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Services Offered</label><input value={businessServicesOffered} onChange={(e) => setBusinessServicesOffered(e.target.value)} placeholder="e.g. Web Development, Consulting" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">GST Number</label><input value={businessGstNumber} onChange={(e) => setBusinessGstNumber(e.target.value)} placeholder="18AABCU9603R1Z0 (optional)" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Website URL</label><input value={businessWebsiteUrl} onChange={(e) => setBusinessWebsiteUrl(e.target.value)} placeholder="https://www.example.com (optional)" className={inputStyle} /></div>
                 <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Social Media Presence</label><div className="space-y-3"><div className="flex gap-2"><select value={socialInput.platform} onChange={(e) => setSocialInput({ ...socialInput, platform: e.target.value })} className={inputStyle}><option value="">Select Platform</option><option value="Facebook">Facebook</option><option value="Instagram">Instagram</option><option value="LinkedIn">LinkedIn</option><option value="Twitter">Twitter</option><option value="YouTube">YouTube</option></select><button type="button" onClick={addSocialMedia} className="px-4 py-2 bg-[#157A4F] text-white rounded-lg font-medium hover:bg-[#0f5c3d] transition">Add</button></div><div className="flex gap-2"><input value={socialInput.url} onChange={(e) => setSocialInput({ ...socialInput, url: e.target.value })} placeholder="https://facebook.com/yourpage" className={inputStyle} /></div><div className="flex flex-wrap gap-2 mt-3">{socialMedia.map((item) => (<span key={item.id} className="flex items-center gap-2 px-3 py-2 bg-[#157A4F] text-white rounded-full text-sm"><span>{item.platform}: {item.url}</span><button type="button" onClick={() => removeSocialMedia(item.id)} className="text-white hover:text-red-200">×</button></span>))}</div></div></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Campaign Name</label><input placeholder="Summer Sale 2026" className={inputStyle} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Campaign Name</label><input value={businessCampaignName} onChange={(e) => setBusinessCampaignName(e.target.value)} placeholder="Summer Sale 2026" className={inputStyle} /></div>
                 <div><label className="text-sm font-medium text-gray-700">Valid Till</label><div className="relative"><input type="text" placeholder="Click to select date" readOnly className={inputStyle + " cursor-pointer"} value={validTillDate ? formatDate(validTillDate) : ""} onClick={() => setOpenCalendar(openCalendar === "validTill" ? null : "validTill")} />{openCalendar === "validTill" && (<div className="absolute top-14 left-0 bg-[#FFF3D6] p-4 rounded-2xl border border-gray-200 shadow-xl z-20"><DayPicker mode="single" selected={validTillDate} onSelect={(date) => { setValidTillDate(date); setOpenCalendar(null); }} month={calendarDateMonth} onMonthChange={setCalendarDateMonth} fromDate={new Date()} /></div>)}</div></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Campaign Description</label><textarea placeholder="Describe your campaign details..." className={inputStyle + " resize-none h-24"} /></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Shop Address</label><input placeholder="123 Business Street, City, State" className={inputStyle} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Campaign Description</label><textarea value={businessCampaignDescription} onChange={(e) => setBusinessCampaignDescription(e.target.value)} placeholder="Describe your campaign details..." className={inputStyle + " resize-none h-24"} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Shop Address</label><input value={businessShopAddress} onChange={(e) => setBusinessShopAddress(e.target.value)} placeholder="123 Business Street, City, State" className={inputStyle} /></div>
               </div>
             )}
 
             {selectedCategory.name === "Travel" && (
               <div className="grid grid-cols-2 gap-6">
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Package Type</label><select className={inputStyle}><option value="">Select Package Type</option><option value="Tour Package">Tour Package</option><option value="Bus Rental">Bus Rental</option><option value="Hotel Only">Hotel Only</option><option value="Other">Other</option></select></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Destination</label><input placeholder="e.g. Paris, Rome, Venice" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Duration</label><input placeholder="7 days" className={inputStyle} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Package Type</label><select value={travelPackageType} onChange={(e) => setTravelPackageType(e.target.value)} className={inputStyle}><option value="">Select Package Type</option><option value="Tour Package">Tour Package</option><option value="Bus Rental">Bus Rental</option><option value="Hotel Only">Hotel Only</option><option value="Other">Other</option></select></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Destination</label><input value={travelDestination} onChange={(e) => setTravelDestination(e.target.value)} placeholder="e.g. Paris, Rome, Venice" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Duration</label><input value={travelDuration} onChange={(e) => setTravelDuration(e.target.value)} placeholder="7 days" className={inputStyle} /></div>
                 <div><label className="text-sm font-medium text-gray-700">Travel Date</label><div className="relative"><input type="text" placeholder="Click to select date" readOnly className={inputStyle + " cursor-pointer"} value={travelDate ? formatDate(travelDate) : ""} onClick={() => setOpenCalendar(openCalendar === "travelDate" ? null : "travelDate")} />{openCalendar === "travelDate" && (<div className="absolute top-14 left-0 bg-[#FFF3D6] p-4 rounded-2xl border border-gray-200 shadow-xl z-20"><DayPicker mode="single" selected={travelDate} onSelect={(date) => { setTravelDate(date); setOpenCalendar(null); }} month={calendarDateMonth} onMonthChange={setCalendarDateMonth} fromDate={new Date()} /></div>)}</div></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Inclusions</label><textarea placeholder="Flights, Hotels, Meals, Tours..." className={inputStyle + " resize-none h-20"} /></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Exclusions</label><textarea placeholder="Personal expenses, Travel insurance..." className={inputStyle + " resize-none h-20"} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Price Per Person</label><input placeholder="₹25,000" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Available Seats</label><input placeholder="20" className={inputStyle} /></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Pickup Location</label><input placeholder="Airport, Hotel, City Center" className={inputStyle} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Inclusions</label><textarea value={travelInclusions} onChange={(e) => setTravelInclusions(e.target.value)} placeholder="Flights, Hotels, Meals, Tours..." className={inputStyle + " resize-none h-20"} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Exclusions</label><textarea value={travelExclusions} onChange={(e) => setTravelExclusions(e.target.value)} placeholder="Personal expenses, Travel insurance..." className={inputStyle + " resize-none h-20"} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Price Per Person</label><input value={travelPricePerPerson} onChange={(e) => setTravelPricePerPerson(e.target.value)} placeholder="₹25,000" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Available Seats</label><input value={travelAvailableSeats} onChange={(e) => setTravelAvailableSeats(e.target.value)} placeholder="20" className={inputStyle} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Pickup Location</label><input value={travelPickupLocation} onChange={(e) => setTravelPickupLocation(e.target.value)} placeholder="Airport, Hotel, City Center" className={inputStyle} /></div>
               </div>
             )}
 
             {selectedCategory.name === "Astrology" && (
               <div className="grid grid-cols-2 gap-6">
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Service Type</label><select className={inputStyle}><option value="">Select Service Type</option><option value="Horoscope">Horoscope</option><option value="Kundali">Kundali</option><option value="Palm Reading">Palm Reading</option><option value="Vastu">Vastu</option><option value="Other">Other</option></select></div>
-                <div><label className="text-sm font-medium text-gray-700">Experience</label><input placeholder="15 years" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Consultation Fee</label><input placeholder="₹500" className={inputStyle} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Service Type</label><select value={astrologyServiceType} onChange={(e) => setAstrologyServiceType(e.target.value)} className={inputStyle}><option value="">Select Service Type</option><option value="Horoscope">Horoscope</option><option value="Kundali">Kundali</option><option value="Palm Reading">Palm Reading</option><option value="Vastu">Vastu</option><option value="Other">Other</option></select></div>
+                <div><label className="text-sm font-medium text-gray-700">Experience</label><input value={astrologyExperience} onChange={(e) => setAstrologyExperience(e.target.value)} placeholder="15 years" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Consultation Fee</label><input value={astrologyConsultationFee} onChange={(e) => setAstrologyConsultationFee(e.target.value)} placeholder="₹500" className={inputStyle} /></div>
                 <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Consultation Mode</label><div className="flex gap-4"><button type="button" className={`px-6 py-2 rounded-full text-sm font-medium ${consultationMode === "Online" ? "bg-[#157A4F] text-white shadow-md" : "bg-[#FFF3D6] text-gray-700 hover:bg-[#F5B849] hover:text-white"}`} onClick={() => setConsultationMode("Online")}>Online</button><button type="button" className={`px-6 py-2 rounded-full text-sm font-medium ${consultationMode === "Offline" ? "bg-[#157A4F] text-white shadow-md" : "bg-[#FFF3D6] text-gray-700 hover:bg-[#F5B849] hover:text-white"}`} onClick={() => setConsultationMode("Offline")}>Offline</button><button type="button" className={`px-6 py-2 rounded-full text-sm font-medium ${consultationMode === "Both" ? "bg-[#157A4F] text-white shadow-md" : "bg-[#FFF3D6] text-gray-700 hover:bg-[#F5B849] hover:text-white"}`} onClick={() => setConsultationMode("Both")}>Both</button></div></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Languages Spoken</label><input placeholder="Hindi, English, Marathi" className={inputStyle} /></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Availability Time</label><input placeholder="Monday-Friday: 10 AM - 6 PM" className={inputStyle} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Languages Spoken</label><input value={astrologyLanguagesSpoken} onChange={(e) => setAstrologyLanguagesSpoken(e.target.value)} placeholder="Hindi, English, Marathi" className={inputStyle} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Availability Time</label><input value={astrologyAvailabilityTime} onChange={(e) => setAstrologyAvailabilityTime(e.target.value)} placeholder="Monday-Friday: 10 AM - 6 PM" className={inputStyle} /></div>
               </div>
             )}
 
             {selectedCategory.name === "Property" && selectedSub === "Rent" && (
               <div className="grid grid-cols-2 gap-6">
                 <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Property Type</label><select value={propertyTypeRent} onChange={(e) => setPropertyTypeRent(e.target.value)} className={inputStyle}><option value="">Select Property Type</option><option value="Commercial">Commercial</option><option value="Plot">Plot</option><option value="Residential">Residential</option><option value="Office">Office</option></select></div>
-                <div><label className="text-sm font-medium text-gray-700">Monthly Rent</label><input placeholder="₹25,000" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Security Deposit</label><input placeholder="₹75,000" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Maintenance Cost Per Month</label><input placeholder="₹2,000" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Monthly Rent</label><input value={monthlyRent} onChange={(e) => setMonthlyRent(e.target.value)} placeholder="₹25,000" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Security Deposit</label><input value={securityDeposit} onChange={(e) => setSecurityDeposit(e.target.value)} placeholder="₹75,000" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Maintenance Cost Per Month</label><input value={maintenanceCost} onChange={(e) => setMaintenanceCost(e.target.value)} placeholder="₹2,000" className={inputStyle} /></div>
                 <div><label className="text-sm font-medium text-gray-700">Available From</label><div className="relative"><input type="text" placeholder="Click to select date" readOnly className={inputStyle + " cursor-pointer"} value={availableFromDate ? formatDate(availableFromDate) : ""} onClick={() => setOpenCalendar(openCalendar === "availableFrom" ? null : "availableFrom")} />{openCalendar === "availableFrom" && (<div className="absolute top-14 left-0 bg-[#FFF3D6] p-4 rounded-2xl border border-gray-200 shadow-xl z-20"><DayPicker mode="single" selected={availableFromDate} onSelect={(date) => { setAvailableFromDate(date); setOpenCalendar(null); }} month={calendarDateMonth} onMonthChange={setCalendarDateMonth} fromDate={new Date()} /></div>)}</div></div>
                 <div><label className="text-sm font-medium text-gray-700">Preferred Tenant</label><select value={preferredTenant} onChange={(e) => setPreferredTenant(e.target.value)} className={inputStyle}><option value="">Select Tenant Type</option><option value="Family">Family</option><option value="Bachelor">Bachelor</option><option value="Company">Company</option></select></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Lease Duration</label><input placeholder="6 months or 1 year" className={inputStyle} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Lease Duration</label><input value={leaseDuration} onChange={(e) => setLeaseDuration(e.target.value)} placeholder="6 months or 1 year" className={inputStyle} /></div>
               </div>
             )}
 
@@ -1160,14 +1306,14 @@ export default function PostAdForm({
               <div className="grid grid-cols-2 gap-6">
                 <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Property Type</label><select value={propertyTypeSell} onChange={(e) => setPropertyTypeSell(e.target.value)} className={inputStyle}><option value="">Select Property Type</option><option value="Apartment">Apartment</option><option value="House">House</option><option value="Plot">Plot</option><option value="Commercial">Commercial</option></select></div>
                 <div><label className="text-sm font-medium text-gray-700">BHK</label><input placeholder="2 BHK" value={bhk} onChange={(e) => setBhk(e.target.value)} className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Built-up Area</label><input placeholder="1200 sq.ft" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Built-up Area</label><input value={builtUpArea} onChange={(e) => setBuiltUpArea(e.target.value)} placeholder="1200 sq.ft" className={inputStyle} /></div>
                 <div><label className="text-sm font-medium text-gray-700">Furnishing</label><select value={furnishing} onChange={(e) => setFurnishing(e.target.value)} className={inputStyle}><option value="">Select Furnishing</option><option value="Furnished">Furnished</option><option value="Semi-Furnished">Semi-Furnished</option><option value="Unfurnished">Unfurnished</option></select></div>
-                <div><label className="text-sm font-medium text-gray-700">Bathrooms</label><input placeholder="2" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Bathrooms</label><input value={bathrooms} onChange={(e) => setBathrooms(e.target.value)} placeholder="2" className={inputStyle} /></div>
                 <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Parking Available</label><div className="flex gap-4"><button type="button" className={`px-6 py-2 rounded-full text-sm font-medium ${parkingAvailable === "Yes" ? "bg-[#157A4F] text-white shadow-md" : "bg-[#FFF3D6] text-gray-700"}`} onClick={() => setParkingAvailable("Yes")}>Yes</button><button type="button" className={`px-6 py-2 rounded-full text-sm font-medium ${parkingAvailable === "No" ? "bg-[#157A4F] text-white shadow-md" : "bg-[#FFF3D6] text-gray-700"}`} onClick={() => setParkingAvailable("No")}>No</button></div></div>
-                <div><label className="text-sm font-medium text-gray-700">Floor</label><input placeholder="3rd Floor" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Property Age</label><input placeholder="5 years" className={inputStyle} /></div>
-                <div><label className="text-sm font-medium text-gray-700">Facing Side</label><input placeholder="North, East, South, West" className={inputStyle} /></div>
-                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Asking Price</label><input placeholder="₹40,00,000" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Floor</label><input value={floor} onChange={(e) => setFloor(e.target.value)} placeholder="3rd Floor" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Property Age</label><input value={age} onChange={(e) => setAge(e.target.value)} placeholder="5 years" className={inputStyle} /></div>
+                <div><label className="text-sm font-medium text-gray-700">Facing Side</label><input value={facingSide} onChange={(e) => setFacingSide(e.target.value)} placeholder="North, East, South, West" className={inputStyle} /></div>
+                <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Asking Price</label><input value={askingPrice} onChange={(e) => setAskingPrice(e.target.value)} placeholder="₹40,00,000" className={inputStyle} /></div>
               </div>
             )}
 
@@ -1260,7 +1406,7 @@ export default function PostAdForm({
               </div>
             )}
 
-            {selectedCategory.name === "Electronics" && (
+            {(selectedCategory.name === "Electronics" || selectedCategory.name === "Electronics & Home appliances") && (
               <div className="grid grid-cols-2 gap-6">
                 <div><label className="text-sm font-medium text-gray-700">Appliance Name</label><input value={electronicAppliance} onChange={(e) => setElectronicAppliance(e.target.value)} placeholder="e.g. Washing Machine" className={inputStyle} /></div>
                 <div><label className="text-sm font-medium text-gray-700">Brand</label><input value={electronicBrand} onChange={(e) => setElectronicBrand(e.target.value)} placeholder="Brand" className={inputStyle} /></div>

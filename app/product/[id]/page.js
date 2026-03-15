@@ -19,6 +19,7 @@ import {
   Flag,
 } from "lucide-react";
 import ReportModal from "@/app/components/ReportModal";
+import AuthRequiredModal from "@/app/components/AuthRequiredModal";
 
 export default function ProductDetails({ params }) {
   const resolvedParams = use(params);
@@ -33,7 +34,8 @@ export default function ProductDetails({ params }) {
   const [isTogglingWishlist, setIsTogglingWishlist] = useState(false);
   const [wishlistCount, setWishlistCount] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
-  const { isAuthenticated } = useAuth();
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+  const { isAuthenticated, loading: authLoading } = useAuth();
 
   const getSafeImageSrc = (value) => {
     if (!value || typeof value !== "string") return "/images/placeholder.webp";
@@ -47,6 +49,15 @@ export default function ProductDetails({ params }) {
   useEffect(() => {
     async function fetchAd() {
       if (!adId) return;
+
+      if (authLoading) return;
+
+      if (!isAuthenticated) {
+        setShowAuthPrompt(true);
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       try {
         const response = await getAdById(adId);
@@ -62,14 +73,19 @@ export default function ProductDetails({ params }) {
           setError("Ad not found");
         }
       } catch (err) {
-        console.error('[Product Page] Error loading ad:', err);
-        setError("Failed to load ad details");
+        if (err?.status === 401) {
+          setShowAuthPrompt(true);
+          setError("");
+        } else {
+          console.error('[Product Page] Error loading ad:', err);
+          setError("Failed to load ad details");
+        }
       } finally {
         setLoading(false);
       }
     }
     fetchAd();
-  }, [adId]);
+  }, [adId, isAuthenticated, authLoading]);
 
   // Fetch public wishlist count — must use ad.adId (UUID), NOT the URL param which may be a MongoDB _id
   useEffect(() => {
@@ -207,6 +223,18 @@ export default function ProductDetails({ params }) {
     return String(value);
   };
 
+  const parseNumericValue = (value) => {
+    if (value === null || value === undefined || value === "") return null;
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+      const normalized = value.replace(/[^0-9.]/g, "");
+      if (!normalized) return null;
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  };
+
   const hasDisplayValue = (value) => {
     if (value === null || value === undefined) return false;
     if (typeof value === "string") return value.trim().length > 0;
@@ -222,29 +250,57 @@ export default function ProductDetails({ params }) {
     ["Category", ad?.category],
   ].filter(([, value]) => hasDisplayValue(value));
 
-  const categoryDataSource =
-    ad?.categorySpecificData ||
-    ad?.educationData ||
-    ad?.matrimonialData ||
-    ad?.vehicleData ||
-    ad?.businessData ||
-    ad?.travelData ||
-    ad?.astrologyData ||
-    ad?.propertyData ||
-    ad?.publicNoticeData ||
-    ad?.lostFoundData ||
-    ad?.serviceData ||
-    ad?.personalData ||
-    ad?.employmentData ||
-    ad?.petsData ||
-    ad?.mobileData ||
-    ad?.electronicsData ||
-    ad?.furnitureData ||
-    ad?.greetingsData ||
-    ad?.otherData ||
-    null;
+  const categoryDataSource = [
+    ad?.categorySpecificData,
+    ad?.educationData,
+    ad?.matrimonialData,
+    ad?.vehicleData,
+    ad?.businessData,
+    ad?.travelData,
+    ad?.astrologyData,
+    ad?.propertyData,
+    ad?.publicNoticeData,
+    ad?.lostFoundData,
+    ad?.serviceData,
+    ad?.personalData,
+    ad?.employmentData,
+    ad?.petsData,
+    ad?.mobileData,
+    ad?.electronicsData,
+    ad?.furnitureData,
+    ad?.greetingsData,
+    ad?.otherData,
+  ].reduce((acc, item) => {
+    if (item && typeof item === "object" && !Array.isArray(item)) {
+      return { ...acc, ...item };
+    }
+    return acc;
+  }, {});
 
-  const categorySpecificEntries = categoryDataSource
+  const resolvedDisplayPrice = (() => {
+    const candidates = [
+      ad?.price,
+      categoryDataSource?.price,
+      categoryDataSource?.rent,
+      categoryDataSource?.askingPrice,
+      categoryDataSource?.rentAmount,
+      categoryDataSource?.fees,
+      categoryDataSource?.pricePerPerson,
+      categoryDataSource?.consultationFee,
+      categoryDataSource?.reward,
+      categoryDataSource?.salary,
+      categoryDataSource?.charges,
+    ];
+
+    for (const candidate of candidates) {
+      const parsed = parseNumericValue(candidate);
+      if (parsed !== null && parsed > 0) return parsed;
+    }
+
+    return null;
+  })();
+
+  const categorySpecificEntries = Object.keys(categoryDataSource).length > 0
     ? Object.entries(categoryDataSource).filter(
       ([key, value]) => !["_id", "__v"].includes(key) && hasDisplayValue(value)
     )
@@ -261,6 +317,23 @@ export default function ProductDetails({ params }) {
           </div>
         </div>
         <Footer />
+      </>
+    );
+  }
+
+  if (!authLoading && !isAuthenticated) {
+    return (
+      <>
+        <Navbar />
+        <div className="bg-[#F8F6F2] min-h-screen" />
+        <Footer />
+        <AuthRequiredModal
+          isOpen={showAuthPrompt}
+          onClose={() => setShowAuthPrompt(false)}
+          title="Login or Register"
+          description="Please log in or create an account to view ad details."
+          redirectTo={`/product/${adId}`}
+        />
       </>
     );
   }
@@ -498,18 +571,22 @@ export default function ProductDetails({ params }) {
                 {/* Price Card */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
                   <div className="flex justify-between items-center">
-                    <p className="text-gray-500 font-medium">
-                      {ad?.negotiable ? "Negotiable Price" : "Final Price"}
-                    </p>
+                    {resolvedDisplayPrice !== null ? (
+                      <p className="text-gray-500 font-medium">
+                        {ad?.negotiable ? "Negotiable Price" : "Final Price"}
+                      </p>
+                    ) : <span />}
                     <div className="flex items-center gap-1 text-sm text-gray-600">
                       <Star size={14} className="text-[#F5B849] fill-[#F5B849]" />
                       {ad?.viewHistory?.length ?? ad?.views ?? 0}
                     </div>
                   </div>
 
-                  <h2 className="text-3xl font-bold mt-3 text-[#157A4F]">
-                    ₹{ad?.price?.toLocaleString() || "0"}
-                  </h2>
+                  {resolvedDisplayPrice !== null && (
+                    <h2 className="text-3xl font-bold mt-3 text-[#157A4F]">
+                      ₹{resolvedDisplayPrice.toLocaleString("en-IN")}
+                    </h2>
+                  )}
 
                   <button
                     onClick={() => router.push(`/chats?adId=${ad?.adId || ad?._id || adId}&sellerId=${ad?.userId || ''}`)}

@@ -101,6 +101,16 @@ export default function FormSidebar({
       };
 
       const normalizedPhone = normalizePhone(primaryContact);
+      const resolvedPrice =
+        Number(
+          categoryDetails?.price ??
+          categoryDetails?.rent ??
+          categoryDetails?.askingPrice ??
+          categoryDetails?.rentAmount ??
+          mobilePrice ??
+          monthlyRent ??
+          0,
+        ) || 0;
 
       // 1) First upload all files to Cloudinary
       const uploadedUrls = [];
@@ -137,6 +147,7 @@ export default function FormSidebar({
         description: adDescriptionState.trim(),
         category: normalizedCategory,
         subCategory:
+          categoryDetails?.subCategory ||
           categoryDetails?.listingType ||
           categoryDetails?.type ||
           categoryDetails?.tributeType ||
@@ -145,7 +156,7 @@ export default function FormSidebar({
             : (selectedCategory?.subCategory || rawCategoryName || "General")),
         // Swap out dummy logic with our permanently uploaded Cloudinary URLs
         images: uploadedUrls,
-        price: parseFloat(mobilePrice || monthlyRent || "0") || 0,
+        price: resolvedPrice,
         location: cities?.[0] || "India",
         city: cities?.[0] || "",
         cities: cities || [],
@@ -159,6 +170,7 @@ export default function FormSidebar({
         },
         templateId: templateId || 1,
         selectedDates: selectedDates || [],
+        negotiable: Boolean(categoryDetails?.negotiable),
         tags: [typeof selectedCategory === 'string' ? selectedCategory : selectedCategory?.name].filter(Boolean),
       };
 

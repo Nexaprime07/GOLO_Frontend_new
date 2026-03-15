@@ -2,9 +2,11 @@
 
 import Image from "next/image";
 import { useEffect, useState, useMemo, Suspense } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { getAllAds, searchAds } from "../lib/api";
+import { useAuth } from "../context/AuthContext";
+import AuthRequiredModal from "./AuthRequiredModal";
 
 const SORT_OPTIONS = [
     { label: "Newest First", value: "createdAt_desc" },
@@ -47,13 +49,41 @@ function assignBentoLayout(adsList) {
     });
 }
 
+    function getDisplayPrice(ad) {
+        const candidates = [
+            ad?.price,
+            ad?.categorySpecificData?.price,
+            ad?.categorySpecificData?.rent,
+            ad?.categorySpecificData?.askingPrice,
+            ad?.categorySpecificData?.rentAmount,
+            ad?.categorySpecificData?.fees,
+            ad?.categorySpecificData?.pricePerPerson,
+            ad?.categorySpecificData?.consultationFee,
+            ad?.categorySpecificData?.charges,
+        ];
+
+        for (const value of candidates) {
+            if (typeof value === "number" && Number.isFinite(value) && value > 0) return value;
+            if (typeof value === "string") {
+                const normalized = value.replace(/[^0-9.]/g, "");
+                const parsed = Number(normalized);
+                if (Number.isFinite(parsed) && parsed > 0) return parsed;
+            }
+        }
+
+        return null;
+    }
+
 function RecentListingsContent() {
     const searchParams = useSearchParams();
+    const pathname = usePathname();
     const [ads, setAds] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [sortValue, setSortValue] = useState("createdAt_desc");
     const [userLocation, setUserLocation] = useState(null);
+    const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+    const { isAuthenticated } = useAuth();
 
     const q = searchParams.get("q") || "";
     const category = searchParams.get("category") || "";
@@ -115,7 +145,7 @@ function RecentListingsContent() {
             }
         }
         fetchAds();
-    }, [q, category, sortValue, userLocation]);
+    }, [q, category, location, sortValue, userLocation]);
 
     const layoutAds = assignBentoLayout(ads);
 
@@ -129,6 +159,7 @@ function RecentListingsContent() {
                         ? `${ads.length} ad${ads.length !== 1 ? "s" : ""}`
                         : "No ads found"}
                     {q && <span> for &quot;{q}&quot;</span>}
+                    {location && <span>{q ? " in " : " for "}&quot;{location}&quot;</span>}
                 </p>
                 <div className="flex items-center gap-2">
                     <label className="text-xs text-gray-400 font-semibold">Sort:</label>
@@ -178,16 +209,24 @@ function RecentListingsContent() {
                         {layoutAds.map((ad, index) => {
                             const cls = `${ad.col} ${ad.row}`;
                             if (ad.type === "big") {
-                                return <MultiImageAd key={ad._id || ad.adId || index} ad={ad} className={cls} />;
+                                return <MultiImageAd key={ad._id || ad.adId || index} ad={ad} className={cls} isAuthenticated={isAuthenticated} onRequireAuth={() => setShowAuthPrompt(true)} />;
                             } else if (ad.type === "small") {
-                                return <SingleImageAd key={ad._id || ad.adId || index} ad={ad} className={cls} />;
+                                return <SingleImageAd key={ad._id || ad.adId || index} ad={ad} className={cls} isAuthenticated={isAuthenticated} onRequireAuth={() => setShowAuthPrompt(true)} />;
                             } else {
-                                return <TextAd key={ad._id || ad.adId || index} ad={ad} className={cls} />;
+                                return <TextAd key={ad._id || ad.adId || index} ad={ad} className={cls} isAuthenticated={isAuthenticated} onRequireAuth={() => setShowAuthPrompt(true)} />;
                             }
                         })}
                     </div>
                 </div>
             )}
+
+            <AuthRequiredModal
+                isOpen={showAuthPrompt}
+                onClose={() => setShowAuthPrompt(false)}
+                title="Login or Register"
+                description="Please log in or create an account to open listings, chat, or contact sellers from the home page."
+                redirectTo={pathname || "/"}
+            />
         </section>
     );
 }
@@ -214,7 +253,7 @@ export default function RecentListings() {
     );
 }
 
-function MultiImageAd({ ad, className }) {
+function MultiImageAd({ ad, className, isAuthenticated, onRequireAuth }) {
     const router = useRouter();
     const images = ad.images && ad.images.length > 0
         ? ad.images.map(getSafeImageSrc)
@@ -230,7 +269,13 @@ function MultiImageAd({ ad, className }) {
 
     return (
         <div
-            onClick={() => router.push(`/product/${ad._id || ad.adId}`)}
+            onClick={() => {
+                if (!isAuthenticated) {
+                    onRequireAuth();
+                    return;
+                }
+                router.push(`/product/${ad._id || ad.adId}`);
+            }}
             className={`relative rounded-3xl overflow-hidden group cursor-pointer shadow-sm hover:shadow-2xl transition ${className}`}
         >
             {images.map((img, index) => (
@@ -251,11 +296,17 @@ function MultiImageAd({ ad, className }) {
             <div className="absolute bottom-0 p-8 text-white w-full">
                 <h2 className="text-2xl font-bold leading-snug">{ad.title}</h2>
                 <p className="mt-2 text-sm opacity-90">{ad.description}</p>
-                <p className="mt-4 text-2xl font-bold text-yellow-400">₹{ad.price?.toLocaleString() || "0"}</p>
+                {getDisplayPrice(ad) !== null && (
+                    <p className="mt-4 text-2xl font-bold text-yellow-400">₹{getDisplayPrice(ad).toLocaleString("en-IN")}</p>
+                )}
                 <div className="flex gap-3 mt-4">
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
+                            if (!isAuthenticated) {
+                                onRequireAuth();
+                                return;
+                            }
                             router.push(`/chats?adId=${ad.adId || ad._id}&sellerId=${ad.userId || ''}`);
                         }}
                         className="px-4 py-2 text-sm rounded-xl theme-button-accent"
@@ -265,6 +316,10 @@ function MultiImageAd({ ad, className }) {
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
+                            if (!isAuthenticated) {
+                                onRequireAuth();
+                                return;
+                            }
                             router.push(`/chats?adId=${ad.adId || ad._id}&sellerId=${ad.userId || ''}&autoCall=1`);
                         }}
                         className="px-4 py-2 text-sm rounded-xl theme-button-primary"
@@ -287,13 +342,19 @@ function MultiImageAd({ ad, className }) {
     );
 }
 
-function SingleImageAd({ ad, className }) {
+function SingleImageAd({ ad, className, isAuthenticated, onRequireAuth }) {
     const router = useRouter();
     const image = ad.images && ad.images[0] ? getSafeImageSrc(ad.images[0]) : "/images/placeholder.webp";
 
     return (
         <div
-            onClick={() => router.push(`/product/${ad._id || ad.adId}`)}
+            onClick={() => {
+                if (!isAuthenticated) {
+                    onRequireAuth();
+                    return;
+                }
+                router.push(`/product/${ad._id || ad.adId}`);
+            }}
             className={`relative rounded-3xl overflow-hidden group cursor-pointer shadow-sm hover:shadow-xl transition ${className}`}
         >
             <Image
@@ -309,11 +370,17 @@ function SingleImageAd({ ad, className }) {
 
             <div className="absolute bottom-0 p-4 text-white w-full">
                 <h3 className="text-sm font-semibold">{ad.title}</h3>
-                <p className="text-lg font-bold text-yellow-400 mt-1">₹{ad.price?.toLocaleString() || "0"}</p>
+                {getDisplayPrice(ad) !== null && (
+                    <p className="text-lg font-bold text-yellow-400 mt-1">₹{getDisplayPrice(ad).toLocaleString("en-IN")}</p>
+                )}
                 <div className="flex gap-2 mt-3">
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
+                            if (!isAuthenticated) {
+                                onRequireAuth();
+                                return;
+                            }
                             router.push(`/chats?adId=${ad.adId || ad._id}&sellerId=${ad.userId || ''}`);
                         }}
                         className="flex-1 py-2 text-xs rounded-lg theme-button-accent"
@@ -323,6 +390,10 @@ function SingleImageAd({ ad, className }) {
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
+                            if (!isAuthenticated) {
+                                onRequireAuth();
+                                return;
+                            }
                             router.push(`/chats?adId=${ad.adId || ad._id}&sellerId=${ad.userId || ''}&autoCall=1`);
                         }}
                         className="flex-1 py-2 text-xs rounded-lg theme-button-primary"
@@ -335,23 +406,35 @@ function SingleImageAd({ ad, className }) {
     );
 }
 
-function TextAd({ ad, className }) {
+function TextAd({ ad, className, isAuthenticated, onRequireAuth }) {
     const router = useRouter();
 
     return (
         <div
-            onClick={() => router.push(`/product/${ad._id || ad.adId}`)}
+            onClick={() => {
+                if (!isAuthenticated) {
+                    onRequireAuth();
+                    return;
+                }
+                router.push(`/product/${ad._id || ad.adId}`);
+            }}
             className={`bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl transition cursor-pointer flex flex-col justify-between ${className}`}
         >
             <div>
                 <span className="text-xs uppercase tracking-wide text-gray-400">{ad.category || "Category"}</span>
                 <h3 className="mt-3 font-semibold text-gray-900 leading-snug">{ad.title}</h3>
-                <p className="mt-2 text-lg font-bold text-[var(--accent-500)]">₹{ad.price?.toLocaleString() || "0"}</p>
+                {getDisplayPrice(ad) !== null && (
+                    <p className="mt-2 text-lg font-bold text-[var(--accent-500)]">₹{getDisplayPrice(ad).toLocaleString("en-IN")}</p>
+                )}
             </div>
             <div className="flex gap-2 mt-4">
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
+                        if (!isAuthenticated) {
+                            onRequireAuth();
+                            return;
+                        }
                         router.push(`/chats?adId=${ad.adId || ad._id}&sellerId=${ad.userId || ''}`);
                     }}
                     className="flex-1 py-2 text-xs rounded-lg theme-button-accent"
@@ -361,6 +444,10 @@ function TextAd({ ad, className }) {
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
+                        if (!isAuthenticated) {
+                            onRequireAuth();
+                            return;
+                        }
                         router.push(`/chats?adId=${ad.adId || ad._id}&sellerId=${ad.userId || ''}&autoCall=1`);
                     }}
                     className="flex-1 py-2 text-xs rounded-lg theme-button-primary"

@@ -12,6 +12,31 @@ const fallbackDeals = [
   { title: "Weekend Getaway", img: "deal4.jpg", discount: "Up to 40% OFF" },
 ];
 
+function getDisplayPrice(ad) {
+  const candidates = [
+    ad?.price,
+    ad?.categorySpecificData?.price,
+    ad?.categorySpecificData?.rent,
+    ad?.categorySpecificData?.askingPrice,
+    ad?.categorySpecificData?.rentAmount,
+    ad?.categorySpecificData?.fees,
+    ad?.categorySpecificData?.pricePerPerson,
+    ad?.categorySpecificData?.consultationFee,
+    ad?.categorySpecificData?.charges,
+  ];
+
+  for (const value of candidates) {
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value;
+    if (typeof value === 'string') {
+      const normalized = value.replace(/[^0-9.]/g, '');
+      const parsed = Number(normalized);
+      if (Number.isFinite(parsed) && parsed > 0) return parsed;
+    }
+  }
+
+  return 0;
+}
+
 export default function Recommended() {
   const router = useRouter();
   const [deals, setDeals] = useState(fallbackDeals);
@@ -26,7 +51,7 @@ export default function Recommended() {
               id: ad.adId || ad._id,
               title: ad.title,
               img: ad.images?.[0] || "deal1.jpg",
-              discount: ad.negotiable ? "Negotiable" : `₹${ad.price}`,
+              discount: ad.negotiable ? "Negotiable" : `₹${getDisplayPrice(ad)}`,
               description: ad.description,
               isFromApi: true,
             }))
