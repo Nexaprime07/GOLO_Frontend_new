@@ -91,6 +91,31 @@ function getSafeImageSrc(value) {
     return "/images/placeholder.webp";
 }
 
+function getDisplayPrice(ad) {
+    const candidates = [
+        ad?.price,
+        ad?.categorySpecificData?.price,
+        ad?.categorySpecificData?.rent,
+        ad?.categorySpecificData?.askingPrice,
+        ad?.categorySpecificData?.rentAmount,
+        ad?.categorySpecificData?.fees,
+        ad?.categorySpecificData?.pricePerPerson,
+        ad?.categorySpecificData?.consultationFee,
+        ad?.categorySpecificData?.charges,
+    ];
+
+    for (const value of candidates) {
+        if (typeof value === "number" && Number.isFinite(value) && value > 0) return value;
+        if (typeof value === "string") {
+            const normalized = value.replace(/[^0-9.]/g, "");
+            const parsed = Number(normalized);
+            if (Number.isFinite(parsed) && parsed > 0) return parsed;
+        }
+    }
+
+    return null;
+}
+
 function CategoryPageContent() {
     const params = useParams();
     const searchParams = useSearchParams();
@@ -308,6 +333,7 @@ export default function CategoryPage() {
 
 function MultiImageAd({ ad, className }) {
     const router = useRouter();
+    const displayPrice = getDisplayPrice(ad);
     const images = ad.images && ad.images.length > 0
         ? ad.images.map(getSafeImageSrc)
         : ["/images/placeholder.webp", "/images/placeholder.webp", "/images/placeholder.webp"];
@@ -342,7 +368,9 @@ function MultiImageAd({ ad, className }) {
             <div className="absolute bottom-0 p-8 text-white w-full">
                 <h2 className="text-2xl font-bold leading-snug">{ad.title}</h2>
                 <p className="mt-2 text-sm opacity-90">{ad.description}</p>
-                <p className="mt-4 text-2xl font-bold text-yellow-400">{ad.price}</p>
+                {displayPrice !== null && (
+                    <p className="mt-4 text-2xl font-bold text-yellow-400">₹{displayPrice.toLocaleString("en-IN")}</p>
+                )}
                 <div className="flex gap-3 mt-4">
                     <button
                         onClick={(e) => {
@@ -377,6 +405,7 @@ function MultiImageAd({ ad, className }) {
 
 function SingleImageAd({ ad, className }) {
     const router = useRouter();
+    const displayPrice = getDisplayPrice(ad);
     const image = ad.images && ad.images[0] ? getSafeImageSrc(ad.images[0]) : "/images/placeholder.webp";
 
     return (
@@ -396,7 +425,9 @@ function SingleImageAd({ ad, className }) {
 
             <div className="absolute bottom-0 p-4 text-white w-full">
                 <h3 className="text-sm font-semibold">{ad.title}</h3>
-                <p className="text-lg font-bold text-yellow-400 mt-1">{ad.price}</p>
+                {displayPrice !== null && (
+                    <p className="text-lg font-bold text-yellow-400 mt-1">₹{displayPrice.toLocaleString("en-IN")}</p>
+                )}
                 <div className="flex gap-2 mt-3">
                     <button
                         onClick={(e) => {
@@ -421,6 +452,7 @@ function SingleImageAd({ ad, className }) {
 
 function TextAd({ ad, className }) {
     const router = useRouter();
+    const displayPrice = getDisplayPrice(ad);
 
     return (
         <div
@@ -430,7 +462,9 @@ function TextAd({ ad, className }) {
             <div>
                 <span className="text-xs uppercase tracking-wide text-gray-400">Sponsored</span>
                 <h3 className="mt-3 font-semibold text-gray-900 leading-snug">{ad.title}</h3>
-                <p className="mt-2 text-lg font-bold text-[var(--accent-500)]">{ad.price}</p>
+                {displayPrice !== null && (
+                    <p className="mt-2 text-lg font-bold text-[var(--accent-500)]">₹{displayPrice.toLocaleString("en-IN")}</p>
+                )}
             </div>
             <div className="flex gap-2 mt-4">
                 <button
