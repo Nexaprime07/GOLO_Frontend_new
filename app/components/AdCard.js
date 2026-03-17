@@ -48,9 +48,10 @@ function getDisplayPrice(ad) {
   return null;
 }
 
-export default function AdCard({ ad, onDelete }) {
+export default function AdCard({ ad, onDelete, onEdit }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   if (!ad) return null;
 
@@ -63,6 +64,7 @@ export default function AdCard({ ad, onDelete }) {
     ? images[0]
     : null;
   const displayPrice = getDisplayPrice(ad);
+  const editUsed = Boolean(ad?.hasUsedEdit) || Number(ad?.editCount || 0) >= 1;
 
   const formattedDate = createdAt
     ? new Date(createdAt).toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" })
@@ -70,7 +72,6 @@ export default function AdCard({ ad, onDelete }) {
 
   const handleDelete = async () => {
     if (!apiId) return;
-    if (!confirm("Are you sure you want to delete this ad?")) return;
     setIsDeleting(true);
     try {
       await deleteAd(apiId);
@@ -200,7 +201,27 @@ export default function AdCard({ ad, onDelete }) {
           </Link>
 
           <button
-            onClick={handleDelete}
+            onClick={() => onEdit && onEdit(ad)}
+            disabled={editUsed || !onEdit}
+            style={{
+              flex: 1,
+              padding: "8px 0",
+              borderRadius: "10px",
+              border: `1.5px solid ${editUsed ? "#9ca3af" : "#2563eb"}`,
+              background: "transparent",
+              color: editUsed ? "#9ca3af" : "#2563eb",
+              fontWeight: 600,
+              fontSize: "13px",
+              cursor: editUsed ? "not-allowed" : "pointer",
+              opacity: editUsed ? 0.8 : 1,
+            }}
+            title={editUsed ? "Edit limit reached (1/1 used)" : "Edit ad (1 edit allowed)"}
+          >
+            {editUsed ? "✏️ Used" : "✏️ Edit"}
+          </button>
+
+          <button
+            onClick={() => setDeleteConfirm(true)}
             disabled={isDeleting}
             style={{
               flex: 1, padding: "8px 0", borderRadius: "10px",
@@ -214,6 +235,58 @@ export default function AdCard({ ad, onDelete }) {
           </button>
         </div>
       </div>
+
+      {/* Delete confirmation modal */}
+      {deleteConfirm && (
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 9999,
+            background: "rgba(0,0,0,0.45)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+          onClick={() => setDeleteConfirm(false)}
+        >
+          <div
+            style={{
+              background: "#fff", borderRadius: "20px",
+              padding: "36px 32px", maxWidth: "400px", width: "90%",
+              boxShadow: "0 8px 40px rgba(0,0,0,0.18)",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: "16px",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: "44px", lineHeight: 1 }}>🗑️</div>
+            <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#111827", margin: 0, textAlign: "center" }}>
+              Delete Ad?
+            </h2>
+            <p style={{ fontSize: "14px", color: "#6b7280", margin: 0, textAlign: "center", lineHeight: 1.6 }}>
+              Are you sure you want to delete this ad? This action cannot be undone.
+            </p>
+            <div style={{ display: "flex", gap: "12px", marginTop: "8px", width: "100%" }}>
+              <button
+                onClick={() => setDeleteConfirm(false)}
+                style={{
+                  flex: 1, padding: "10px 0", borderRadius: "12px",
+                  border: "1.5px solid #d1d5db", background: "#f9fafb",
+                  color: "#374151", fontWeight: 600, fontSize: "14px", cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => { setDeleteConfirm(false); await handleDelete(); }}
+                style={{
+                  flex: 1, padding: "10px 0", borderRadius: "12px",
+                  border: "none", background: "#ef4444",
+                  color: "#fff", fontWeight: 700, fontSize: "14px", cursor: "pointer",
+                }}
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

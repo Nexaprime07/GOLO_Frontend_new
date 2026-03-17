@@ -198,6 +198,23 @@ export async function getWishlistAds() {
 }
 
 // ============================================================
+// NOTIFICATION APIs
+// ============================================================
+
+export async function getNotifications({ page = 1, limit = 20 } = {}) {
+    const params = new URLSearchParams({ page, limit });
+    return apiClient(`/users/notifications?${params}`);
+}
+
+export async function markNotificationRead(notificationId) {
+    return apiClient(`/users/notifications/${notificationId}/read`, { method: 'POST' });
+}
+
+export async function markAllNotificationsRead() {
+    return apiClient('/users/notifications/read-all', { method: 'POST' });
+}
+
+// ============================================================
 // ADS — PUBLIC APIs (no auth required)
 // ============================================================
 

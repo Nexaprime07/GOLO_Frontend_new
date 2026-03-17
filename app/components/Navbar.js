@@ -1,10 +1,11 @@
 "use client";
 import Link from "next/link";
 import { useState, useRef, useEffect, Suspense } from "react";
-import { Search, MapPin, User, X, LogOut, ChevronDown, Shield, ShieldCheck, FileText } from "lucide-react";
+import { Search, MapPin, User, X, LogOut, ChevronDown, Shield, ShieldCheck, FileText, Bell } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
 import AuthRequiredModal from "./AuthRequiredModal";
+import { getNotifications, markNotificationRead, markAllNotificationsRead } from "../lib/api";
 
 function NavbarContent({
   searchQuery: externalSearchQuery = "",
@@ -38,9 +39,13 @@ function NavbarContent({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const dropdownRef = useRef(null);
   const profileRef = useRef(null);
+  const notifRef = useRef(null);
   const router = useRouter();
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuth();
@@ -66,12 +71,69 @@ function NavbarContent({
       ) {
         setShowProfileMenu(false);
       }
+
+      if (
+        notifRef.current &&
+        !notifRef.current.contains(event.target)
+      ) {
+        setShowNotifications(false);
+      }
     }
 
     document.addEventListener("mousedown", handleClickOutside);
     return () =>
       document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Fetch notifications for authenticated users
+  const fetchNotifications = async () => {
+    if (!isAuthenticated) return;
+    try {
+      const res = await getNotifications({ limit: 15 });
+      if (res?.success) {
+        setNotifications(res.data?.notifications || []);
+        setUnreadCount(res.data?.unreadCount || 0);
+      }
+    } catch {
+      // fail silently
+    }
+  };
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
+  const handleNotifBellClick = () => {
+    setShowNotifications((prev) => !prev);
+    setShowProfileMenu(false);
+  };
+
+  const handleMarkRead = async (id) => {
+    try {
+      await markNotificationRead(id);
+      setNotifications((prev) => prev.map((n) => n._id === id ? { ...n, read: true } : n));
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch {
+      // fail silently
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllNotificationsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setUnreadCount(0);
+    } catch {
+      // fail silently
+    }
+  };
 
   const runSearch = (nextSearch = searchQuery, nextLocation = location) => {
     if (!isAuthenticated) {
@@ -262,6 +324,74 @@ function NavbarContent({
 
           {/* PROFILE / AUTH */}
           {isAuthenticated ? (
+            <div className="flex items-center gap-4">
+
+              {/* NOTIFICATION BELL */}
+              <div className="relative" ref={notifRef}>
+                <button
+                  type="button"
+                  onClick={handleNotifBellClick}
+                  className="relative w-9 h-9 rounded-full flex items-center justify-center bg-white shadow-md hover:scale-105 transition"
+                  style={{ color: "var(--color-primary)" }}
+                  aria-label="Notifications"
+                >
+                  <Bell size={18} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {showNotifications && (
+                  <div className="absolute top-12 right-0 w-80 bg-white rounded-xl shadow-lg border border-gray-200 z-[9999] overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                      <p className="text-sm font-semibold text-gray-800">Notifications</p>
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={handleMarkAllRead}
+                          className="text-xs text-[#157A4F] hover:underline"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-80 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="px-4 py-8 text-center">
+                          <Bell size={28} className="mx-auto mb-2 text-gray-300" />
+                          <p className="text-sm text-gray-400">No notifications yet</p>
+                        </div>
+                      ) : (
+                        notifications.map((notif) => (
+                          <div
+                            key={notif._id}
+                            onClick={() => !notif.read && handleMarkRead(notif._id)}
+                            className={`flex items-start gap-3 px-4 py-3 border-b border-gray-50 transition cursor-pointer ${
+                              notif.read ? "bg-white" : "bg-green-50 hover:bg-green-100"
+                            }`}
+                          >
+                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#157A4F]/10 flex items-center justify-center mt-0.5">
+                              <Bell size={14} className="text-[#157A4F]" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-gray-800 leading-snug">{notif.message}</p>
+                              <p className="text-xs text-gray-400 mt-1">
+                                {new Date(notif.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                              </p>
+                            </div>
+                            {!notif.read && (
+                              <span className="flex-shrink-0 w-2 h-2 rounded-full bg-[#157A4F] mt-2" />
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* PROFILE AVATAR */}
             <div className="relative" ref={profileRef}>
               <div
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
@@ -330,6 +460,8 @@ function NavbarContent({
                   </div>
                 </div>
               )}
+            </div>
+
             </div>
           ) : (
             <button
