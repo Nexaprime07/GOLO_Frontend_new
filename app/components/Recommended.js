@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getAllAds, getRecommendedDeals } from "../lib/api";
+import { getAllAds, getIWantPreference, getRecommendedDeals } from "../lib/api";
 
 const fallbackDeals = [
   { title: "50% Off Pizza", img: "deal1.jpg", discount: "Flat 50% OFF" },
@@ -135,15 +135,13 @@ export default function Recommended() {
     async function fetchRecommended() {
       try {
         let intent = null;
-        if (typeof window !== "undefined") {
-          const raw = localStorage.getItem("golo_i_want_preference");
-          if (raw) {
-            try {
-              intent = JSON.parse(raw);
-            } catch {
-              intent = null;
-            }
+        try {
+          const prefRes = await getIWantPreference();
+          if (prefRes?.success && prefRes?.data) {
+            intent = prefRes.data;
           }
+        } catch {
+          intent = null;
         }
 
         let selectedAds = [];

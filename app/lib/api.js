@@ -215,6 +215,21 @@ export async function markAllNotificationsRead() {
 }
 
 // ============================================================
+// I WANT PREFERENCE APIs
+// ============================================================
+
+export async function getIWantPreference() {
+    return apiClient('/users/preferences/i-want');
+}
+
+export async function saveIWantPreference(payload) {
+    return apiClient('/users/preferences/i-want', {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+    });
+}
+
+// ============================================================
 // ADS — PUBLIC APIs (no auth required)
 // ============================================================
 

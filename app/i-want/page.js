@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { saveIWantPreference } from "../lib/api";
 
 export default function IWant() {
   const router = useRouter();
@@ -79,7 +80,7 @@ export default function IWant() {
     return normalized;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setSubmitError("");
     setSubmitSuccess("");
 
@@ -101,16 +102,20 @@ export default function IWant() {
       category,
       title: trimmedTitle,
       description: trimmedDescription,
-      createdAt: new Date().toISOString(),
     };
 
     try {
-      localStorage.setItem("golo_i_want_preference", JSON.stringify(payload));
+      await saveIWantPreference(payload);
       setSubmitSuccess("Your requirement was saved. We will show related deals in Recommended section.");
       setTimeout(() => {
         router.push("/");
       }, 900);
-    } catch {
+    } catch (error) {
+      if (error?.status === 401) {
+        setSubmitError("Please login first to save your preference.");
+        router.push("/login?redirect=/i-want");
+        return;
+      }
       setSubmitError("Could not save your requirement. Please try again.");
     }
   };
