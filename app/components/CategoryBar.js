@@ -26,6 +26,7 @@ const extraCategories = [
   "Public Notice",
   "Travel",
   "Furniture",
+  "Greetings & Tributes",
   "Other",
 ];
 
@@ -34,7 +35,7 @@ const allIconMap = {
   Mobiles: "📱", "Electronics & Home appliances": "🖥️", Matrimonial: "💍",
   Business: "🏪", Astrology: "🔮", "Lost & Found": "🔍", Service: "🔧",
   Personal: "👤", Pets: "🐾", "Public Notice": "📢", Travel: "✈️",
-  Furniture: "🛋️", Other: "📦",
+  Furniture: "🛋️", "Greetings & Tributes": "🎁", Other: "📦",
 };
 
 export default function CategoryBar() {

@@ -1,12 +1,18 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
 export default function IWant() {
+  const router = useRouter();
   const [images, setImages] = useState([]);
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("Select a category");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [submitSuccess, setSubmitSuccess] = useState("");
   const fileInputRef = useRef(null);
   const dropdownRef = useRef(null);
 
@@ -29,6 +35,7 @@ export default function IWant() {
     "Mobiles",
     "Electronics & Home Appliances",
     "Furniture",
+    "Greetings & Tributes",
     "Other",
   ];
 
@@ -62,6 +69,50 @@ export default function IWant() {
     const updated = [...images];
     updated.splice(index, 1);
     setImages(updated);
+  };
+
+  const normalizeCategory = (value) => {
+    if (!value || value === "Select a category") return "";
+    const normalized = String(value)
+      .replace("Home Appliances", "Home appliances")
+      .replace(" - ", "|");
+    return normalized;
+  };
+
+  const handleSubmit = () => {
+    setSubmitError("");
+    setSubmitSuccess("");
+
+    const category = normalizeCategory(selectedCategory);
+    const trimmedTitle = title.trim();
+    const trimmedDescription = description.trim();
+
+    if (!category) {
+      setSubmitError("Please select a category.");
+      return;
+    }
+
+    if (!trimmedTitle && !trimmedDescription) {
+      setSubmitError("Please add title or description.");
+      return;
+    }
+
+    const payload = {
+      category,
+      title: trimmedTitle,
+      description: trimmedDescription,
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      localStorage.setItem("golo_i_want_preference", JSON.stringify(payload));
+      setSubmitSuccess("Your requirement was saved. We will show related deals in Recommended section.");
+      setTimeout(() => {
+        router.push("/");
+      }, 900);
+    } catch {
+      setSubmitError("Could not save your requirement. Please try again.");
+    }
   };
 
   return (
@@ -126,6 +177,8 @@ export default function IWant() {
               <input
                 type="text"
                 placeholder="e.g., MacBook Pro M3 Max - Barely Used"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
                 className="w-full p-4 rounded-xl border border-gray-300 focus:border-[#157A4F] focus:ring-2 focus:ring-[#157A4F]/20 outline-none transition"
               />
             </div>
@@ -138,9 +191,14 @@ export default function IWant() {
               <textarea
                 rows="6"
                 placeholder="Describe what you're offering..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
                 className="w-full p-4 rounded-xl border border-gray-300 focus:border-[#157A4F] focus:ring-2 focus:ring-[#157A4F]/20 outline-none transition"
               />
             </div>
+
+            {submitError && <p className="text-sm text-red-600 mb-4">{submitError}</p>}
+            {submitSuccess && <p className="text-sm text-[#157A4F] mb-4">{submitSuccess}</p>}
 
             {/* Drag & Drop Upload */}
             <div
@@ -196,7 +254,11 @@ export default function IWant() {
                 Cancel
               </button>
 
-              <button className="px-8 py-3 rounded-xl bg-[#157A4F] text-white font-semibold shadow-md hover:shadow-lg hover:bg-[#12663F] transition duration-300">
+              <button
+                type="button"
+                onClick={handleSubmit}
+                className="px-8 py-3 rounded-xl bg-[#157A4F] text-white font-semibold shadow-md hover:shadow-lg hover:bg-[#12663F] transition duration-300"
+              >
                 Save & Continue
               </button>
             </div>
