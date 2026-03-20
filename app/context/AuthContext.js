@@ -24,8 +24,8 @@ export function AuthProvider({ children }) {
         setLoading(false);
     }, []);
 
-    const login = useCallback(async (email, password) => {
-        const response = await loginUser(email, password);
+    const login = useCallback(async (email, password, accountType = "user") => {
+        const response = await loginUser(email, password, accountType);
 
         const { accessToken, refreshToken, user: userData } = response.data;
 
@@ -37,8 +37,30 @@ export function AuthProvider({ children }) {
         return response;
     }, []);
 
-    const register = useCallback(async ({ name, email, password, phone }) => {
-        const response = await registerUser({ name, email, password, phone });
+    const register = useCallback(async ({
+        name,
+        email,
+        password,
+        phone,
+        accountType = "user",
+        storeName,
+        storeEmail,
+        gstNumber,
+        contactNumber,
+        storeLocation,
+    }) => {
+        const response = await registerUser({
+            name,
+            email,
+            password,
+            phone,
+            accountType,
+            storeName,
+            storeEmail,
+            gstNumber,
+            contactNumber,
+            storeLocation,
+        });
         return response;
     }, []);
 

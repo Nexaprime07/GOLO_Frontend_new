@@ -49,6 +49,9 @@ function NavbarContent({
   const router = useRouter();
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuth();
+  const logoHref = isAuthenticated && user?.accountType === "merchant"
+    ? (pathname?.startsWith("/merchant") ? "/choja" : "/merchant/dashboard")
+    : "/";
 
   const locations = [
     { city: "Kolhapur", state: "Maharashtra" },
@@ -182,7 +185,7 @@ function NavbarContent({
 
         {/* LOGO */}
         <Link
-          href="/"
+          href={logoHref}
           className="flex items-center gap-3 cursor-pointer min-w-[180px]"
         >
           <div
@@ -466,7 +469,7 @@ function NavbarContent({
           ) : (
             <button
               type="button"
-              onClick={() => setShowAuthPrompt(true)}
+              onClick={() => router.push(`/login?redirect=${encodeURIComponent(pathname || "/")}`)}
               className="w-9 h-9 rounded-full flex items-center justify-center shadow-md hover:scale-105 transition cursor-pointer bg-white"
               style={{ color: "var(--color-primary)" }}
             >

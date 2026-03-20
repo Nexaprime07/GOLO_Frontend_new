@@ -100,10 +100,10 @@ async function tryRefreshToken() {
 // AUTH APIs
 // ============================================================
 
-export async function loginUser(email, password) {
+export async function loginUser(email, password, accountType = 'user') {
     return apiClient('/users/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, accountType }),
     });
 }
 
@@ -114,10 +114,32 @@ export async function socialAuthUser(payload) {
     });
 }
 
-export async function registerUser({ name, email, password, phone }) {
+export async function registerUser({
+    name,
+    email,
+    password,
+    phone,
+    accountType = 'user',
+    storeName,
+    storeEmail,
+    gstNumber,
+    contactNumber,
+    storeLocation,
+}) {
     return apiClient('/users/register', {
         method: 'POST',
-        body: JSON.stringify({ name, email, password, phone }),
+        body: JSON.stringify({
+            name,
+            email,
+            password,
+            phone,
+            accountType,
+            storeName,
+            storeEmail,
+            gstNumber,
+            contactNumber,
+            storeLocation,
+        }),
     });
 }
 
@@ -141,6 +163,10 @@ export async function logoutUser(refreshToken) {
 
 export async function getProfile() {
     return apiClient('/users/profile');
+}
+
+export async function getMerchantProfile() {
+    return apiClient('/users/merchant/profile');
 }
 
 export async function updateProfile(data) {

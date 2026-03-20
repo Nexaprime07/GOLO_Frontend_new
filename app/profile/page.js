@@ -168,7 +168,7 @@ export default function ProfilePage() {
 
                 <div className="bg-[#FFF3D6] rounded-xl p-6">
                   <p className="text-2xl font-bold text-black capitalize">
-                    {displayUser?.role || "user"}
+                    {displayUser?.accountType || displayUser?.role || "user"}
                   </p>
                   <p className="text-gray-600">Account Type</p>
                 </div>

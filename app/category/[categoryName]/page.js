@@ -7,6 +7,8 @@ import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import CategoryBar from "../../components/CategoryBar";
 import { getAdsByCategory } from "../../lib/api";
+import { useAuth } from "../../context/AuthContext";
+import AuthRequiredModal from "../../components/AuthRequiredModal";
 
 const CATEGORY_ICONS = {
     "Education": "🎓",
@@ -131,7 +133,19 @@ function CategoryPageContent() {
     const [page, setPage] = useState(1);
     const [sortBy, setSortBy] = useState("createdAt");
     const [sortOrder, setSortOrder] = useState("desc");
+    const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+    const [authPromptDescription, setAuthPromptDescription] = useState("Please log in or register to continue.");
     const LIMIT = 12;
+    const { isAuthenticated } = useAuth();
+
+    const requireAuth = (description, callback) => {
+        if (!isAuthenticated) {
+            setAuthPromptDescription(description);
+            setShowAuthPrompt(true);
+            return;
+        }
+        callback?.();
+    };
 
     useEffect(() => {
         setPage(1);
@@ -247,7 +261,7 @@ function CategoryPageContent() {
                     <h2 className="text-gray-700 font-bold text-xl">No matching ads in {categoryName} yet</h2>
                     <p className="text-gray-400 mb-6">Be the first to post an ad in this category!</p>
                     <button
-                        onClick={() => router.push("/post-ad")}
+                        onClick={() => requireAuth("Please log in or register to post your ad.", () => router.push("/post-ad"))}
                         className="px-8 py-3 rounded-2xl font-bold text-base text-white border-none cursor-pointer bg-green-700"
                     >
                         Post an Ad →
@@ -262,11 +276,11 @@ function CategoryPageContent() {
                         {layoutAds.map((ad, index) => {
                             const cls = `${ad.col} ${ad.row}`;
                             if (ad.type === "big") {
-                                return <MultiImageAd key={ad._id || ad.adId || index} ad={ad} className={cls} />;
+                                return <MultiImageAd key={ad._id || ad.adId || index} ad={ad} className={cls} isAuthenticated={isAuthenticated} onRequireAuth={requireAuth} />;
                             } else if (ad.type === "small") {
-                                return <SingleImageAd key={ad._id || ad.adId || index} ad={ad} className={cls} />;
+                                return <SingleImageAd key={ad._id || ad.adId || index} ad={ad} className={cls} isAuthenticated={isAuthenticated} onRequireAuth={requireAuth} />;
                             } else {
-                                return <TextAd key={ad._id || ad.adId || index} ad={ad} className={cls} />;
+                                return <TextAd key={ad._id || ad.adId || index} ad={ad} className={cls} isAuthenticated={isAuthenticated} onRequireAuth={requireAuth} />;
                             }
                         })}
                     </div>
@@ -310,6 +324,14 @@ function CategoryPageContent() {
                 </div>
             )}
 
+            <AuthRequiredModal
+                isOpen={showAuthPrompt}
+                onClose={() => setShowAuthPrompt(false)}
+                title="Login or Register"
+                description={authPromptDescription}
+                redirectTo={`/category/${encodeURIComponent(categoryName)}`}
+            />
+
         </section>
     );
 }
@@ -331,7 +353,7 @@ export default function CategoryPage() {
 
 // ============ AD TEMPLATES — exact copy from RecentListings ============
 
-function MultiImageAd({ ad, className }) {
+function MultiImageAd({ ad, className, isAuthenticated, onRequireAuth }) {
     const router = useRouter();
     const displayPrice = getDisplayPrice(ad);
     const images = ad.images && ad.images.length > 0
@@ -375,6 +397,10 @@ function MultiImageAd({ ad, className }) {
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
+                            if (!isAuthenticated) {
+                                onRequireAuth("Please log in or register to chat with the seller.");
+                                return;
+                            }
                             router.push(`/chats?adId=${ad.adId || ad._id}&sellerId=${ad.userId || ''}`);
                         }}
                         className="px-4 py-2 text-sm rounded-xl theme-button-accent"
@@ -382,7 +408,14 @@ function MultiImageAd({ ad, className }) {
                         Chat
                     </button>
                     <button
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (!isAuthenticated) {
+                                onRequireAuth("Please log in or register to call the seller.");
+                                return;
+                            }
+                            router.push(`/chats?adId=${ad.adId || ad._id}&sellerId=${ad.userId || ''}&autoCall=1`);
+                        }}
                         className="px-4 py-2 text-sm rounded-xl theme-button-primary"
                     >
                         Call
@@ -403,7 +436,7 @@ function MultiImageAd({ ad, className }) {
     );
 }
 
-function SingleImageAd({ ad, className }) {
+function SingleImageAd({ ad, className, isAuthenticated, onRequireAuth }) {
     const router = useRouter();
     const displayPrice = getDisplayPrice(ad);
     const image = ad.images && ad.images[0] ? getSafeImageSrc(ad.images[0]) : "/images/placeholder.webp";
@@ -432,6 +465,10 @@ function SingleImageAd({ ad, className }) {
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
+                            if (!isAuthenticated) {
+                                onRequireAuth("Please log in or register to chat with the seller.");
+                                return;
+                            }
                             router.push(`/chats?adId=${ad.adId || ad._id}&sellerId=${ad.userId || ''}`);
                         }}
                         className="flex-1 py-2 text-xs rounded-lg theme-button-accent"
@@ -439,7 +476,14 @@ function SingleImageAd({ ad, className }) {
                         Chat
                     </button>
                     <button
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (!isAuthenticated) {
+                                onRequireAuth("Please log in or register to call the seller.");
+                                return;
+                            }
+                            router.push(`/chats?adId=${ad.adId || ad._id}&sellerId=${ad.userId || ''}&autoCall=1`);
+                        }}
                         className="flex-1 py-2 text-xs rounded-lg theme-button-primary"
                     >
                         Call
@@ -450,7 +494,7 @@ function SingleImageAd({ ad, className }) {
     );
 }
 
-function TextAd({ ad, className }) {
+function TextAd({ ad, className, isAuthenticated, onRequireAuth }) {
     const router = useRouter();
     const displayPrice = getDisplayPrice(ad);
 
@@ -470,6 +514,10 @@ function TextAd({ ad, className }) {
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
+                        if (!isAuthenticated) {
+                            onRequireAuth("Please log in or register to chat with the seller.");
+                            return;
+                        }
                         router.push(`/chats?adId=${ad.adId || ad._id}&sellerId=${ad.userId || ''}`);
                     }}
                     className="flex-1 py-2 text-xs rounded-lg theme-button-accent"
@@ -477,7 +525,14 @@ function TextAd({ ad, className }) {
                     Chat
                 </button>
                 <button
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (!isAuthenticated) {
+                            onRequireAuth("Please log in or register to call the seller.");
+                            return;
+                        }
+                        router.push(`/chats?adId=${ad.adId || ad._id}&sellerId=${ad.userId || ''}&autoCall=1`);
+                    }}
                     className="flex-1 py-2 text-xs rounded-lg theme-button-primary"
                 >
                     Call

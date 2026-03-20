@@ -35,6 +35,7 @@ export default function ProductDetails({ params }) {
   const [wishlistCount, setWishlistCount] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+  const [authPromptDescription, setAuthPromptDescription] = useState("Please log in or create an account to continue.");
   const { isAuthenticated, loading: authLoading } = useAuth();
 
   const getSafeImageSrc = (value) => {
@@ -49,14 +50,6 @@ export default function ProductDetails({ params }) {
   useEffect(() => {
     async function fetchAd() {
       if (!adId) return;
-
-      if (authLoading) return;
-
-      if (!isAuthenticated) {
-        setShowAuthPrompt(true);
-        setLoading(false);
-        return;
-      }
 
       setLoading(true);
       try {
@@ -73,19 +66,14 @@ export default function ProductDetails({ params }) {
           setError("Ad not found");
         }
       } catch (err) {
-        if (err?.status === 401) {
-          setShowAuthPrompt(true);
-          setError("");
-        } else {
-          console.error('[Product Page] Error loading ad:', err);
-          setError("Failed to load ad details");
-        }
+        console.error('[Product Page] Error loading ad:', err);
+        setError("Failed to load ad details");
       } finally {
         setLoading(false);
       }
     }
     fetchAd();
-  }, [adId, isAuthenticated, authLoading]);
+  }, [adId]);
 
   // Fetch public wishlist count — must use ad.adId (UUID), NOT the URL param which may be a MongoDB _id
   useEffect(() => {
@@ -317,23 +305,6 @@ export default function ProductDetails({ params }) {
           </div>
         </div>
         <Footer />
-      </>
-    );
-  }
-
-  if (!authLoading && !isAuthenticated) {
-    return (
-      <>
-        <Navbar />
-        <div className="bg-[#F8F6F2] min-h-screen" />
-        <Footer />
-        <AuthRequiredModal
-          isOpen={showAuthPrompt}
-          onClose={() => setShowAuthPrompt(false)}
-          title="Login or Register"
-          description="Please log in or create an account to view ad details."
-          redirectTo={`/product/${adId}`}
-        />
       </>
     );
   }
@@ -589,7 +560,14 @@ export default function ProductDetails({ params }) {
                   )}
 
                   <button
-                    onClick={() => router.push(`/chats?adId=${ad?.adId || ad?._id || adId}&sellerId=${ad?.userId || ''}`)}
+                    onClick={() => {
+                      if (!isAuthenticated) {
+                        setAuthPromptDescription("Please log in or register to chat with the seller.");
+                        setShowAuthPrompt(true);
+                        return;
+                      }
+                      router.push(`/chats?adId=${ad?.adId || ad?._id || adId}&sellerId=${ad?.userId || ''}`);
+                    }}
                     className="w-full mt-6 py-3 rounded-xl bg-[#157A4F] hover:bg-[#0f5c3a] text-white font-semibold flex items-center justify-center gap-2 transition"
                   >
                     <MessageCircle size={18} />
@@ -597,7 +575,14 @@ export default function ProductDetails({ params }) {
                   </button>
 
                   <button
-                    onClick={() => router.push(`/chats?adId=${ad?.adId || ad?._id || adId}&sellerId=${ad?.userId || ''}&autoCall=1`)}
+                    onClick={() => {
+                      if (!isAuthenticated) {
+                        setAuthPromptDescription("Please log in or register to call the seller.");
+                        setShowAuthPrompt(true);
+                        return;
+                      }
+                      router.push(`/chats?adId=${ad?.adId || ad?._id || adId}&sellerId=${ad?.userId || ''}&autoCall=1`);
+                    }}
                     className="w-full mt-4 py-3 rounded-xl bg-[#F5B849] hover:bg-[#e0a837] text-white font-semibold flex items-center justify-center gap-2 transition"
                   >
                     <Phone size={18} />
@@ -657,6 +642,14 @@ export default function ProductDetails({ params }) {
         onClose={() => setShowReportModal(false)}
         adId={adId}
         adTitle={ad?.title}
+      />
+
+      <AuthRequiredModal
+        isOpen={showAuthPrompt}
+        onClose={() => setShowAuthPrompt(false)}
+        title="Login or Register"
+        description={authPromptDescription}
+        redirectTo={`/product/${adId}`}
       />
     </>
   );

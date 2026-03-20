@@ -89,8 +89,25 @@ export default function RegisterPage() {
       };
 
       const registrationData = accountType === "user"
-        ? { name, email, password, phone: formatPhone(phone) }
-        : { name: storeName, email: storeEmail, password: storePassword, phone: formatPhone(contactNumber) };
+        ? {
+          name,
+          email,
+          password,
+          phone: formatPhone(phone),
+          accountType: "user",
+        }
+        : {
+          name: storeName,
+          email: storeEmail,
+          password: storePassword,
+          phone: formatPhone(contactNumber),
+          accountType: "merchant",
+          storeName,
+          storeEmail,
+          gstNumber,
+          contactNumber: formatPhone(contactNumber),
+          storeLocation,
+        };
 
       await register(registrationData);
       setSuccess("Registration successful! Redirecting to login...");

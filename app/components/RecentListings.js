@@ -224,7 +224,7 @@ function RecentListingsContent() {
                 isOpen={showAuthPrompt}
                 onClose={() => setShowAuthPrompt(false)}
                 title="Login or Register"
-                description="Please log in or create an account to open listings, chat, or contact sellers from the home page."
+                description="Please log in or register to chat, call, or post your ad."
                 redirectTo={pathname || "/"}
             />
         </section>
@@ -270,10 +270,6 @@ function MultiImageAd({ ad, className, isAuthenticated, onRequireAuth }) {
     return (
         <div
             onClick={() => {
-                if (!isAuthenticated) {
-                    onRequireAuth();
-                    return;
-                }
                 router.push(`/product/${ad._id || ad.adId}`);
             }}
             className={`relative rounded-3xl overflow-hidden group cursor-pointer shadow-sm hover:shadow-2xl transition ${className}`}
@@ -349,10 +345,6 @@ function SingleImageAd({ ad, className, isAuthenticated, onRequireAuth }) {
     return (
         <div
             onClick={() => {
-                if (!isAuthenticated) {
-                    onRequireAuth();
-                    return;
-                }
                 router.push(`/product/${ad._id || ad.adId}`);
             }}
             className={`relative rounded-3xl overflow-hidden group cursor-pointer shadow-sm hover:shadow-xl transition ${className}`}
@@ -412,10 +404,6 @@ function TextAd({ ad, className, isAuthenticated, onRequireAuth }) {
     return (
         <div
             onClick={() => {
-                if (!isAuthenticated) {
-                    onRequireAuth();
-                    return;
-                }
                 router.push(`/product/${ad._id || ad.adId}`);
             }}
             className={`bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl transition cursor-pointer flex flex-col justify-between ${className}`}

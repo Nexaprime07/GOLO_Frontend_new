@@ -24,7 +24,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [accountType, setAccountType] = useState("user");
   const router = useRouter();
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
   const [redirectPath, setRedirectPath] = useState("/");
   const [sessionExpired, setSessionExpired] = useState(false);
 
@@ -42,9 +42,13 @@ export default function LoginPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (isAuthenticated) {
-      router.push(redirectPath);
+      if (user?.accountType === "merchant") {
+        router.push("/merchant/dashboard");
+      } else {
+        router.push(redirectPath);
+      }
     }
-  }, [isAuthenticated, router, redirectPath]);
+  }, [isAuthenticated, user, router, redirectPath]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -87,8 +91,15 @@ export default function LoginPage() {
 
     setIsLoading(true);
     try {
-      await login(email, password);
-      router.push(redirectPath);
+      const response = await login(email, password, accountType);
+      const loggedInUser = response?.data?.user;
+      if (accountType === "merchant" || loggedInUser?.accountType === "merchant") {
+        router.push("/merchant/dashboard");
+      } else if (loggedInUser?.role === "admin") {
+        router.push("/admin");
+      } else {
+        router.push(redirectPath);
+      }
     } catch (error) {
       setLoginError(
         error.data?.message || "Login failed. Please check your credentials."
