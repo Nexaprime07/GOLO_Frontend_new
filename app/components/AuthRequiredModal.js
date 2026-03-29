@@ -74,7 +74,7 @@ export default function AuthRequiredModal({ isOpen, onClose, title = "Login Requ
       if (accountType === "merchant" || loggedInUser?.accountType === "merchant") {
         router.push("/merchant/dashboard");
       } else if (loggedInUser?.role === "admin") {
-        router.push("/admin");
+        window.location.href = process.env.NEXT_PUBLIC_ADMIN_APP_URL || "http://localhost:3001/admin/login";
       } else {
         router.push(redirectTo || "/");
       }

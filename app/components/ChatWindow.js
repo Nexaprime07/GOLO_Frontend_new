@@ -1,7 +1,8 @@
 "use client";
 
-import { Check, CheckCheck, Paperclip, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Send, X } from "lucide-react";
+import { Check, CheckCheck, Paperclip, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Send, X, MoreVertical } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import UserReportModal from "../components/UserReportModal";
 
 const formatTime = (value) => {
   if (!value) return "";
@@ -44,6 +45,8 @@ export default function ChatWindow({
 }) {
   const [text, setText] = useState("");
   const [attachments, setAttachments] = useState([]);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const bottomRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -118,7 +121,7 @@ export default function ChatWindow({
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 relative">
           <div className="text-xs text-gray-500 text-right">
             <p>{conversation?.ad?.title || "Ad conversation"}</p>
             {conversation?.ad?.price !== undefined && conversation?.ad?.price !== null && (
@@ -127,14 +130,43 @@ export default function ChatWindow({
           </div>
           <button
             type="button"
-            onClick={() => onStartCall?.()}
-            disabled={callState !== "idle"}
-            className="w-10 h-10 rounded-full bg-[#F8F6F2] text-[#157A4F] border border-gray-200 flex items-center justify-center hover:bg-[#ecf8f1] transition disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Call"
+            onClick={() => setMenuOpen((v) => !v)}
+            className="w-10 h-10 rounded-full bg-[#F8F6F2] text-[#157A4F] border border-gray-200 flex items-center justify-center hover:bg-[#ecf8f1] transition"
+            title="More options"
           >
-            <Phone size={18} />
+            <MoreVertical size={20} />
           </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-12 z-20 bg-white border border-gray-200 rounded-xl shadow-lg min-w-[120px] py-1 flex flex-col">
+              <button
+                className="px-4 py-2 text-left hover:bg-gray-50 text-sm text-gray-800 flex items-center gap-2"
+                onClick={() => {
+                  setMenuOpen(false);
+                  if (conversation?.otherUser?.id || conversation?.otherUser?._id) onStartCall?.();
+                }}
+                disabled={callState !== "idle" || !(conversation?.otherUser?.id || conversation?.otherUser?._id)}
+              >
+                <Phone size={16} /> Call
+              </button>
+              <button
+                className="px-4 py-2 text-left hover:bg-gray-50 text-sm text-gray-800 flex items-center gap-2"
+                onClick={() => {
+                  setMenuOpen(false);
+                  if (conversation?.otherUser?.id || conversation?.otherUser?._id) setShowReportModal(true);
+                }}
+                disabled={!(conversation?.otherUser?.id || conversation?.otherUser?._id)}
+              >
+                <span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1" /> Report
+              </button>
+            </div>
+          )}
         </div>
+            <UserReportModal
+              isOpen={showReportModal}
+              onClose={() => setShowReportModal(false)}
+              userId={conversation?.otherUser?.id || conversation?.otherUser?._id || ""}
+              userName={conversation?.otherUser?.name}
+            />
       </div>
 
       {/* SCROLLABLE MESSAGES AREA */}

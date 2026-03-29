@@ -19,6 +19,7 @@ import {
   Flag,
 } from "lucide-react";
 import ReportModal from "@/app/components/ReportModal";
+import UserReportModal from "@/app/components/UserReportModal";
 import AuthRequiredModal from "@/app/components/AuthRequiredModal";
 
 export default function ProductDetails({ params }) {
@@ -34,6 +35,7 @@ export default function ProductDetails({ params }) {
   const [isTogglingWishlist, setIsTogglingWishlist] = useState(false);
   const [wishlistCount, setWishlistCount] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showUserReportModal, setShowUserReportModal] = useState(false);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [authPromptDescription, setAuthPromptDescription] = useState("Please log in or create an account to continue.");
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -590,6 +592,7 @@ export default function ProductDetails({ params }) {
                   </button>
                 </div>
 
+
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
                   <p className="text-sm font-semibold text-gray-800 mb-3">Ad Uploader Details</p>
                   <div className="flex items-start gap-3">
@@ -615,6 +618,16 @@ export default function ProductDetails({ params }) {
                       )}
                     </div>
                   </div>
+                  {/* View Profile Button */}
+                  <button
+                    onClick={() => router.push(`/profile/${ad?.userId}`)}
+                    className="w-full mt-4 py-2 rounded-xl border-2 border-[#157A4F] text-[#157A4F] hover:bg-[#157A4F] hover:text-white hover:border-[#0f5c3a] font-semibold flex items-center justify-center gap-2 transition-all duration-200 transform hover:scale-[1.02] text-sm"
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M5.5 21a7.5 7.5 0 0 1 13 0"/></svg>
+                      View Profile
+                    </span>
+                  </button>
                 </div>
 
                 {/* Report Button - Below Ad Uploader Details */}
@@ -637,11 +650,19 @@ export default function ProductDetails({ params }) {
       <Footer />
       
       {/* Report Modal */}
+
       <ReportModal
         isOpen={showReportModal}
         onClose={() => setShowReportModal(false)}
         adId={adId}
         adTitle={ad?.title}
+      />
+
+      <UserReportModal
+        isOpen={showUserReportModal}
+        onClose={() => setShowUserReportModal(false)}
+        userId={ad?.userId}
+        userName={ad?.contactInfo?.name || ad?.contactInfo?.sellerName || ad?.sellerName || "Seller"}
       />
 
       <AuthRequiredModal

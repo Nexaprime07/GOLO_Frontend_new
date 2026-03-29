@@ -1,3 +1,31 @@
+// Fetch a user by ID (public profile)
+export async function getUserById(userId) {
+    return apiClient(`/users/${userId}`);
+}
+// ==================== ADMIN REPORT STATS (REAL-TIME) ====================
+
+/**
+ * Get real-time user report stats (admin only)
+ */
+export async function getUserReportStats() {
+    return apiClient('/users/admin/reports/stats');
+}
+
+/**
+ * Get real-time listing report stats (admin only)
+ */
+export async function getListingReportStats() {
+    return apiClient('/ads/reports/stats');
+}
+/**
+ * Submit a report for a user
+ */
+export async function submitUserReport(userId, reason, description) {
+    return apiClient(`/users/${userId}/report`, {
+        method: 'POST',
+        body: JSON.stringify({ reason, description }),
+    });
+}
 // ============================================================
 // Centralized API Layer — Choja Frontend → ads-microservice
 // ============================================================
@@ -6,7 +34,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002';
 
 // --------------- Core Fetch Wrapper ---------------
 
-async function apiClient(endpoint, options = {}) {
+export async function apiClient(endpoint, options = {}) {
     const url = `${BASE_URL}${endpoint}`;
 
     const headers = {

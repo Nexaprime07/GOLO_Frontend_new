@@ -43,7 +43,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (isAuthenticated) {
       if (user?.accountType === "merchant") {
-        router.push("/merchant/dashboard");
+        window.location.href = "http://localhost:3000/";
       } else {
         router.push(redirectPath);
       }
@@ -94,9 +94,9 @@ export default function LoginPage() {
       const response = await login(email, password, accountType);
       const loggedInUser = response?.data?.user;
       if (accountType === "merchant" || loggedInUser?.accountType === "merchant") {
-        router.push("/merchant/dashboard");
+        window.location.href = "http://localhost:3000/";
       } else if (loggedInUser?.role === "admin") {
-        router.push("/admin");
+        window.location.href = process.env.NEXT_PUBLIC_ADMIN_APP_URL || "http://localhost:3001/admin/login";
       } else {
         router.push(redirectPath);
       }

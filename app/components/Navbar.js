@@ -50,7 +50,7 @@ function NavbarContent({
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuth();
   const logoHref = isAuthenticated && user?.accountType === "merchant"
-    ? (pathname?.startsWith("/merchant") ? "/choja" : "/merchant/dashboard")
+    ? "/"
     : "/";
 
   const locations = [
