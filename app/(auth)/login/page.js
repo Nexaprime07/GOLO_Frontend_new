@@ -9,6 +9,11 @@ import { useAuth } from "../../context/AuthContext";
 import SocialButtons from "../../components/SocialButtons";
 
 export default function LoginPage() {
+  const merchantAppUrl =
+    process.env.NEXT_PUBLIC_MERCHANT_APP_URL ||
+    (typeof window !== "undefined" ? `${window.location.origin}/` : "/");
+  const adminAppUrl = process.env.NEXT_PUBLIC_ADMIN_APP_URL || "http://localhost:3001/admin/login";
+
   const quotes = [
     "Maximize your ROI with our AI-driven ad placement strategy.",
     "Real-time analytics that give you the edge over competitors.",
@@ -43,12 +48,12 @@ export default function LoginPage() {
   useEffect(() => {
     if (isAuthenticated) {
       if (user?.accountType === "merchant") {
-        window.location.href = "http://localhost:3000/";
+        window.location.href = merchantAppUrl;
       } else {
         router.push(redirectPath);
       }
     }
-  }, [isAuthenticated, user, router, redirectPath]);
+  }, [isAuthenticated, user, router, redirectPath, merchantAppUrl]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -94,9 +99,9 @@ export default function LoginPage() {
       const response = await login(email, password, accountType);
       const loggedInUser = response?.data?.user;
       if (accountType === "merchant" || loggedInUser?.accountType === "merchant") {
-        window.location.href = "http://localhost:3000/";
+        window.location.href = merchantAppUrl;
       } else if (loggedInUser?.role === "admin") {
-        window.location.href = process.env.NEXT_PUBLIC_ADMIN_APP_URL || "http://localhost:3001/admin/login";
+        window.location.href = adminAppUrl;
       } else {
         router.push(redirectPath);
       }
