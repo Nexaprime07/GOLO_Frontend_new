@@ -58,7 +58,7 @@ function NavbarContent({
     pathname.startsWith("/profile");
   const isChojaSurface = pathname.startsWith("/choja");
   const useGolocalHomeNav = isGolocalSurface;
-  const homeNavHref = useGolocalHomeNav ? "/" : "/choja";
+  const homeNavHref = "/choja";
   const primaryNavLabel = useGolocalHomeNav ? "My Deals" : "Post Your Ad";
   const primaryNavHref = useGolocalHomeNav ? "/my-ads" : "/post-ad";
   const secondaryNavLabel = useGolocalHomeNav ? "Favorites" : "Chats";
