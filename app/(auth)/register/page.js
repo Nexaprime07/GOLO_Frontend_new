@@ -110,6 +110,9 @@ export default function RegisterPage() {
         };
 
       await register(registrationData);
+      if (accountType === "user" && typeof window !== "undefined") {
+        localStorage.setItem("golo_pending_first_login_email", email.trim().toLowerCase());
+      }
       setSuccess("Registration successful! Redirecting to login...");
       setTimeout(() => router.push("/login"), 1500);
     } catch (err) {

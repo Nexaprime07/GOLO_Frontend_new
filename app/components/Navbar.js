@@ -52,6 +52,17 @@ function NavbarContent({
   const logoHref = isAuthenticated && user?.accountType === "merchant"
     ? "/"
     : "/";
+  const isGolocalSurface =
+    pathname === "/" ||
+    pathname.startsWith("/nearby-deals") ||
+    pathname.startsWith("/profile");
+  const isChojaSurface = pathname.startsWith("/choja");
+  const useGolocalHomeNav = isGolocalSurface;
+  const homeNavHref = useGolocalHomeNav ? "/" : "/choja";
+  const primaryNavLabel = useGolocalHomeNav ? "My Deals" : "Post Your Ad";
+  const primaryNavHref = useGolocalHomeNav ? "/my-ads" : "/post-ad";
+  const secondaryNavLabel = useGolocalHomeNav ? "Favorites" : "Chats";
+  const secondaryNavHref = useGolocalHomeNav ? "/wishlist" : "/chats";
 
   const locations = [
     { city: "Kolhapur", state: "Maharashtra" },
@@ -151,7 +162,9 @@ function NavbarContent({
     if (trimmedSearch) params.set("q", trimmedSearch);
     if (trimmedLocation) params.set("location", trimmedLocation);
 
-    router.push(params.toString() ? `/choja?${params.toString()}` : "/choja");
+    const isGolocalSurface = pathname === "/" || pathname.startsWith("/nearby-deals");
+    const targetBase = isGolocalSurface ? "/nearby-deals" : "/choja";
+    router.push(params.toString() ? `${targetBase}?${params.toString()}` : targetBase);
   };
 
   const handleSearch = (e) => {
@@ -165,6 +178,21 @@ function NavbarContent({
     await logout();
     setShowProfileMenu(false);
     router.push("/");
+  };
+
+  const handleProfileAvatarClick = () => {
+    if (isChojaSurface) {
+      setShowProfileMenu((prev) => !prev);
+      return;
+    }
+
+    if (isGolocalSurface) {
+      setShowProfileMenu(false);
+      router.push("/profile");
+      return;
+    }
+
+    setShowProfileMenu((prev) => !prev);
   };
 
   const requireAuth = (callback) => (event) => {
@@ -314,14 +342,14 @@ function NavbarContent({
         <div className="flex items-center gap-8 min-w-[260px] justify-end">
 
           <nav className="hidden md:flex gap-6 text-sm font-medium">
-            <Link href="/choja" className="hover:opacity-80 transition">
+            <Link href={homeNavHref} className="hover:opacity-80 transition">
               Home
             </Link>
-            <Link href="/post-ad" onClick={requireAuth()} className="hover:opacity-80 transition">
-              Post Your Ad
+            <Link href={primaryNavHref} onClick={requireAuth()} className="hover:opacity-80 transition">
+              {primaryNavLabel}
             </Link>
-            <Link href="/chats" onClick={requireAuth()} className="hover:opacity-80 transition">
-              Chats
+            <Link href={secondaryNavHref} onClick={requireAuth()} className="hover:opacity-80 transition">
+              {secondaryNavLabel}
             </Link>
           </nav>
 
@@ -397,7 +425,7 @@ function NavbarContent({
               {/* PROFILE AVATAR */}
             <div className="relative" ref={profileRef}>
               <div
-                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                onClick={handleProfileAvatarClick}
                 className="flex items-center gap-2 cursor-pointer"
               >
                 <div
@@ -412,18 +440,18 @@ function NavbarContent({
                     <User size={18} />
                   )}
                 </div>
-                <ChevronDown size={14} className="text-gray-500" />
+                {isChojaSurface && <ChevronDown size={14} className="text-gray-500" />}
               </div>
 
               {/* Profile Dropdown */}
-              {showProfileMenu && (
+              {isChojaSurface && showProfileMenu && (
                 <div className="absolute top-12 right-0 w-52 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-[9999]">
                   <div className="px-4 py-2 border-b border-gray-100">
                     <p className="text-sm font-semibold text-gray-800">{user?.name}</p>
                     <p className="text-xs text-gray-500">{user?.email}</p>
                   </div>
                   <Link
-                    href="/profile"
+                    href="/choja/profile"
                     onClick={() => setShowProfileMenu(false)}
                     className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
                   >

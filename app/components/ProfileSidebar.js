@@ -45,7 +45,7 @@ export default function ProfileSidebar() {
 
       {/* Navigation */}
       <div className="space-y-3">
-        <Link href="/profile" className={linkStyle("/profile")}>
+        <Link href="/choja/profile" className={linkStyle("/choja/profile")}>
           <User size={18} />
           <span>Profile</span>
         </Link>

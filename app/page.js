@@ -86,7 +86,7 @@ export default function Home() {
       `}</style>
 
       <Navbar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
-      <CategoryBar />
+      <CategoryBar variant="golocal" />
 
       <Hero />
       <Discover />

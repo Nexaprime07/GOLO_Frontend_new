@@ -9,11 +9,6 @@ import { useAuth } from "../../context/AuthContext";
 import SocialButtons from "../../components/SocialButtons";
 
 export default function LoginPage() {
-  const merchantAppUrl =
-    process.env.NEXT_PUBLIC_MERCHANT_APP_URL ||
-    (typeof window !== "undefined" ? `${window.location.origin}/` : "/");
-  const adminAppUrl = process.env.NEXT_PUBLIC_ADMIN_APP_URL || "http://localhost:3001/admin/login";
-
   const quotes = [
     "Maximize your ROI with our AI-driven ad placement strategy.",
     "Real-time analytics that give you the edge over competitors.",
@@ -33,6 +28,19 @@ export default function LoginPage() {
   const [redirectPath, setRedirectPath] = useState("/");
   const [sessionExpired, setSessionExpired] = useState(false);
 
+  const shouldGoToGolocalOnboarding = (targetEmail, userAccountType) => {
+    if (typeof window === "undefined") return false;
+    if (userAccountType !== "user") return false;
+
+    const normalizedEmail = String(targetEmail || "").trim().toLowerCase();
+    if (!normalizedEmail) return false;
+
+    const pendingEmail = localStorage.getItem("golo_pending_first_login_email");
+    const doneKey = `golo_golocal_onboarding_done_email_${normalizedEmail}`;
+
+    return pendingEmail === normalizedEmail && localStorage.getItem(doneKey) !== "1";
+  };
+
   // Handle redirect param
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -47,13 +55,20 @@ export default function LoginPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (isAuthenticated) {
+      const effectiveEmail = user?.email || email;
+      const effectiveType = user?.accountType || accountType;
+      if (shouldGoToGolocalOnboarding(effectiveEmail, effectiveType)) {
+        router.push("/golocal/onboarding");
+        return;
+      }
+
       if (user?.accountType === "merchant") {
-        window.location.href = merchantAppUrl;
+        window.location.href = "http://localhost:3000/";
       } else {
         router.push(redirectPath);
       }
     }
-  }, [isAuthenticated, user, router, redirectPath, merchantAppUrl]);
+  }, [isAuthenticated, user, router, redirectPath, email, accountType]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -98,10 +113,16 @@ export default function LoginPage() {
     try {
       const response = await login(email, password, accountType);
       const loggedInUser = response?.data?.user;
+
+      if (shouldGoToGolocalOnboarding(loggedInUser?.email || email, loggedInUser?.accountType || accountType)) {
+        router.push("/golocal/onboarding");
+        return;
+      }
+
       if (accountType === "merchant" || loggedInUser?.accountType === "merchant") {
-        window.location.href = merchantAppUrl;
+        window.location.href = "http://localhost:3000/";
       } else if (loggedInUser?.role === "admin") {
-        window.location.href = adminAppUrl;
+        window.location.href = process.env.NEXT_PUBLIC_ADMIN_APP_URL || "http://localhost:3001/admin/login";
       } else {
         router.push(redirectPath);
       }

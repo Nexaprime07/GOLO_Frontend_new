@@ -38,10 +38,33 @@ const allIconMap = {
   Furniture: "🛋️", "Greetings & Tributes": "🎁", Other: "📦",
 };
 
-export default function CategoryBar() {
+const golocalIconMap = {
+  "Food & Restaurants": "🍽️",
+  "Home Services": "🧰",
+  "Beauty & Wellness": "💆",
+  "Healthcare & Medical": "🏥",
+  "Hotels & Accommodation": "🏨",
+  "Shopping & Retail": "🛍️",
+  "Education & Training": "🎓",
+  "Real Estate": "🏡",
+  "Events & Entertainment": "🎉",
+  "Professional Services": "💼",
+  "Automotive Services": "🚗",
+  "Home Improvement": "🔨",
+  "Fitness & Sports": "🏋️",
+  "Daily Needs & Utilities": "⚡",
+  "Local Businesses & Vendors": "🏪",
+};
+
+export default function CategoryBar({ variant = "choja" }) {
+  return <CategoryBarContent variant={variant} />;
+}
+
+function CategoryBarContent({ variant = "choja" }) {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [showAllModal, setShowAllModal] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState(null);
+  const [golocalActiveCategory, setGolocalActiveCategory] = useState(null);
 
   const buttonRefs = useRef({});
   const wrapperRef = useRef(null);
@@ -53,6 +76,35 @@ export default function CategoryBar() {
     const match = pathname?.match(/^\/category\/([^/?]+)/);
     return match ? decodeURIComponent(match[1]) : null;
   })();
+
+  const golocalCategories = [
+    { name: "Food & Restaurants" },
+    { name: "Home Services" },
+    { name: "Beauty & Wellness" },
+    { name: "Healthcare & Medical" },
+    { name: "Hotels & Accommodation" },
+    { name: "Shopping & Retail" },
+    { name: "Education & Training" },
+    { name: "Real Estate" },
+    { name: "Events & Entertainment" },
+    { name: "Professional Services" },
+    { name: "Automotive Services" },
+    { name: "Home Improvement" },
+    { name: "Fitness & Sports" },
+    { name: "Daily Needs & Utilities" },
+    { name: "Local Businesses & Vendors" },
+  ];
+
+  const golocalVisibleCategories = [
+    golocalCategories[0],
+    golocalCategories[1],
+    golocalCategories[2],
+    golocalCategories[3],
+    golocalCategories[4],
+    golocalCategories[5],
+    golocalCategories[7],
+  ];
+  const categoriesToRender = variant === "golocal" ? golocalVisibleCategories : mainCategories;
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -81,6 +133,13 @@ export default function CategoryBar() {
   };
 
   const handleCategoryClick = (cat) => {
+    if (variant === "golocal") {
+      setGolocalActiveCategory(cat.name);
+      setActiveDropdown(null);
+      setShowAllModal(false);
+      return;
+    }
+
     if (!cat.sub) {
       navigateToCategory(cat.name);
       return;
@@ -105,31 +164,88 @@ export default function CategoryBar() {
   return (
     <>
       {/* MAIN BAR */}
-      <div ref={wrapperRef} style={{ width: "100%", background: "#fff", borderBottom: "1px solid #e5e7eb", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
-        <div style={{ maxWidth: "1440px", margin: "0 auto", display: "flex", alignItems: "center", height: "56px", padding: "0 24px", gap: "10px" }}>
+      <div ref={wrapperRef} style={{ width: "100%", background: variant === "golocal" ? "linear-gradient(180deg, #ffffff 0%, #fbfbfb 100%)" : "#fff", borderBottom: "1px solid #e5e7eb", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
+        <div style={{ maxWidth: "1440px", margin: "0 auto", display: "flex", alignItems: "center", minHeight: variant === "golocal" ? "64px" : "56px", padding: variant === "golocal" ? "8px 24px" : "0 24px", gap: "10px" }}>
 
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", minWidth: 0, gap: "6px", overflowX: "auto" }}>
-            {mainCategories.map((cat) => (
-              <div key={cat.name} style={{ flex: 1, minWidth: "max-content", display: "flex", justifyContent: "center" }}>
+          <div
+            style={{
+              flex: 1,
+              display: variant === "golocal" ? "grid" : "flex",
+              gridTemplateColumns: variant === "golocal" ? "repeat(7, minmax(0, 1fr))" : undefined,
+              alignItems: "center",
+              justifyContent: "space-between",
+              minWidth: 0,
+              gap: "6px",
+              overflowX: variant === "golocal" ? "hidden" : "auto",
+            }}
+          >
+            {categoriesToRender.map((cat) => (
+              <div
+                key={cat.name}
+                style={{
+                  flex: variant === "golocal" ? "unset" : 1,
+                  minWidth: variant === "golocal" ? 0 : "max-content",
+                  display: "flex",
+                  justifyContent: "center",
+                }}
+              >
                 <button
                   ref={(el) => (buttonRefs.current[cat.name] = el)}
                   onClick={() => handleCategoryClick(cat)}
                   style={{
                     display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px",
-                    padding: "8px 12px", borderRadius: "12px", border: "none",
-                    background: activeCat === cat.name || activeDropdown === cat.name ? "#e6f4ee" : "transparent",
-                    color: activeCat === cat.name || activeDropdown === cat.name ? "#157A4F" : "#374151",
-                    fontWeight: activeCat === cat.name ? 700 : 600,
-                    fontSize: "14px", cursor: "pointer", lineHeight: 1,
+                    padding: variant === "golocal" ? "8px 10px" : "8px 12px", borderRadius: "999px", border: "none",
+                    width: variant === "golocal" ? "100%" : "auto",
+                    minHeight: variant === "golocal" ? "38px" : "auto",
+                    overflow: variant === "golocal" ? "hidden" : "visible",
+                    background: variant === "golocal"
+                      ? golocalActiveCategory === cat.name
+                        ? "#e6f4ee"
+                        : "#f8faf9"
+                      : activeCat === cat.name || activeDropdown === cat.name
+                        ? "#e6f4ee"
+                        : "transparent",
+                    color: variant === "golocal"
+                      ? golocalActiveCategory === cat.name
+                        ? "#157A4F"
+                        : "#374151"
+                      : activeCat === cat.name || activeDropdown === cat.name
+                        ? "#157A4F"
+                        : "#374151",
+                    fontWeight: variant === "golocal"
+                      ? golocalActiveCategory === cat.name
+                        ? 700
+                        : 600
+                      : activeCat === cat.name
+                        ? 700
+                        : 600,
+                    fontSize: variant === "golocal" ? "14px" : "14px", cursor: variant === "golocal" ? "pointer" : "pointer", lineHeight: 1,
                     whiteSpace: "nowrap", transition: "all 0.15s",
-                    borderBottom: activeCat === cat.name ? "2px solid #157A4F" : "2px solid transparent",
-                    borderRadius: activeCat === cat.name ? "12px 12px 0 0" : "12px",
+                    borderBottom: variant === "golocal" ? "none" : activeCat === cat.name ? "2px solid #157A4F" : "2px solid transparent",
+                    boxShadow: variant === "golocal" ? (golocalActiveCategory === cat.name ? "0 8px 20px rgba(21,122,79,0.12)" : "0 1px 3px rgba(0,0,0,0.04)") : "none",
+                    borderRadius: variant === "golocal" ? "999px" : activeCat === cat.name ? "12px 12px 0 0" : "999px",
                   }}
-                  onMouseEnter={e => { if (activeCat !== cat.name && activeDropdown !== cat.name) { e.currentTarget.style.background = "#f9fafb"; e.currentTarget.style.color = "#157A4F"; } }}
-                  onMouseLeave={e => { if (activeCat !== cat.name && activeDropdown !== cat.name) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#374151"; } }}
+                  onMouseEnter={e => { if (variant !== "golocal" && activeCat !== cat.name && activeDropdown !== cat.name) { e.currentTarget.style.background = "#f9fafb"; e.currentTarget.style.color = "#157A4F"; } }}
+                  onMouseLeave={e => { if (variant !== "golocal" && activeCat !== cat.name && activeDropdown !== cat.name) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#374151"; } }}
                 >
-                  <span>{cat.name}</span>
-                  {cat.sub && (
+                  <span
+                    style={
+                      variant === "golocal"
+                        ? {
+                            display: "block",
+                            width: "100%",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            textAlign: "center",
+                          }
+                        : undefined
+                    }
+                    title={cat.name}
+                  >
+                    {cat.name}
+                  </span>
+                  {variant !== "golocal" && cat.sub && (
                     <ChevronDown size={12} style={{ transition: "transform 0.25s", transform: activeDropdown === cat.name ? "rotate(180deg)" : "none" }} />
                   )}
                 </button>
@@ -137,11 +253,10 @@ export default function CategoryBar() {
             ))}
           </div>
 
-          {/* See All */}
           <div style={{ flexShrink: 0 }}>
             <button
               onClick={() => setShowAllModal(true)}
-              style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "6px 16px", borderRadius: "20px", border: "1.5px solid #e5e7eb", background: "#fff", color: "#374151", fontWeight: 600, fontSize: "13px", cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.15s" }}
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: variant === "golocal" ? "8px 16px" : "6px 16px", borderRadius: "20px", border: "1.5px solid #e5e7eb", background: "#fff", color: "#374151", fontWeight: 600, fontSize: "13px", cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.15s" }}
               onMouseEnter={e => { e.currentTarget.style.background = "#f9fafb"; e.currentTarget.style.borderColor = "#157A4F"; e.currentTarget.style.color = "#157A4F"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = "#e5e7eb"; e.currentTarget.style.color = "#374151"; }}
             >
@@ -149,6 +264,7 @@ export default function CategoryBar() {
               See All
             </button>
           </div>
+
         </div>
       </div>
 
@@ -216,9 +332,9 @@ export default function CategoryBar() {
               </div>
 
               {/* Main categories */}
-              <p style={{ fontSize: "12px", fontWeight: 700, color: "#9ca3af", letterSpacing: "0.08em", marginBottom: "12px", textTransform: "uppercase" }}>Main Categories</p>
+              <p style={{ fontSize: "12px", fontWeight: 700, color: "#9ca3af", letterSpacing: "0.08em", marginBottom: "12px", textTransform: "uppercase" }}>Categories</p>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "10px", marginBottom: "24px" }}>
-                {mainCategories.map((cat) => (
+                {(variant === "golocal" ? golocalCategories : mainCategories).map((cat) => (
                   <button
                     key={cat.name}
                     onClick={() => navigateToCategory(cat.name)}
@@ -226,27 +342,35 @@ export default function CategoryBar() {
                     onMouseEnter={e => { e.currentTarget.style.borderColor = "#157A4F"; e.currentTarget.style.background = "#f0fdf4"; e.currentTarget.style.color = "#157A4F"; e.currentTarget.style.transform = "translateY(-2px)"; }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = "#e5e7eb"; e.currentTarget.style.background = "#fff"; e.currentTarget.style.color = "#374151"; e.currentTarget.style.transform = "none"; }}
                   >
-                    <div style={{ fontSize: "24px", marginBottom: "6px" }}>{allIconMap[cat.name] || "📂"}</div>
+                    <div style={{ fontSize: "24px", marginBottom: "6px" }}>
+                      {variant === "golocal"
+                        ? golocalIconMap[cat.name] || "📂"
+                        : allIconMap[cat.name] || "📂"}
+                    </div>
                     {cat.name}
                   </button>
                 ))}
               </div>
 
-              <p style={{ fontSize: "12px", fontWeight: 700, color: "#9ca3af", letterSpacing: "0.08em", marginBottom: "12px", textTransform: "uppercase" }}>More Categories</p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "10px" }}>
-                {extraCategories.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => navigateToCategory(cat)}
-                    style={{ padding: "14px 10px", borderRadius: "14px", border: "1.5px solid #e5e7eb", background: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 600, color: "#374151", textAlign: "center", transition: "all 0.15s" }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = "#157A4F"; e.currentTarget.style.background = "#f0fdf4"; e.currentTarget.style.color = "#157A4F"; e.currentTarget.style.transform = "translateY(-2px)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = "#e5e7eb"; e.currentTarget.style.background = "#fff"; e.currentTarget.style.color = "#374151"; e.currentTarget.style.transform = "none"; }}
-                  >
-                    <div style={{ fontSize: "24px", marginBottom: "6px" }}>{allIconMap[cat] || "📂"}</div>
-                    {cat}
-                  </button>
-                ))}
-              </div>
+              {variant !== "golocal" && (
+                <>
+                  <p style={{ fontSize: "12px", fontWeight: 700, color: "#9ca3af", letterSpacing: "0.08em", marginBottom: "12px", textTransform: "uppercase" }}>More Categories</p>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "10px" }}>
+                    {extraCategories.map((cat) => (
+                      <button
+                        key={cat}
+                        onClick={() => navigateToCategory(cat)}
+                        style={{ padding: "14px 10px", borderRadius: "14px", border: "1.5px solid #e5e7eb", background: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: 600, color: "#374151", textAlign: "center", transition: "all 0.15s" }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = "#157A4F"; e.currentTarget.style.background = "#f0fdf4"; e.currentTarget.style.color = "#157A4F"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = "#e5e7eb"; e.currentTarget.style.background = "#fff"; e.currentTarget.style.color = "#374151"; e.currentTarget.style.transform = "none"; }}
+                      >
+                        <div style={{ fontSize: "24px", marginBottom: "6px" }}>{allIconMap[cat] || "📂"}</div>
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </div>,
           document.body
