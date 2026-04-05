@@ -177,7 +177,7 @@ function NavbarContent({
   const handleLogout = async () => {
     await logout();
     setShowProfileMenu(false);
-    router.push("/");
+    router.push("/login");
   };
 
   const handleProfileAvatarClick = () => {

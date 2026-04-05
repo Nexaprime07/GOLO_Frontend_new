@@ -25,10 +25,7 @@ export default function LoginPage() {
   const [accountType, setAccountType] = useState("user");
   const router = useRouter();
   const { login, isAuthenticated, user } = useAuth();
-  const [redirectPath, setRedirectPath] = useState("/");
   const [sessionExpired, setSessionExpired] = useState(false);
-  const merchantAppUrl = process.env.NEXT_PUBLIC_CHOJA_APP_URL || "/choja";
-  const adminAppUrl = process.env.NEXT_PUBLIC_ADMIN_APP_URL || "/admin";
 
   const shouldGoToGolocalOnboarding = (targetEmail, userAccountType) => {
     if (typeof window === "undefined") return false;
@@ -47,9 +44,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      const r = params.get("redirect");
       const reason = params.get("reason");
-      if (r) setRedirectPath(r);
       if (reason === "session_expired") setSessionExpired(true);
     }
   }, []);
@@ -64,13 +59,9 @@ export default function LoginPage() {
         return;
       }
 
-      if (user?.accountType === "merchant") {
-        window.location.href = merchantAppUrl;
-      } else {
-        router.push(redirectPath);
-      }
+      router.push("/");
     }
-  }, [isAuthenticated, user, router, redirectPath, email, accountType, merchantAppUrl]);
+  }, [isAuthenticated, user, router, email, accountType]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -121,13 +112,7 @@ export default function LoginPage() {
         return;
       }
 
-      if (accountType === "merchant" || loggedInUser?.accountType === "merchant") {
-        window.location.href = merchantAppUrl;
-      } else if (loggedInUser?.role === "admin") {
-        window.location.href = adminAppUrl;
-      } else {
-        router.push(redirectPath);
-      }
+      router.push("/");
     } catch (error) {
       setLoginError(
         error.data?.message || "Login failed. Please check your credentials."
@@ -282,7 +267,7 @@ export default function LoginPage() {
               </div>
 
               {/* Social Buttons */}
-              <SocialButtons redirectPath={redirectPath} />
+              <SocialButtons redirectPath="/" />
 
               <div className="divider">
                 <span>or sign in with</span>
