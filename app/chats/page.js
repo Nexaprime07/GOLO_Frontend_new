@@ -15,7 +15,7 @@ import {
   uploadChatAttachment,
 } from "../lib/api";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === "production" ? "" : "http://localhost:3002");
 const CALL_ICE_SERVERS = [{ urls: "stun:stun.l.google.com:19302" }];
 
 const formatCallDuration = (value) => {

@@ -27,6 +27,8 @@ export default function LoginPage() {
   const { login, isAuthenticated, user } = useAuth();
   const [redirectPath, setRedirectPath] = useState("/");
   const [sessionExpired, setSessionExpired] = useState(false);
+  const merchantAppUrl = process.env.NEXT_PUBLIC_CHOJA_APP_URL || "/choja";
+  const adminAppUrl = process.env.NEXT_PUBLIC_ADMIN_APP_URL || "/admin";
 
   const shouldGoToGolocalOnboarding = (targetEmail, userAccountType) => {
     if (typeof window === "undefined") return false;
@@ -63,12 +65,12 @@ export default function LoginPage() {
       }
 
       if (user?.accountType === "merchant") {
-        window.location.href = "http://localhost:3000/";
+        window.location.href = merchantAppUrl;
       } else {
         router.push(redirectPath);
       }
     }
-  }, [isAuthenticated, user, router, redirectPath, email, accountType]);
+  }, [isAuthenticated, user, router, redirectPath, email, accountType, merchantAppUrl]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -120,9 +122,9 @@ export default function LoginPage() {
       }
 
       if (accountType === "merchant" || loggedInUser?.accountType === "merchant") {
-        window.location.href = "http://localhost:3000/";
+        window.location.href = merchantAppUrl;
       } else if (loggedInUser?.role === "admin") {
-        window.location.href = process.env.NEXT_PUBLIC_ADMIN_APP_URL || "http://localhost:3001/admin/login";
+        window.location.href = adminAppUrl;
       } else {
         router.push(redirectPath);
       }
