@@ -459,7 +459,6 @@ export default function RegisterPage() {
                             setStoreSubCategory("");
                             setError("");
                           }}
-                          style={{ width: "100%", border: "none", outline: "none", background: "transparent", padding: "13px 14px 13px 46px", fontSize: "14px" }}
                         >
                           <option value="">Select category</option>
                           {MERCHANT_CATEGORIES.map((category) => (
@@ -482,7 +481,6 @@ export default function RegisterPage() {
                             setError("");
                           }}
                           disabled={!storeCategory}
-                          style={{ width: "100%", border: "none", outline: "none", background: "transparent", padding: "13px 14px 13px 46px", fontSize: "14px", opacity: storeCategory ? 1 : 0.6 }}
                         >
                           <option value="">{storeCategory ? "Select sub category" : "Select category first"}</option>
                           {availableSubcategories.map((subCategory) => (

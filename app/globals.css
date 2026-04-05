@@ -636,13 +636,23 @@ body {
   position: relative;
   margin-bottom: 20px;
 }
-.input-wrapper input {
+.input-wrapper input,
+.input-wrapper select {
   width: 100%;
   padding: 14px 45px;
   background: #F1F5F9;
   border: none;
   border-radius: 12px;
   outline: none;
+}
+.input-wrapper select {
+  appearance: none;
+  color: #111827;
+  cursor: pointer;
+}
+.input-wrapper select:disabled {
+  cursor: not-allowed;
+  color: #9CA3AF;
 }
 .input-icon { position: absolute; left: 15px; top: 14px; color: #94A3B8; }
 .input-icon-right { position: absolute; right: 15px; top: 14px; color: #94A3B8; cursor: pointer; }
@@ -879,12 +889,22 @@ body {
   margin-bottom: 8px;
 }
 .input-wrapper { position: relative; margin-bottom: 20px; }
-.input-wrapper input {
+.input-wrapper input,
+.input-wrapper select {
   width: 100%;
   padding: 14px 45px;
   background: #F3F4F6;
   border: none;
   border-radius: 14px;
+}
+.input-wrapper select {
+  appearance: none;
+  color: #111827;
+  cursor: pointer;
+}
+.input-wrapper select:disabled {
+  cursor: not-allowed;
+  color: #9CA3AF;
 }
 .input-icon { position: absolute; left: 15px; top: 14px; color: #9CA3AF; }
 .input-icon-right { position: absolute; right: 15px; top: 14px; color: #9CA3AF; cursor: pointer; }
