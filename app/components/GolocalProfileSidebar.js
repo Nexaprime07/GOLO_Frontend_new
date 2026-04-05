@@ -40,10 +40,10 @@ export default function GolocalProfileSidebar({ active = "profile" }) {
           Favourite
         </Link>
 
-        <button className={itemClass(active === "notifications")} type="button">
+        <Link href="/profile/notifications" className={itemClass(active === "notifications")}>
           <Bell size={15} />
           Notifications
-        </button>
+        </Link>
       </div>
 
       <button
