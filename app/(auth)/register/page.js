@@ -1,8 +1,8 @@
 "use client";
 
 import AuthLayout from "./../../components/AuthLayout";
-import { Mail, Lock, User, Phone, MapPin, Eye, EyeOff } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Mail, Lock, User, Phone, MapPin, Eye, EyeOff, ChevronDown, Check } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../../context/AuthContext";
@@ -12,62 +12,77 @@ const MERCHANT_CATEGORIES = [
   {
     name: "Food & Restaurants",
     subcategories: ["Restaurants", "Cafes", "Cloud Kitchens", "Food Delivery Menus"],
+    description: "Restaurants, cafes, cloud kitchens, and delivery menus",
   },
   {
     name: "Home Services",
     subcategories: ["Cleaning", "Plumbing", "Electrical", "Appliance Repair", "Maintenance"],
+    description: "Cleaning, plumbing, electrical, repair, and upkeep",
   },
   {
     name: "Beauty & Wellness",
     subcategories: ["Salon", "Spa", "Grooming", "Personal Care Services"],
+    description: "Salon, spa, grooming, and personal care services",
   },
   {
     name: "Healthcare & Medical",
     subcategories: ["Hospitals", "Clinics", "Pharmacies", "Diagnostics"],
+    description: "Hospitals, clinics, pharmacies, and diagnostics",
   },
   {
     name: "Hotels & Accommodation",
     subcategories: ["Hotels", "Lodges", "Stays", "Room Bookings"],
+    description: "Hotels, lodges, stays, and room bookings",
   },
   {
     name: "Shopping & Retail",
     subcategories: ["Local Shops", "Groceries", "Fashion", "Electronics", "Products"],
+    description: "Local shops, groceries, fashion, electronics, and products",
   },
   {
     name: "Education & Training",
     subcategories: ["Schools", "Coaching", "Institutes", "Skill Development"],
+    description: "Schools, coaching, institutes, and skill development",
   },
   {
     name: "Real Estate",
     subcategories: ["Property Buying", "Property Selling", "Renting"],
+    description: "Property buying, selling, and renting",
   },
   {
     name: "Events & Entertainment",
     subcategories: ["Event Planners", "Photographers", "DJs", "Venues"],
+    description: "Event planners, photographers, DJs, and venues",
   },
   {
     name: "Professional Services",
     subcategories: ["Legal", "CA", "Consulting", "Freelance Services"],
+    description: "Legal, CA, consulting, and freelance services",
   },
   {
     name: "Automotive Services",
     subcategories: ["Car Repair", "Bike Repair", "Servicing", "Rentals"],
+    description: "Car and bike repair, servicing, and rentals",
   },
   {
     name: "Home Improvement",
     subcategories: ["Interior Design", "Painting", "Carpentry", "Renovation"],
+    description: "Interior design, painting, carpentry, and renovation",
   },
   {
     name: "Fitness & Sports",
     subcategories: ["Gyms", "Yoga", "Personal Trainers", "Sports Facilities"],
+    description: "Gyms, yoga, personal trainers, and sports facilities",
   },
   {
     name: "Daily Needs & Utilities",
     subcategories: ["Laundry", "Water Supply", "Gas", "Essential Services"],
+    description: "Laundry, water supply, gas, and essential services",
   },
   {
     name: "Local Businesses & Vendors",
     subcategories: ["General Business Listings", "B2B", "B2C", "Marketplace/IndiaMART Style"],
+    description: "General business listings and marketplace-style vendors",
   },
 ];
 
@@ -99,11 +114,50 @@ export default function RegisterPage() {
   const [contactNumber, setContactNumber] = useState("");
   const [storeLocation, setStoreLocation] = useState("");
   const [storePassword, setStorePassword] = useState("");
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const [isSubCategoryOpen, setIsSubCategoryOpen] = useState(false);
+  const categoryDropdownRef = useRef(null);
+  const subCategoryDropdownRef = useRef(null);
 
   const router = useRouter();
   const { register, isAuthenticated } = useAuth();
   const selectedCategory = MERCHANT_CATEGORIES.find((category) => category.name === storeCategory);
   const availableSubcategories = selectedCategory?.subcategories || [];
+  const categoryLabel = useMemo(() => {
+    if (!storeCategory) return "Select category";
+    return storeCategory;
+  }, [storeCategory]);
+  const subCategoryLabel = useMemo(() => {
+    if (!storeCategory) return "Select category first";
+    if (!storeSubCategory) return "Select sub category";
+    return storeSubCategory;
+  }, [storeCategory, storeSubCategory]);
+
+  useEffect(() => {
+    const handlePointerDown = (event) => {
+      const target = event.target;
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(target)) {
+        setIsCategoryOpen(false);
+      }
+      if (subCategoryDropdownRef.current && !subCategoryDropdownRef.current.contains(target)) {
+        setIsSubCategoryOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setIsCategoryOpen(false);
+        setIsSubCategoryOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -450,45 +504,98 @@ export default function RegisterPage() {
 
                     <div className="input-group">
                       <label>Category</label>
-                      <div className="input-wrapper">
-                        <User className="input-icon" size={18} />
-                        <select
-                          value={storeCategory}
-                          onChange={(e) => {
-                            setStoreCategory(e.target.value);
-                            setStoreSubCategory("");
-                            setError("");
+                      <div className="input-wrapper dropdown-shell" ref={categoryDropdownRef}>
+                        <button
+                          type="button"
+                          className={`dropdown-trigger ${storeCategory ? "has-value" : "is-placeholder"}`}
+                          onClick={() => {
+                            setIsCategoryOpen((open) => !open);
+                            setIsSubCategoryOpen(false);
                           }}
+                          aria-expanded={isCategoryOpen}
+                          aria-haspopup="listbox"
                         >
-                          <option value="">Select category</option>
-                          {MERCHANT_CATEGORIES.map((category) => (
-                            <option key={category.name} value={category.name}>
-                              {category.name}
-                            </option>
-                          ))}
-                        </select>
+                          <User className="input-icon" size={18} />
+                          <span className="dropdown-trigger-text">{categoryLabel}</span>
+                          <ChevronDown size={16} className={`dropdown-trigger-icon ${isCategoryOpen ? "open" : ""}`} />
+                        </button>
+                        {isCategoryOpen && (
+                          <div className="dropdown-panel dropdown-panel-category" role="listbox">
+                            {MERCHANT_CATEGORIES.map((category) => {
+                              const active = storeCategory === category.name;
+                              return (
+                                <button
+                                  key={category.name}
+                                  type="button"
+                                  className={`dropdown-option dropdown-option-card ${active ? "active" : ""}`}
+                                  onClick={() => {
+                                    setStoreCategory(category.name);
+                                    setStoreSubCategory("");
+                                    setError("");
+                                    setIsCategoryOpen(false);
+                                    setIsSubCategoryOpen(false);
+                                  }}
+                                  role="option"
+                                  aria-selected={active}
+                                >
+                                  <div className="dropdown-option-copy">
+                                    <div className="dropdown-option-title-row">
+                                      <span className="dropdown-option-title">{category.name}</span>
+                                      {active && <Check size={14} className="dropdown-option-check" />}
+                                    </div>
+                                    <span className="dropdown-option-description">{category.description}</span>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     <div className="input-group">
                       <label>Sub Category</label>
-                      <div className="input-wrapper">
-                        <User className="input-icon" size={18} />
-                        <select
-                          value={storeSubCategory}
-                          onChange={(e) => {
-                            setStoreSubCategory(e.target.value);
-                            setError("");
+                      <div className="input-wrapper dropdown-shell" ref={subCategoryDropdownRef}>
+                        <button
+                          type="button"
+                          className={`dropdown-trigger ${storeSubCategory ? "has-value" : "is-placeholder"}`}
+                          onClick={() => {
+                            if (!storeCategory) return;
+                            setIsSubCategoryOpen((open) => !open);
+                            setIsCategoryOpen(false);
                           }}
+                          aria-expanded={isSubCategoryOpen}
+                          aria-haspopup="listbox"
                           disabled={!storeCategory}
                         >
-                          <option value="">{storeCategory ? "Select sub category" : "Select category first"}</option>
-                          {availableSubcategories.map((subCategory) => (
-                            <option key={subCategory} value={subCategory}>
-                              {subCategory}
-                            </option>
-                          ))}
-                        </select>
+                          <User className="input-icon" size={18} />
+                          <span className="dropdown-trigger-text">{subCategoryLabel}</span>
+                          <ChevronDown size={16} className={`dropdown-trigger-icon ${isSubCategoryOpen ? "open" : ""}`} />
+                        </button>
+                        {isSubCategoryOpen && storeCategory && (
+                          <div className="dropdown-panel dropdown-panel-subcategory" role="listbox">
+                            {availableSubcategories.map((subCategory) => {
+                              const active = storeSubCategory === subCategory;
+                              return (
+                                <button
+                                  key={subCategory}
+                                  type="button"
+                                  className={`dropdown-option dropdown-option-pill ${active ? "active" : ""}`}
+                                  onClick={() => {
+                                    setStoreSubCategory(subCategory);
+                                    setError("");
+                                    setIsSubCategoryOpen(false);
+                                  }}
+                                  role="option"
+                                  aria-selected={active}
+                                >
+                                  <span>{subCategory}</span>
+                                  {active && <Check size={14} className="dropdown-option-check" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </div>
 
