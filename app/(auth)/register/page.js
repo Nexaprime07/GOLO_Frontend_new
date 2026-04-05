@@ -573,14 +573,14 @@ export default function RegisterPage() {
                           <ChevronDown size={16} className={`dropdown-trigger-icon ${isSubCategoryOpen ? "open" : ""}`} />
                         </button>
                         {isSubCategoryOpen && storeCategory && (
-                          <div className="dropdown-panel dropdown-panel-subcategory" role="listbox">
+                          <div className="dropdown-panel dropdown-panel-category" role="listbox">
                             {availableSubcategories.map((subCategory) => {
                               const active = storeSubCategory === subCategory;
                               return (
                                 <button
                                   key={subCategory}
                                   type="button"
-                                  className={`dropdown-option dropdown-option-pill ${active ? "active" : ""}`}
+                                  className={`dropdown-option dropdown-option-card ${active ? "active" : ""}`}
                                   onClick={() => {
                                     setStoreSubCategory(subCategory);
                                     setError("");
@@ -589,8 +589,15 @@ export default function RegisterPage() {
                                   role="option"
                                   aria-selected={active}
                                 >
-                                  <span>{subCategory}</span>
-                                  {active && <Check size={14} className="dropdown-option-check" />}
+                                  <div className="dropdown-option-copy">
+                                    <div className="dropdown-option-title-row">
+                                      <span className="dropdown-option-title">{subCategory}</span>
+                                      {active && <Check size={14} className="dropdown-option-check" />}
+                                    </div>
+                                    <span className="dropdown-option-description">
+                                      Available under {storeCategory}
+                                    </span>
+                                  </div>
                                 </button>
                               );
                             })}
