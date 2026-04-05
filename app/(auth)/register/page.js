@@ -1,12 +1,75 @@
 "use client";
 
 import AuthLayout from "./../../components/AuthLayout";
-import { Mail, Lock, User, Phone, MapPin, FileText, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, User, Phone, MapPin, Eye, EyeOff } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../../context/AuthContext";
 import SocialButtons from "../../components/SocialButtons";
+
+const MERCHANT_CATEGORIES = [
+  {
+    name: "Food & Restaurants",
+    subcategories: ["Restaurants", "Cafes", "Cloud Kitchens", "Food Delivery Menus"],
+  },
+  {
+    name: "Home Services",
+    subcategories: ["Cleaning", "Plumbing", "Electrical", "Appliance Repair", "Maintenance"],
+  },
+  {
+    name: "Beauty & Wellness",
+    subcategories: ["Salon", "Spa", "Grooming", "Personal Care Services"],
+  },
+  {
+    name: "Healthcare & Medical",
+    subcategories: ["Hospitals", "Clinics", "Pharmacies", "Diagnostics"],
+  },
+  {
+    name: "Hotels & Accommodation",
+    subcategories: ["Hotels", "Lodges", "Stays", "Room Bookings"],
+  },
+  {
+    name: "Shopping & Retail",
+    subcategories: ["Local Shops", "Groceries", "Fashion", "Electronics", "Products"],
+  },
+  {
+    name: "Education & Training",
+    subcategories: ["Schools", "Coaching", "Institutes", "Skill Development"],
+  },
+  {
+    name: "Real Estate",
+    subcategories: ["Property Buying", "Property Selling", "Renting"],
+  },
+  {
+    name: "Events & Entertainment",
+    subcategories: ["Event Planners", "Photographers", "DJs", "Venues"],
+  },
+  {
+    name: "Professional Services",
+    subcategories: ["Legal", "CA", "Consulting", "Freelance Services"],
+  },
+  {
+    name: "Automotive Services",
+    subcategories: ["Car Repair", "Bike Repair", "Servicing", "Rentals"],
+  },
+  {
+    name: "Home Improvement",
+    subcategories: ["Interior Design", "Painting", "Carpentry", "Renovation"],
+  },
+  {
+    name: "Fitness & Sports",
+    subcategories: ["Gyms", "Yoga", "Personal Trainers", "Sports Facilities"],
+  },
+  {
+    name: "Daily Needs & Utilities",
+    subcategories: ["Laundry", "Water Supply", "Gas", "Essential Services"],
+  },
+  {
+    name: "Local Businesses & Vendors",
+    subcategories: ["General Business Listings", "B2B", "B2C", "Marketplace/IndiaMART Style"],
+  },
+];
 
 export default function RegisterPage() {
   const quotes = [
@@ -31,13 +94,16 @@ export default function RegisterPage() {
   // Merchant form fields
   const [storeName, setStoreName] = useState("");
   const [storeEmail, setStoreEmail] = useState("");
-  const [gstNumber, setGstNumber] = useState("");
+  const [storeCategory, setStoreCategory] = useState("");
+  const [storeSubCategory, setStoreSubCategory] = useState("");
   const [contactNumber, setContactNumber] = useState("");
   const [storeLocation, setStoreLocation] = useState("");
   const [storePassword, setStorePassword] = useState("");
 
   const router = useRouter();
   const { register, isAuthenticated } = useAuth();
+  const selectedCategory = MERCHANT_CATEGORIES.find((category) => category.name === storeCategory);
+  const availableSubcategories = selectedCategory?.subcategories || [];
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -68,8 +134,8 @@ export default function RegisterPage() {
         return;
       }
     } else {
-      if (!storeName.trim() || !storeEmail.trim() || !storePassword.trim()) {
-        setError("Store name, email, and password are required.");
+      if (!storeName.trim() || !storeEmail.trim() || !storeCategory || !storeSubCategory || !storePassword.trim()) {
+        setError("Store name, email, category, sub category, and password are required.");
         return;
       }
       if (storePassword.length < 6) {
@@ -104,7 +170,8 @@ export default function RegisterPage() {
           accountType: "merchant",
           storeName,
           storeEmail,
-          gstNumber,
+          storeCategory,
+          storeSubCategory,
           contactNumber: formatPhone(contactNumber),
           storeLocation,
         };
@@ -382,15 +449,48 @@ export default function RegisterPage() {
                     </div>
 
                     <div className="input-group">
-                      <label>GST Number</label>
+                      <label>Category</label>
                       <div className="input-wrapper">
-                        <FileText className="input-icon" size={18} />
-                        <input
-                          type="text"
-                          placeholder="Enter GST number"
-                          value={gstNumber}
-                          onChange={(e) => setGstNumber(e.target.value)}
-                        />
+                        <User className="input-icon" size={18} />
+                        <select
+                          value={storeCategory}
+                          onChange={(e) => {
+                            setStoreCategory(e.target.value);
+                            setStoreSubCategory("");
+                            setError("");
+                          }}
+                          style={{ width: "100%", border: "none", outline: "none", background: "transparent", padding: "13px 14px 13px 46px", fontSize: "14px" }}
+                        >
+                          <option value="">Select category</option>
+                          {MERCHANT_CATEGORIES.map((category) => (
+                            <option key={category.name} value={category.name}>
+                              {category.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="input-group">
+                      <label>Sub Category</label>
+                      <div className="input-wrapper">
+                        <User className="input-icon" size={18} />
+                        <select
+                          value={storeSubCategory}
+                          onChange={(e) => {
+                            setStoreSubCategory(e.target.value);
+                            setError("");
+                          }}
+                          disabled={!storeCategory}
+                          style={{ width: "100%", border: "none", outline: "none", background: "transparent", padding: "13px 14px 13px 46px", fontSize: "14px", opacity: storeCategory ? 1 : 0.6 }}
+                        >
+                          <option value="">{storeCategory ? "Select sub category" : "Select category first"}</option>
+                          {availableSubcategories.map((subCategory) => (
+                            <option key={subCategory} value={subCategory}>
+                              {subCategory}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
 

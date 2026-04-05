@@ -151,6 +151,8 @@ export async function registerUser({
     storeName,
     storeEmail,
     gstNumber,
+    storeCategory,
+    storeSubCategory,
     contactNumber,
     storeLocation,
 }) {
@@ -165,6 +167,8 @@ export async function registerUser({
             storeName,
             storeEmail,
             gstNumber,
+            storeCategory,
+            storeSubCategory,
             contactNumber,
             storeLocation,
         }),
