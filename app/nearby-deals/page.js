@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { SlidersHorizontal, Grid2x2, List, ChevronDown } from "lucide-react";
@@ -21,7 +21,7 @@ const dealCards = [
 
 const repeatedDeals = [...dealCards, ...dealCards];
 
-export default function NearbyDealsPage() {
+function NearbyDealsPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [topRated, setTopRated] = useState(true);
@@ -158,5 +158,13 @@ export default function NearbyDealsPage() {
 
       <Footer />
     </main>
+  );
+}
+
+export default function NearbyDealsPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen bg-[#F3F3F3]" />}>
+      <NearbyDealsPageContent />
+    </Suspense>
   );
 }
