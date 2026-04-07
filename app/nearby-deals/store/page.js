@@ -202,7 +202,12 @@ export default function NearbyStorePage() {
                 </div>
               </div>
 
-              <button className="mt-3 text-[12px] font-semibold text-[#1e9a5c]">See all 1,240 reviews <span className="ml-1">›</span></button>
+              <button
+                onClick={() => router.push("/nearby-deals/ratings-reviews")}
+                className="mt-3 text-[12px] font-semibold text-[#1e9a5c]"
+              >
+                See all 1,240 reviews <span className="ml-1">›</span>
+              </button>
             </section>
           </div>
 

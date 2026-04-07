@@ -59,6 +59,11 @@ export default function LoginPage() {
         return;
       }
 
+      if (effectiveType === "merchant") {
+        router.push("/merchant/dashboard");
+        return;
+      }
+
       router.push("/");
     }
   }, [isAuthenticated, user, router, email, accountType]);
@@ -109,6 +114,11 @@ export default function LoginPage() {
 
       if (shouldGoToGolocalOnboarding(loggedInUser?.email || email, loggedInUser?.accountType || accountType)) {
         router.push("/golocal/onboarding");
+        return;
+      }
+
+      if ((loggedInUser?.accountType || accountType) === "merchant") {
+        router.push("/merchant/dashboard");
         return;
       }
 

@@ -197,7 +197,10 @@ export default function NearbyDealDetailsPage() {
                   Absolutely incredible experience! The deep tissue massage was exactly what I needed after a stressful week.
                   The hot stones felt divine, and the staff at Azure was so professional. Highly recommend this deal!
                 </p>
-                <button className="mt-3 inline-flex items-center gap-1 text-[13px] font-semibold text-[#4f6adf]">
+                <button
+                  onClick={() => router.push("/nearby-deals/ratings-reviews")}
+                  className="mt-3 inline-flex items-center gap-1 text-[13px] font-semibold text-[#4f6adf]"
+                >
                   See all reviews <ChevronRight size={14} />
                 </button>
               </div>

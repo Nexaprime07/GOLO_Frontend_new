@@ -1,0 +1,283 @@
+"use client";
+
+import Image from "next/image";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Bell, User } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+
+const likedProducts = [
+  { name: "T-Shirt", type: "Fitness", likes: "13k", image: "/images/deal2.avif" },
+  { name: "Shirt", type: "Tech", likes: "9.4k", image: "/images/banner3.avif" },
+  { name: "Pants", type: "Lifestyle", likes: "7.2k", image: "/images/place2.avif" },
+  { name: "Saree", type: "Office", likes: "5.1k", image: "/images/deal2.avif" },
+];
+
+const ageRows = [
+  { label: "18-24", male: 40, female: 60, total: "3.3%" },
+  { label: "25-34", male: 54, female: 46, total: "12.7%" },
+  { label: "35-44", male: 48, female: 52, total: "15.2%" },
+  { label: "45-64", male: 59, female: 41, total: "25.3%" },
+  { label: "65+", male: 45, female: 55, total: "33.5%" },
+];
+
+export default function MerchantAnalyticsPage() {
+  const router = useRouter();
+  const { user, loading, logout } = useAuth();
+
+  const handleMerchantLogout = async () => {
+    await logout();
+    router.push("/login");
+  };
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace("/login?redirect=/merchant/analytics");
+      return;
+    }
+
+    if (!loading && user && user.accountType !== "merchant") {
+      router.replace("/");
+    }
+  }, [loading, user, router]);
+
+  if (loading || !user) {
+    return <div className="min-h-screen bg-[#efefef]" />;
+  }
+
+  if (user.accountType !== "merchant") return null;
+
+  return (
+    <div className="min-h-screen bg-[#ececec] text-[#1b1b1b]" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
+      <header className="sticky top-0 z-[9999] h-16 bg-[#efb02e] border-b border-[#d7a02a] px-8 lg:px-10 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-3 min-w-[180px]">
+          <button type="button" onClick={() => router.push("/merchant/dashboard")} className="flex items-center gap-3 cursor-pointer">
+            <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow font-bold" style={{ color: "#157a4f" }}>
+              G
+            </div>
+            <span className="text-xl font-semibold tracking-wide text-[#157a4f]">GOLO</span>
+          </button>
+        </div>
+
+        <div className="ml-auto flex items-center gap-8 text-[12px] font-semibold text-[#5a4514]">
+          <nav className="flex items-center gap-8">
+            <button onClick={() => router.push("/merchant/dashboard")}>Overview</button>
+            <button onClick={() => router.push("/merchant/orders")}>Orders</button>
+            <button onClick={() => router.push("/merchant/products")}>Products</button>
+            <button>Profile</button>
+            <button onClick={() => router.push("/merchant/analytics")} className="relative h-16 text-[#157a4f]">
+              Analytics
+              <span className="absolute left-0 right-0 -bottom-px h-[2px] bg-[#157a4f]" />
+            </button>
+          </nav>
+
+          <button type="button" onClick={handleMerchantLogout} className="w-10 h-10 rounded-full bg-white shadow-md hover:scale-105 transition flex items-center justify-center" aria-label="Logout">
+            <User size={18} style={{ color: "#157a4f" }} />
+          </button>
+        </div>
+      </header>
+
+      <main className="w-full px-8 lg:px-10 py-6">
+        <div className="mx-auto w-full max-w-[1400px] space-y-4">
+          <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-4">
+            <div className="rounded-[12px] border border-[#dddddd] bg-white p-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="inline-flex rounded-full bg-[#f0f7f2] px-2 py-0.5 text-[9px] font-semibold text-[#157a4f]">Live Data</span>
+                  <h1 className="mt-3 text-[26px] font-semibold leading-none">Monthly customer</h1>
+                  <p className="text-[12px] text-[#6f6f6f] mt-1">Growth analysis for the current month</p>
+                </div>
+
+                <div className="text-right">
+                  <div className="inline-flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-full overflow-hidden border border-[#ddd]">
+                      <Image src="/images/place2.avif" alt="Fashion Fusion" width={32} height={32} className="h-full w-full object-cover" />
+                    </div>
+                    <p className="text-[24px] font-semibold">Fashion Fusion</p>
+                  </div>
+                  <p className="mt-2 text-[11px] text-[#2f8f55] inline-flex rounded-full bg-[#edf8f0] px-2 py-0.5">↗ +1,208 more than usual</p>
+                </div>
+              </div>
+
+              <div className="mt-3 rounded-[10px] border border-[#ececec] bg-[#fbfbfb] p-3">
+                <svg viewBox="0 0 760 300" className="w-full h-[250px]">
+                  {[1200, 800, 400, 0].map((y) => (
+                    <g key={y}>
+                      <line x1="36" y1={40 + (1200 - y) * 0.18} x2="740" y2={40 + (1200 - y) * 0.18} stroke="#d8d8d8" strokeDasharray="4 4" />
+                      <text x="2" y={44 + (1200 - y) * 0.18} fontSize="10" fill="#888">{y}</text>
+                    </g>
+                  ))}
+
+                  <polyline fill="none" stroke="#157a4f" strokeWidth="2.2" points="36,145 146,160 256,110 366,80 476,95 586,60 696,26" />
+
+                  {["1 Jan", "5 Jan", "10 Jan", "15 Jan", "20 Jan", "25 Jan", "31 Jan"].map((d, idx) => (
+                    <text key={d} x={36 + idx * 110} y="280" fontSize="10" fill="#8a8a8a">{d}</text>
+                  ))}
+                </svg>
+              </div>
+
+              <div className="mt-4 grid grid-cols-3 gap-3 border-t border-[#ececec] pt-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.1em] text-[#7b7b7b]">Total Active</p>
+                  <p className="text-[34px] leading-none font-semibold mt-1">42,892</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.1em] text-[#7b7b7b]">New Signups</p>
+                  <p className="text-[34px] leading-none font-semibold mt-1 text-[#2f8f55]">2,415</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.1em] text-[#7b7b7b]">Retention</p>
+                  <p className="text-[34px] leading-none font-semibold mt-1">88.4%</p>
+                </div>
+              </div>
+            </div>
+
+            <aside className="rounded-[12px] border border-[#d9d9d9] bg-white p-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-[26px] font-semibold leading-none">Products liked</h2>
+                  <p className="text-[11px] text-[#6f6f6f] mt-1">Trending items in last 30 months</p>
+                </div>
+                <button className="text-[#888]">⋮</button>
+              </div>
+
+              <div className="mt-3 space-y-2">
+                {likedProducts.map((product) => (
+                  <div key={product.name} className="flex items-center gap-3 rounded-[8px] border border-[#efefef] bg-[#fafafa] px-3 py-2">
+                    <div className="h-8 w-8 rounded-full overflow-hidden border border-[#ddd]">
+                      <Image src={product.image} alt={product.name} width={32} height={32} className="h-full w-full object-cover" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[12px] font-semibold">{product.name}</p>
+                      <p className="text-[10px] text-[#8a8a8a]">{product.type}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[12px] font-semibold">{product.likes}</p>
+                      <p className="text-[9px] text-[#8a8a8a]">LIKES</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button className="mt-4 h-9 w-full rounded-full border border-[#7db897] bg-white text-[12px] font-semibold text-[#2f8f55]">
+                View All Popular Products ›
+              </button>
+            </aside>
+          </section>
+
+          <section className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-4">
+            <div className="rounded-[12px] border border-[#d9d9d9] bg-white p-4">
+              <h3 className="text-[24px] font-semibold leading-none">Device type</h3>
+              <p className="text-[11px] text-[#6f6f6f] mt-1">Primary platforms used by customers</p>
+
+              <div className="mt-5 flex justify-center">
+                <div className="relative h-40 w-40">
+                  <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
+                    <circle cx="60" cy="60" r="42" stroke="#e5e7eb" strokeWidth="9" fill="none" />
+                    <circle cx="60" cy="60" r="42" stroke="#2f8f55" strokeWidth="9" strokeDasharray="165 264" fill="none" />
+                    <circle cx="60" cy="60" r="42" stroke="#e3a11f" strokeWidth="9" strokeDasharray="66 264" strokeDashoffset="-170" fill="none" />
+                    <circle cx="60" cy="60" r="42" stroke="#4b5563" strokeWidth="9" strokeDasharray="33 264" strokeDashoffset="-238" fill="none" />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                    <p className="text-[36px] font-semibold leading-none">100%</p>
+                    <p className="text-[10px] uppercase tracking-[0.1em] text-[#7d7d7d]">Coverage</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-3 gap-2 text-[10px]">
+                <div className="rounded-[8px] border border-[#efefef] bg-[#fafafa] p-2 text-center"><p className="text-[#2f8f55]">● Mobile</p><p className="font-semibold mt-1">62.5%</p></div>
+                <div className="rounded-[8px] border border-[#efefef] bg-[#fafafa] p-2 text-center"><p className="text-[#e3a11f]">● Computer</p><p className="font-semibold mt-1">25%</p></div>
+                <div className="rounded-[8px] border border-[#efefef] bg-[#fafafa] p-2 text-center"><p className="text-[#4b5563]">● Tablet</p><p className="font-semibold mt-1">12.5%</p></div>
+              </div>
+            </div>
+
+            <div className="rounded-[12px] border border-[#d9d9d9] bg-white p-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-[24px] font-semibold leading-none">Age and gender</h3>
+                  <p className="text-[11px] text-[#6f6f6f] mt-1">Demographic breakdown statistics</p>
+                </div>
+                <div className="text-[10px] text-[#777] inline-flex items-center gap-2"><span className="text-[#2f8f55]">● MALE</span><span className="text-[#e3a11f]">● FEMALE</span></div>
+              </div>
+
+              <div className="mt-4 space-y-4">
+                {ageRows.map((row) => (
+                  <div key={row.label} className="grid grid-cols-[42px_1fr_44px] items-center gap-3 text-[11px]">
+                    <span className="text-[#5a5a5a]">{row.label}</span>
+                    <div className="h-2 rounded-full bg-[#ececec] overflow-hidden flex">
+                      <div className="bg-[#2f8f55]" style={{ width: `${row.male}%` }} />
+                      <div className="bg-[#e3a11f]" style={{ width: `${row.female}%` }} />
+                    </div>
+                    <span className="text-right font-semibold">{row.total}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-[12px] border border-[#d9d9d9] bg-white p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-[24px] font-semibold leading-none">Location breakdown</h3>
+                <p className="text-[11px] text-[#6f6f6f] mt-1">Customer density by regional clusters</p>
+              </div>
+              <div className="inline-flex rounded-[8px] border border-[#e2e2e2] overflow-hidden text-[10px]">
+                <button className="h-7 px-3 bg-[#f8f8f8] font-semibold">City</button>
+                <button className="h-7 px-3 bg-white text-[#666]">State</button>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4 text-[11px]">
+              <div className="space-y-3">
+                <LocationRow name="Karveer" value={95} />
+                <LocationRow name="Gandhinglaj" value={62} />
+                <LocationRow name="Panhala" value={30} />
+              </div>
+              <div className="space-y-3">
+                <LocationRow name="Ichalkaranji" value={78} />
+                <LocationRow name="Radhanagari" value={45} />
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <footer className="mt-6 bg-[#e8ad2f] border-t border-[#d49b22] text-[#2f2a1f]">
+        <div className="mx-auto w-full max-w-[1400px] px-8 lg:px-10 py-6 grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-[3px] bg-[#0f7d49] text-white text-[26px] font-bold flex items-center justify-center leading-none">G</div>
+              <span className="text-[34px] leading-none font-semibold text-[#0f7d49]">GOLO</span>
+            </div>
+            <p className="mt-3 text-[12px] max-w-[250px]">The all-in-one management platform for modern businesses. Empowering growth through analytics and intuitive product management.</p>
+          </div>
+          <div>
+            <p className="text-[20px] font-bold">Links</p>
+            <div className="mt-3 space-y-2 text-[13px]"><p>Overview</p><p>Inventory</p><p>Posts</p><p>Profile</p></div>
+          </div>
+          <div className="pt-8 md:pt-9 space-y-2 text-[13px]"><p>Analytics</p><p>Contact</p></div>
+          <div>
+            <p className="text-[20px] font-bold">Support</p>
+            <div className="mt-3 space-y-2 text-[13px]"><p>Help Center</p><p>Security</p><p>Terms of Service</p></div>
+          </div>
+        </div>
+        <div className="mx-auto w-full max-w-[1400px] px-8 lg:px-10 py-3 border-t border-[#d49b22] flex items-center justify-between gap-3 text-[11px]"><p>© 2026 GOLO Dashboard. All rights reserved.</p></div>
+      </footer>
+    </div>
+  );
+}
+
+function LocationRow({ name, value }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5 text-[#505050]">
+        <span>{name}</span>
+        <span>{value}%</span>
+      </div>
+      <div className="h-2 rounded-full bg-[#ececec] overflow-hidden">
+        <div className="h-2 bg-[#e3a11f]" style={{ width: `${value}%` }} />
+      </div>
+    </div>
+  );
+}

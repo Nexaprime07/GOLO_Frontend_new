@@ -522,6 +522,14 @@ function NavbarContent({
                   >
                     <Bell size={16} /> Notifications
                   </Link>
+                  <div className="border-t border-gray-100 mt-1">
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 w-full transition"
+                    >
+                      <LogOut size={16} /> Logout
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
