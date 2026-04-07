@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState, useRef, useEffect, Suspense } from "react";
-import { Search, MapPin, User, X, LogOut, ChevronDown, Shield, ShieldCheck, FileText, Bell } from "lucide-react";
+import { Search, MapPin, User, X, LogOut, ChevronDown, Shield, ShieldCheck, FileText, Bell, Trophy, Heart } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
 import AuthRequiredModal from "./AuthRequiredModal";
@@ -55,12 +55,13 @@ function NavbarContent({
   const isGolocalSurface =
     pathname === "/" ||
     pathname.startsWith("/nearby-deals") ||
-    pathname.startsWith("/profile");
+    pathname.startsWith("/profile") ||
+    pathname.startsWith("/my-deals");
   const isChojaSurface = pathname.startsWith("/choja");
   const useGolocalHomeNav = isGolocalSurface;
   const homeNavHref = "/choja";
   const primaryNavLabel = useGolocalHomeNav ? "My Deals" : "Post Your Ad";
-  const primaryNavHref = useGolocalHomeNav ? "/my-ads" : "/post-ad";
+  const primaryNavHref = useGolocalHomeNav ? "/my-deals" : "/post-ad";
   const secondaryNavLabel = useGolocalHomeNav ? "Favorites" : "Chats";
   const secondaryNavHref = useGolocalHomeNav ? "/wishlist" : "/chats";
 
@@ -187,8 +188,7 @@ function NavbarContent({
     }
 
     if (isGolocalSurface) {
-      setShowProfileMenu(false);
-      router.push("/profile");
+      setShowProfileMenu((prev) => !prev);
       return;
     }
 
@@ -440,7 +440,7 @@ function NavbarContent({
                     <User size={18} />
                   )}
                 </div>
-                {isChojaSurface && <ChevronDown size={14} className="text-gray-500" />}
+                {(isChojaSurface || isGolocalSurface) && <ChevronDown size={14} className="text-gray-500" />}
               </div>
 
               {/* Profile Dropdown */}
@@ -458,11 +458,11 @@ function NavbarContent({
                     <User size={16} /> My Profile
                   </Link>
                   <Link
-                    href="/my-ads"
+                    href={useGolocalHomeNav ? "/my-deals" : "/my-ads"}
                     onClick={() => setShowProfileMenu(false)}
                     className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
                   >
-                    <FileText size={16} /> My Ads
+                    <FileText size={16} /> {useGolocalHomeNav ? "My Deals" : "My Ads"}
                   </Link>
                   <Link
                     href="/wishlist"
@@ -489,6 +489,39 @@ function NavbarContent({
                       <LogOut size={16} /> Logout
                     </button>
                   </div>
+                </div>
+              )}
+
+              {isGolocalSurface && showProfileMenu && (
+                <div className="absolute top-12 right-0 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-[9999]">
+                  <Link
+                    href="/profile"
+                    onClick={() => setShowProfileMenu(false)}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
+                  >
+                    <User size={16} /> Profile
+                  </Link>
+                  <Link
+                    href="/profile/rewards"
+                    onClick={() => setShowProfileMenu(false)}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
+                  >
+                    <Trophy size={16} /> Points & Rewards
+                  </Link>
+                  <Link
+                    href="/profile/favorites"
+                    onClick={() => setShowProfileMenu(false)}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
+                  >
+                    <Heart size={16} /> Favourite
+                  </Link>
+                  <Link
+                    href="/profile/notifications"
+                    onClick={() => setShowProfileMenu(false)}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
+                  >
+                    <Bell size={16} /> Notifications
+                  </Link>
                 </div>
               )}
             </div>
