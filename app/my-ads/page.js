@@ -11,7 +11,7 @@ import { useAuth } from "../context/AuthContext";
 import { getMyAds } from "../lib/api";
 
 export default function MyAds() {
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
   const router = useRouter();
   const [ads, setAds] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,6 +24,13 @@ export default function MyAds() {
       router.push("/login");
     }
   }, [authLoading, isAuthenticated, router]);
+
+  // Redirect merchants away from user pages
+  useEffect(() => {
+    if (!authLoading && user && user.accountType === "merchant") {
+      router.replace("/merchant/dashboard");
+    }
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     if (!isAuthenticated) return;

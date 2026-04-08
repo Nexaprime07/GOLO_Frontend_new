@@ -1,12 +1,14 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "../context/AuthContext";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { saveIWantPreference } from "../lib/api";
 
 export default function IWant() {
   const router = useRouter();
+  const { user, loading } = useAuth();
   const [images, setImages] = useState([]);
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("Select a category");
@@ -16,6 +18,13 @@ export default function IWant() {
   const [submitSuccess, setSubmitSuccess] = useState("");
   const fileInputRef = useRef(null);
   const dropdownRef = useRef(null);
+
+  // Redirect merchants away from user pages
+  useEffect(() => {
+    if (!loading && user && user.accountType === "merchant") {
+      router.replace("/merchant/dashboard");
+    }
+  }, [user, loading, router]);
 
   const categories = [
     "Education",

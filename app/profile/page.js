@@ -28,6 +28,13 @@ export default function ProfilePage() {
   const [activeAdsCount, setActiveAdsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
+
+  // Redirect merchants away from user pages
+  useEffect(() => {
+    if (!authLoading && user && user.accountType === "merchant") {
+      router.replace("/merchant/dashboard");
+    }
+  }, [user, authLoading, router]);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState("");
   const [avatarPreview, setAvatarPreview] = useState("");
@@ -93,6 +100,10 @@ export default function ProfilePage() {
         <Footer />
       </>
     );
+  }
+
+  if (user && user.accountType === "merchant") {
+    return null;
   }
 
   const displayUser = profile || user;

@@ -14,7 +14,7 @@ import { Loader2, Heart, Trash2 } from "lucide-react";
 export default function WishlistPage() {
   const [ads, setAds] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -23,11 +23,20 @@ export default function WishlistPage() {
       router.push("/login");
       return;
     }
+  }, [isAuthenticated, router]);
 
+  // Redirect merchants away from user pages
+  useEffect(() => {
+    if (!authLoading && user && user.accountType === "merchant") {
+      router.replace("/merchant/dashboard");
+    }
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
     if (isAuthenticated === true) {
       fetchWishlist();
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated]);
 
   const fetchWishlist = async () => {
     try {

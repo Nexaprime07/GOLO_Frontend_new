@@ -4,6 +4,7 @@ import Image from "next/image";
 import { Heart, Share2, MapPin, Phone, MessageCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "../context/AuthContext";
 import Navbar from "./../components/Navbar";
 import Footer from "./../components/Footer";
 
@@ -11,6 +12,14 @@ export default function PostAdPage() {
   const [selected, setSelected] = useState(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const router = useRouter();
+  const { user, loading } = useAuth();
+
+  // Redirect merchants away from user pages
+  useEffect(() => {
+    if (!loading && user && user.accountType === "merchant") {
+      router.replace("/merchant/dashboard");
+    }
+  }, [user, loading, router]);
 
   const templates = [
     {

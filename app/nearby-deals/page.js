@@ -1,9 +1,10 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useMemo, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { SlidersHorizontal, Grid2x2, List, ChevronDown } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 import Navbar from "../components/Navbar";
 import CategoryBar from "../components/CategoryBar";
 import Footer from "../components/Footer";
@@ -162,6 +163,24 @@ function NearbyDealsPageContent() {
 }
 
 export default function NearbyDealsPage() {
+  const router = useRouter();
+  const { user, loading } = useAuth();
+
+  // Redirect merchants away from user pages
+  useEffect(() => {
+    if (!loading && user && user.accountType === "merchant") {
+      router.replace("/merchant/dashboard");
+    }
+  }, [user, loading, router]);
+
+  if (loading) {
+    return <main className="min-h-screen bg-[#F3F3F3]" />;
+  }
+
+  if (user && user.accountType === "merchant") {
+    return null;
+  }
+
   return (
     <Suspense fallback={<main className="min-h-screen bg-[#F3F3F3]" />}>
       <NearbyDealsPageContent />

@@ -98,6 +98,13 @@ function ChatsPageContent() {
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [loadingConversations, setLoadingConversations] = useState(true);
+
+  // Redirect merchants away from user pages
+  useEffect(() => {
+    if (!authLoading && user && user.accountType === "merchant") {
+      router.replace("/merchant/dashboard");
+    }
+  }, [user, authLoading, router]);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [pageError, setPageError] = useState("");

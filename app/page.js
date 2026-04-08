@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "./context/AuthContext";
 import Navbar from "./components/Navbar";
 import CategoryBar from "./components/CategoryBar";
 import Hero from "./components/Hero";
@@ -32,6 +33,14 @@ export default function Home() {
   const [recentAds, setRecentAds] = useState([]);
   const [loadingRecent, setLoadingRecent] = useState(true);
   const router = useRouter();
+  const { user, loading } = useAuth();
+
+  // Redirect merchants to merchant dashboard
+  useEffect(() => {
+    if (!loading && user && user.accountType === "merchant") {
+      router.replace("/merchant/dashboard");
+    }
+  }, [user, loading, router]);
 
   useEffect(() => {
     async function fetchRecent() {

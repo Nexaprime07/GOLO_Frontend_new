@@ -2,6 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "../context/AuthContext";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { CalendarDays, ChevronRight, Search, Tag, ShieldCheck, CircleHelp, ArrowUpDown, ExternalLink } from "lucide-react";
@@ -81,6 +84,24 @@ const quickTips = [
 const helpLinks = ["Help Center", "Chat Support"];
 
 export default function MyDeals() {
+  const router = useRouter();
+  const { user, loading } = useAuth();
+
+  // Redirect merchants away from user pages
+  useEffect(() => {
+    if (!loading && user && user.accountType === "merchant") {
+      router.replace("/merchant/dashboard");
+    }
+  }, [user, loading, router]);
+
+  if (loading) {
+    return <div className="min-h-screen bg-[#f7f6f2]" />;
+  }
+
+  if (user && user.accountType === "merchant") {
+    return null;
+  }
+
   return (
     <>
       <Navbar />
