@@ -75,7 +75,7 @@ export default function MerchantDashboardPage() {
             </button>
             <button onClick={() => router.push("/merchant/orders")}>Orders</button>
             <button onClick={() => router.push("/merchant/products")}>Products</button>
-            <button>Profile</button>
+            <button onClick={() => router.push("/merchant/profile")}>Profile</button>
             <button onClick={() => router.push("/merchant/analytics")}>Analytics</button>
           </nav>
 

@@ -131,7 +131,7 @@ export default function MerchantOrdersPage() {
               <span className="absolute left-0 right-0 -bottom-px h-[2px] bg-[#157a4f]" />
             </button>
             <button onClick={() => router.push("/merchant/products")}>Products</button>
-            <button>Profile</button>
+            <button onClick={() => router.push("/merchant/profile")}>Profile</button>
             <button onClick={() => router.push("/merchant/analytics")}>Analytics</button>
           </nav>
 

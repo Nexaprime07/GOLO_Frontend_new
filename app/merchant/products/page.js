@@ -60,7 +60,7 @@ export default function MerchantProductsPage() {
               Products
               <span className="absolute left-0 right-0 -bottom-px h-[2px] bg-[#157a4f]" />
             </button>
-            <button>Profile</button>
+            <button onClick={() => router.push("/merchant/profile")}>Profile</button>
             <button onClick={() => router.push("/merchant/analytics")}>Analytics</button>
           </nav>
 
@@ -119,7 +119,7 @@ export default function MerchantProductsPage() {
                 <button className="h-9 rounded-[8px] border border-[#e2e2e2] bg-white px-4 text-[11px] text-[#666] inline-flex items-center gap-1.5">
                   <Download size={12} /> Export CSV
                 </button>
-                <button className="h-9 rounded-[8px] bg-[#2f9e58] px-4 text-[11px] font-semibold text-white inline-flex items-center gap-1.5">
+                <button onClick={() => router.push("/merchant/products/add")} className="h-9 rounded-[8px] bg-[#2f9e58] px-4 text-[11px] font-semibold text-white inline-flex items-center gap-1.5">
                   <Plus size={12} /> Add New Product
                 </button>
               </div>

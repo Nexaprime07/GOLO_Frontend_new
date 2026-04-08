@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, Pencil, User } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
@@ -9,10 +9,47 @@ import { useAuth } from "../../../context/AuthContext";
 export default function MerchantProductDetailsPage() {
   const router = useRouter();
   const { user, loading, logout } = useAuth();
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "Printed Shirt",
+    category: "Clothing",
+    price: "500",
+    stockQuantity: "100",
+    description: "A stylish and comfortable shirt crafted from high-quality, breathable fabric that feels soft against the skin. Designed with a modern fit, it offers a perfect balance of elegance. The neatly stitched seams, and refined collar makes it suitable for both casual outings and semi-formal occasions"
+  });
 
   const handleMerchantLogout = async () => {
     await logout();
     router.push("/login");
+  };
+
+  const handleEditClick = () => {
+    setIsEditMode(true);
+  };
+
+  const handleSaveChanges = () => {
+    // Handle save logic here (API call, etc.)
+    console.log("Saving changes:", formData);
+    setIsEditMode(false);
+  };
+
+  const handleDiscardChanges = () => {
+    // Reset form data to original values
+    setFormData({
+      name: "Printed Shirt",
+      category: "Clothing",
+      price: "500",
+      stockQuantity: "100",
+      description: "A stylish and comfortable shirt crafted from high-quality, breathable fabric that feels soft against the skin. Designed with a modern fit, it offers a perfect balance of elegance. The neatly stitched seams, and refined collar makes it suitable for both casual outings and semi-formal occasions"
+    });
+    setIsEditMode(false);
+  };
+
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   useEffect(() => {
@@ -52,7 +89,7 @@ export default function MerchantProductDetailsPage() {
               Products
               <span className="absolute left-0 right-0 -bottom-px h-[2px] bg-[#157a4f]" />
             </button>
-            <button>Profile</button>
+            <button onClick={() => router.push("/merchant/profile")}>Profile</button>
             <button onClick={() => router.push("/merchant/analytics")}>Analytics</button>
           </nav>
 
@@ -75,21 +112,41 @@ export default function MerchantProductDetailsPage() {
           <section className="rounded-[12px] border border-[#dddddd] bg-white p-5">
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-[35px] font-semibold leading-none">Product Details</h1>
-              <button className="h-9 rounded-[8px] bg-[#79c68f] px-5 text-[13px] font-semibold text-[#19462a] inline-flex items-center gap-1.5">
-                Edit <Pencil size={13} />
-              </button>
+              {!isEditMode && (
+                <button onClick={handleEditClick} className="h-9 rounded-[8px] bg-[#79c68f] px-5 text-[13px] font-semibold text-[#19462a] inline-flex items-center gap-1.5">
+                  Edit <Pencil size={13} />
+                </button>
+              )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <div className="space-y-4">
                 <div>
                   <p className="text-[14px] font-semibold mb-2">Name</p>
-                  <div className="h-9 rounded-[8px] bg-[#f0f1f3] px-3 flex items-center text-[12px] text-[#4b4b4b]">Printed Shirt</div>
+                  {isEditMode ? (
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => handleInputChange("name", e.target.value)}
+                      className="w-full h-9 rounded-[8px] border border-[#ddd] bg-white px-3 text-[12px] text-[#4b4b4b] focus:outline-none focus:border-[#79c68f]"
+                    />
+                  ) : (
+                    <div className="h-9 rounded-[8px] bg-[#f0f1f3] px-3 flex items-center text-[12px] text-[#4b4b4b]">{formData.name}</div>
+                  )}
                 </div>
 
                 <div>
                   <p className="text-[14px] font-semibold mb-2">Category</p>
-                  <div className="h-9 rounded-[8px] bg-[#f0f1f3] px-3 flex items-center text-[12px] text-[#4b4b4b]">Clothing</div>
+                  {isEditMode ? (
+                    <input
+                      type="text"
+                      value={formData.category}
+                      onChange={(e) => handleInputChange("category", e.target.value)}
+                      className="w-full h-9 rounded-[8px] border border-[#ddd] bg-white px-3 text-[12px] text-[#4b4b4b] focus:outline-none focus:border-[#79c68f]"
+                    />
+                  ) : (
+                    <div className="h-9 rounded-[8px] bg-[#f0f1f3] px-3 flex items-center text-[12px] text-[#4b4b4b]">{formData.category}</div>
+                  )}
                 </div>
 
                 <div>
@@ -105,24 +162,69 @@ export default function MerchantProductDetailsPage() {
               <div className="space-y-4">
                 <div>
                   <p className="text-[14px] font-semibold mb-2">Price</p>
-                  <div className="h-9 rounded-[8px] bg-[#f0f1f3] px-3 flex items-center text-[12px] text-[#4b4b4b]">₹ 500</div>
+                  {isEditMode ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[12px] text-[#4b4b4b]">₹</span>
+                      <input
+                        type="number"
+                        value={formData.price}
+                        onChange={(e) => handleInputChange("price", e.target.value)}
+                        className="flex-1 h-9 rounded-[8px] border border-[#ddd] bg-white px-3 text-[12px] text-[#4b4b4b] focus:outline-none focus:border-[#79c68f]"
+                      />
+                    </div>
+                  ) : (
+                    <div className="h-9 rounded-[8px] bg-[#f0f1f3] px-3 flex items-center text-[12px] text-[#4b4b4b]">₹ {formData.price}</div>
+                  )}
                 </div>
 
                 <div>
                   <p className="text-[14px] font-semibold mb-2">Stock Quantity</p>
-                  <div className="h-9 rounded-[8px] bg-[#f0f1f3] px-3 flex items-center text-[12px] text-[#4b4b4b]">100</div>
+                  {isEditMode ? (
+                    <input
+                      type="number"
+                      value={formData.stockQuantity}
+                      onChange={(e) => handleInputChange("stockQuantity", e.target.value)}
+                      className="w-full h-9 rounded-[8px] border border-[#ddd] bg-white px-3 text-[12px] text-[#4b4b4b] focus:outline-none focus:border-[#79c68f]"
+                    />
+                  ) : (
+                    <div className="h-9 rounded-[8px] bg-[#f0f1f3] px-3 flex items-center text-[12px] text-[#4b4b4b]">{formData.stockQuantity}</div>
+                  )}
                 </div>
 
                 <div>
                   <p className="text-[14px] font-semibold mb-2">Description</p>
-                  <div className="rounded-[10px] bg-[#f0f1f3] p-3 text-[12px] leading-6 text-[#4b4b4b]">
-                    A stylish and comfortable shirt crafted from high-quality, breathable fabric that feels soft against the skin.
-                    Designed with a modern fit, it offers a perfect balance of elegance. The neatly stitched seams, and refined collar
-                    makes it suitable for both casual outings and semi-formal occasions
-                  </div>
+                  {isEditMode ? (
+                    <textarea
+                      value={formData.description}
+                      onChange={(e) => handleInputChange("description", e.target.value)}
+                      className="w-full rounded-[10px] border border-[#ddd] bg-white p-3 text-[12px] leading-6 text-[#4b4b4b] focus:outline-none focus:border-[#79c68f] resize-none"
+                      rows="6"
+                    />
+                  ) : (
+                    <div className="rounded-[10px] bg-[#f0f1f3] p-3 text-[12px] leading-6 text-[#4b4b4b]">
+                      {formData.description}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
+
+            {isEditMode && (
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  onClick={handleDiscardChanges}
+                  className="h-9 rounded-[8px] bg-[#f0f1f3] px-6 text-[13px] font-semibold text-[#4b4b4b] hover:bg-[#e8e8e8] transition"
+                >
+                  Discard Changes
+                </button>
+                <button
+                  onClick={handleSaveChanges}
+                  className="h-9 rounded-[8px] bg-[#efb02e] px-6 text-[13px] font-semibold text-[#19462a] hover:bg-[#e8ad2f] transition"
+                >
+                  Save Changes
+                </button>
+              </div>
+            )}
           </section>
         </div>
       </main>
