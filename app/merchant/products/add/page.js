@@ -78,11 +78,11 @@ export default function AddProductPage() {
               Products
               <span className="absolute left-0 right-0 -bottom-px h-[2px] bg-[#157a4f]" />
             </button>
-            <button onClick={() => router.push("/merchant/profile")}>Profile</button>
+            <button onClick={() => router.push("/merchant/offers")}>Offers</button>
             <button onClick={() => router.push("/merchant/analytics")}>Analytics</button>
           </nav>
 
-          <button type="button" onClick={handleMerchantLogout} className="w-10 h-10 rounded-full bg-white shadow-md hover:scale-105 transition flex items-center justify-center" aria-label="Logout">
+          <button type="button" onClick={() => router.push("/merchant/profile")} className="w-10 h-10 rounded-full bg-white shadow-md hover:scale-105 transition flex items-center justify-center" aria-label="Profile">
             <User size={18} style={{ color: "#157a4f" }} />
           </button>
         </div>
@@ -99,7 +99,6 @@ export default function AddProductPage() {
             </button>
           </div>
 
-          {/* Page Title */}
           <section>
             <h1 className="text-[36px] font-semibold leading-none text-[#1e1e1e]">Add New Product</h1>
             <p className="mt-2 text-[13px] text-[#6f6f6f]">

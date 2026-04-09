@@ -131,11 +131,11 @@ export default function MerchantOrdersPage() {
               <span className="absolute left-0 right-0 -bottom-px h-[2px] bg-[#157a4f]" />
             </button>
             <button onClick={() => router.push("/merchant/products")}>Products</button>
-            <button onClick={() => router.push("/merchant/profile")}>Profile</button>
+            <button onClick={() => router.push("/merchant/offers")}>Offers</button>
             <button onClick={() => router.push("/merchant/analytics")}>Analytics</button>
           </nav>
 
-          <button type="button" onClick={handleMerchantLogout} className="w-10 h-10 rounded-full bg-white shadow-md hover:scale-105 transition flex items-center justify-center" aria-label="Logout">
+          <button type="button" onClick={() => router.push("/merchant/profile")} className="w-10 h-10 rounded-full bg-white shadow-md hover:scale-105 transition flex items-center justify-center" aria-label="Profile">
             <User size={18} style={{ color: "#157a4f" }} />
           </button>
         </div>
@@ -279,7 +279,6 @@ export default function MerchantOrdersPage() {
             <p className="mt-3 text-[12px] max-w-[250px]">The all-in-one management platform for modern businesses. Empowering growth through analytics and intuitive product management.</p>
           </div>
           <div>
-            <p className="text-[20px] font-bold">Links</p>
             <div className="mt-3 space-y-2 text-[13px]"><p>Overview</p><p>Inventory</p><p>Posts</p><p>Profile</p></div>
           </div>
           <div className="pt-8 md:pt-9 space-y-2 text-[13px]"><p>Analytics</p><p>Contact</p></div>

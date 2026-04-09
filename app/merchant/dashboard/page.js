@@ -75,11 +75,11 @@ export default function MerchantDashboardPage() {
             </button>
             <button onClick={() => router.push("/merchant/orders")}>Orders</button>
             <button onClick={() => router.push("/merchant/products")}>Products</button>
-            <button onClick={() => router.push("/merchant/profile")}>Profile</button>
+            <button onClick={() => router.push("/merchant/offers")}>Offers</button>
             <button onClick={() => router.push("/merchant/analytics")}>Analytics</button>
           </nav>
 
-          <button type="button" onClick={handleMerchantLogout} className="w-10 h-10 rounded-full bg-white shadow-md hover:scale-105 transition flex items-center justify-center" aria-label="Logout">
+          <button type="button" onClick={() => router.push("/merchant/profile")} className="w-10 h-10 rounded-full bg-white shadow-md hover:scale-105 transition flex items-center justify-center" aria-label="Profile">
             <User size={18} style={{ color: "#157a4f" }} />
           </button>
         </div>
@@ -107,7 +107,7 @@ export default function MerchantDashboardPage() {
                 <button className="h-10 px-4 rounded-[8px] border border-[#d5d5d5] bg-white text-[12px] font-semibold text-[#343434] inline-flex items-center gap-2">
                   <Download size={13} /> Export Reports
                 </button>
-                <button className="h-10 px-4 rounded-[8px] bg-[#1f8f4f] text-white text-[12px] font-semibold inline-flex items-center gap-2">
+                <button onClick={() => router.push("/merchant/add-new-listing")} className="h-10 px-4 rounded-[8px] bg-[#1f8f4f] text-white text-[12px] font-semibold inline-flex items-center gap-2">
                   <Plus size={13} /> Add New Listing
                 </button>
               </div>

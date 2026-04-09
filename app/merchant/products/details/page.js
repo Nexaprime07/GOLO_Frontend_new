@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Pencil, User } from "lucide-react";
+import { Pencil, User } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
 
 export default function MerchantProductDetailsPage() {
@@ -89,11 +89,11 @@ export default function MerchantProductDetailsPage() {
               Products
               <span className="absolute left-0 right-0 -bottom-px h-[2px] bg-[#157a4f]" />
             </button>
-            <button onClick={() => router.push("/merchant/profile")}>Profile</button>
+            <button onClick={() => router.push("/merchant/offers")}>Offers</button>
             <button onClick={() => router.push("/merchant/analytics")}>Analytics</button>
           </nav>
 
-          <button type="button" onClick={handleMerchantLogout} className="w-10 h-10 rounded-full bg-white shadow-md hover:scale-105 transition flex items-center justify-center" aria-label="Logout">
+          <button type="button" onClick={() => router.push("/merchant/profile")} className="w-10 h-10 rounded-full bg-white shadow-md hover:scale-105 transition flex items-center justify-center" aria-label="Profile">
             <User size={18} style={{ color: "#157a4f" }} />
           </button>
         </div>

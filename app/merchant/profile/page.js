@@ -3,17 +3,62 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, User, Settings, HelpCircle, Heart, LogOut, Edit3 } from "lucide-react";
+import { Camera, Edit3, User } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+
+const topTabs = ["Profile Settings", "Loyalty Rewards", "Help", "Settings", "Logout"];
+
+const loyaltyRows = [
+  { customer: "Amit Singh", offers: 16, points: 146, star: true },
+  { customer: "Rakesh Patel", offers: 14, points: 102, star: true },
+  { customer: "Amit Singh", offers: 10, points: 102, star: true },
+  { customer: "Rakesh Patel", offers: 10, points: 95, star: false },
+  { customer: "Amit Singh", offers: 6, points: 73, star: false },
+  { customer: "Rakesh Patel", offers: 4, points: 50, star: false },
+  { customer: "Amit Singh", offers: 2, points: 23, star: false },
+];
 
 export default function MerchantProfilePage() {
   const router = useRouter();
   const { user, loading, logout } = useAuth();
-  const [activeSection, setActiveSection] = useState("profile");
+  const [activeTab, setActiveTab] = useState("Profile Settings");
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [formData, setFormData] = useState({
+    username: "Mahesh Patil",
+    phone: "+91 XXXXXXXXXX",
+    email: "abc@gmail.com",
+    shopName: "Fashion Fusion",
+    location: "Rajarampuri, Kolhapur (416003)",
+  });
 
   const handleMerchantLogout = async () => {
     await logout();
     router.push("/login");
+  };
+
+  const confirmLogout = async () => {
+    setShowLogoutConfirm(false);
+    await handleMerchantLogout();
+  };
+
+  const handleInputChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleDiscard = () => {
+    setFormData({
+      username: "Mahesh Patil",
+      phone: "+91 XXXXXXXXXX",
+      email: "abc@gmail.com",
+      shopName: "Fashion Fusion",
+      location: "Rajarampuri, Kolhapur (416003)",
+    });
+    setIsEditMode(false);
+  };
+
+  const handleSave = () => {
+    setIsEditMode(false);
   };
 
   useEffect(() => {
@@ -28,14 +73,13 @@ export default function MerchantProfilePage() {
   }, [loading, user, router]);
 
   if (loading || !user) {
-    return <div className="min-h-screen bg-[#efefef]" />;
+    return <div className="min-h-screen bg-[#ececec]" />;
   }
 
   if (user.accountType !== "merchant") return null;
 
   return (
     <div className="min-h-screen bg-[#ececec] text-[#1b1b1b]" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
-      {/* Header */}
       <header className="sticky top-0 z-[9999] h-16 bg-[#efb02e] border-b border-[#d7a02a] px-8 lg:px-10 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3 min-w-[180px]">
           <button type="button" onClick={() => router.push("/merchant/dashboard")} className="flex items-center gap-3 cursor-pointer">
@@ -51,243 +95,265 @@ export default function MerchantProfilePage() {
             <button onClick={() => router.push("/merchant/dashboard")}>Overview</button>
             <button onClick={() => router.push("/merchant/orders")}>Orders</button>
             <button onClick={() => router.push("/merchant/products")}>Products</button>
-            <button className="relative h-16 text-[#157a4f]">
-              Profile
-              <span className="absolute left-0 right-0 -bottom-px h-[2px] bg-[#157a4f]" />
-            </button>
+            <button onClick={() => router.push("/merchant/offers")}>Offers</button>
             <button onClick={() => router.push("/merchant/analytics")}>Analytics</button>
           </nav>
 
-          <button type="button" onClick={handleMerchantLogout} className="w-10 h-10 rounded-full bg-white shadow-md hover:scale-105 transition flex items-center justify-center" aria-label="Logout">
+          <button type="button" onClick={() => router.push("/merchant/profile")} className="w-10 h-10 rounded-full bg-white shadow-md hover:scale-105 transition flex items-center justify-center" aria-label="Profile">
             <User size={18} style={{ color: "#157a4f" }} />
           </button>
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="w-full px-8 lg:px-10 py-6">
-        <div className="mx-auto w-full max-w-[1400px] grid grid-cols-1 lg:grid-cols-[250px_1fr] gap-6">
-          {/* Left Sidebar */}
-          <aside className="rounded-[12px] border border-[#e5e5e5] bg-white h-fit p-6">
-            {/* Store Name */}
-            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#ececec]">
-              <div className="w-10 h-10 rounded-full bg-[#f0aa19] flex items-center justify-center">
-                <span className="text-[14px] font-bold text-white">FF</span>
-              </div>
-              <div>
-                <p className="text-[14px] font-semibold text-[#1e1e1e]">Fashion Fusion</p>
-                <p className="text-[11px] text-[#999]">Your Store</p>
-              </div>
-            </div>
-
-            {/* Menu Items */}
-            <nav className="space-y-2">
-              {/* Profile Settings */}
+        <div className="mx-auto w-full max-w-[1400px]">
+          <div className="flex items-center justify-end gap-8 text-[12px] font-semibold mb-6 flex-wrap">
+            {topTabs.map((tab) => (
               <button
-                onClick={() => setActiveSection("profile")}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-[8px] text-[12px] font-semibold transition ${
-                  activeSection === "profile"
-                    ? "bg-[#f0f8ff] text-[#157a4f] border-l-2 border-[#157a4f]"
-                    : "text-[#666] hover:bg-[#f9f9f9]"
+                key={tab}
+                type="button"
+                onClick={() => {
+                  setActiveTab(tab);
+                  if (tab === "Logout") setShowLogoutConfirm(true);
+                }}
+                className={`relative pb-1 transition ${
+                  activeTab === tab
+                    ? "text-[#157a4f]"
+                    : tab === "Logout"
+                      ? "text-[#ef4444]"
+                      : "text-[#111]"
                 }`}
               >
-                <Settings size={16} />
-                Profile Settings
+                <span>{tab}</span>
+                {activeTab === tab && tab !== "Logout" && <span className="absolute left-0 right-0 -bottom-[5px] h-[2px] bg-[#157a4f]" />}
               </button>
-
-              {/* Loyalty Rewards */}
-              <button
-                onClick={() => setActiveSection("rewards")}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-[8px] text-[12px] font-semibold transition ${
-                  activeSection === "rewards"
-                    ? "bg-[#f0f8ff] text-[#157a4f] border-l-2 border-[#157a4f]"
-                    : "text-[#666] hover:bg-[#f9f9f9]"
-                }`}
-              >
-                <Heart size={16} />
-                Loyalty Rewards
-              </button>
-
-              {/* Help */}
-              <button
-                onClick={() => setActiveSection("help")}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-[8px] text-[12px] font-semibold transition ${
-                  activeSection === "help"
-                    ? "bg-[#f0f8ff] text-[#157a4f] border-l-2 border-[#157a4f]"
-                    : "text-[#666] hover:bg-[#f9f9f9]"
-                }`}
-              >
-                <HelpCircle size={16} />
-                Help
-              </button>
-
-              {/* Settings */}
-              <button
-                onClick={() => setActiveSection("settings")}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-[8px] text-[12px] font-semibold transition ${
-                  activeSection === "settings"
-                    ? "bg-[#f0f8ff] text-[#157a4f] border-l-2 border-[#157a4f]"
-                    : "text-[#666] hover:bg-[#f9f9f9]"
-                }`}
-              >
-                <Settings size={16} />
-                Settings
-              </button>
-
-              {/* Logout */}
-              <button
-                onClick={handleMerchantLogout}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-[8px] text-[12px] font-semibold text-[#ef4d4d] hover:bg-[#fef0f0] transition"
-              >
-                <LogOut size={16} />
-                Logout
-              </button>
-            </nav>
-          </aside>
-
-          {/* Right Content */}
-          <div className="space-y-6">
-            {/* Merchant Profile Section */}
-            <div className="rounded-[12px] border border-[#e5e5e5] bg-white p-6">
-              <div className="flex items-start justify-between mb-6 pb-4 border-b border-[#ececec]">
-                <h2 className="text-[18px] font-semibold text-[#1e1e1e]">Merchant Profile</h2>
-                <button className="h-8 px-4 rounded-[6px] bg-[#157a4f] text-white flex items-center gap-2 text-[12px] font-semibold hover:bg-[#0e5a38] transition">
-                  <Edit3 size={14} />
-                  Edit
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Left: Profile Info */}
-                <div className="space-y-4">
-                  {/* Username */}
-                  <div>
-                    <label className="text-[12px] font-semibold text-[#666] block mb-2">Username</label>
-                    <div className="h-10 px-3 rounded-[8px] border border-[#e2e2e2] bg-[#f9f9f9] flex items-center">
-                      <p className="text-[13px] text-[#333]">Mahesh Pathi</p>
-                    </div>
-                  </div>
-
-                  {/* Phone Number */}
-                  <div>
-                    <label className="text-[12px] font-semibold text-[#666] block mb-2">Phone Number</label>
-                    <div className="h-10 px-3 rounded-[8px] border border-[#e2e2e2] bg-[#f9f9f9] flex items-center">
-                      <p className="text-[13px] text-[#333]">+91 XXXXXXXXX</p>
-                    </div>
-                  </div>
-
-                  {/* Email */}
-                  <div>
-                    <label className="text-[12px] font-semibold text-[#666] block mb-2">Email</label>
-                    <div className="h-10 px-3 rounded-[8px] border border-[#e2e2e2] bg-[#f9f9f9] flex items-center">
-                      <p className="text-[13px] text-[#333]">abc@gmail.com</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right: Profile Picture */}
-                <div className="flex items-center justify-center">
-                  <div className="relative w-32 h-32 rounded-full border-4 border-[#f0aa19] overflow-hidden bg-white shadow-lg">
-                    <Image
-                      src="/images/deal2.avif"
-                      alt="Profile"
-                      fill
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Shop Details Section */}
-            <div className="rounded-[12px] border border-[#e5e5e5] bg-white p-6">
-              <h2 className="text-[18px] font-semibold text-[#1e1e1e] mb-6 pb-4 border-b border-[#ececec]">Shop Details</h2>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Left: Shop Info */}
-                <div className="space-y-4">
-                  {/* Shop Name */}
-                  <div>
-                    <label className="text-[12px] font-semibold text-[#666] block mb-2">Shop Name</label>
-                    <div className="h-10 px-3 rounded-[8px] border border-[#e2e2e2] bg-[#f9f9f9] flex items-center">
-                      <p className="text-[13px] text-[#333]">Fashion Fusion</p>
-                    </div>
-                  </div>
-
-                  {/* Location */}
-                  <div>
-                    <label className="text-[12px] font-semibold text-[#666] block mb-2">Location</label>
-                    <div className="h-10 px-3 rounded-[8px] border border-[#e2e2e2] bg-[#f9f9f9] flex items-center">
-                      <p className="text-[13px] text-[#333]">Rajarangpuri, Kothapour (416003)</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right: Shop Image */}
-                <div className="flex items-center justify-center">
-                  <div className="relative w-32 h-32 rounded-full border-4 border-[#f0aa19] overflow-hidden bg-white shadow-lg">
-                    <Image
-                      src="/images/place2.avif"
-                      alt="Shop"
-                      fill
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
+
+          {activeTab === "Loyalty Rewards" ? (
+            <div className="max-w-[1260px] mx-auto space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="h-[56px] rounded-[8px] border border-[#b8bdc6] bg-white px-4 flex items-center justify-between">
+                  <p className="text-[13px] font-semibold text-[#1f9b57]">Total Customers</p>
+                  <p className="text-[30px] leading-none font-semibold text-[#1f1f1f]">228</p>
+                </div>
+                <div className="h-[56px] rounded-[8px] border border-[#b8bdc6] bg-white px-4 flex items-center justify-between">
+                  <p className="text-[13px] font-semibold text-[#f1a61b]">Reward Champs</p>
+                  <p className="text-[30px] leading-none font-semibold text-[#1f1f1f]">3</p>
+                </div>
+                <div className="h-[56px] rounded-[8px] border border-[#b8bdc6] bg-white px-4 flex items-center justify-between">
+                  <p className="text-[13px] font-semibold text-[#323232]">Reward Points</p>
+                  <p className="text-[30px] leading-none font-semibold text-[#1f1f1f]">100</p>
+                </div>
+              </div>
+
+              <div className="rounded-[8px] border border-[#bfc3cb] bg-white overflow-hidden">
+                <div className="px-6 py-4 text-[28px] leading-none font-semibold text-[#202020]">Loyalty Rewards</div>
+                <div className="grid grid-cols-3 px-6 py-3 text-[13px] font-medium text-[#2c2c2c] border-b border-[#bfc3cb]">
+                  <p>Active Customers</p>
+                  <p className="text-center">Number of Offers Claimed</p>
+                  <p className="text-right">Loyalty Rewards</p>
+                </div>
+
+                {loyaltyRows.map((row, index) => (
+                  <div key={`${row.customer}-${index}`} className="grid grid-cols-3 px-6 py-3 text-[13px] text-[#2f2f2f] border-b border-[#bfc3cb] last:border-b-0">
+                    <p className="pl-6">{row.customer}</p>
+                    <p className="text-center">{row.offers}</p>
+                    <p className="text-right pr-6">
+                      {row.star ? <span className="text-[#e5ad1d]">★</span> : null}
+                      {row.star ? " / " : ""}
+                      {row.points}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-[8px] bg-[#d9dbe0] px-5 py-3 flex items-center justify-between">
+                <p className="text-[11px] text-[#5f6064]">Showing 5 of 97 products</p>
+                <div className="flex items-center gap-2">
+                  <button className="h-7 px-3 rounded-[8px] border border-[#8f949d] bg-white text-[10px] text-[#5f6064]">Previous</button>
+                  <button className="h-7 px-3 rounded-[8px] border border-[#86c490] bg-[#e6f8eb] text-[10px] text-[#1f9b57]">Next</button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-6 max-w-[1260px] mx-auto">
+                <h1 className="text-[24px] lg:text-[26px] font-semibold text-[#1b1b1b]">Profile Settings</h1>
+                {!isEditMode && (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditMode(true)}
+                    className="inline-flex items-center gap-2 h-8 px-4 rounded-[6px] bg-[#8ccf98] text-[#1b1b1b] text-[13px] font-semibold shadow-sm"
+                  >
+                    Edit <Edit3 size={15} />
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-8 max-w-[1260px] mx-auto">
+                <div className="bg-white border border-[#d9d9d9] rounded-[6px] overflow-hidden">
+                  <div className="h-[78px] bg-[#f3d58d] px-6 flex items-start pt-5 font-semibold text-[15px] text-[#1b1b1b]">
+                    Merchant Profile
+                  </div>
+                  <div className="relative px-8 pb-7 pt-0">
+                    <div className="absolute left-1/2 -translate-x-1/2 -top-14 w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-lg bg-white">
+                      <Image src="/images/deal2.avif" alt="Merchant profile" fill className="object-cover" />
+                    </div>
+                    <div className="absolute left-1/2 translate-x-[28px] top-[24px] w-8 h-8 rounded-full bg-[#bdbdbd] border-2 border-white flex items-center justify-center text-white shadow-sm">
+                      <Camera size={15} />
+                    </div>
+
+                    <div className="pt-20 space-y-5">
+                      <div>
+                        <label className="block text-[14px] font-semibold text-[#222] mb-2">Username</label>
+                        {isEditMode ? (
+                          <input value={formData.username} onChange={(e) => handleInputChange("username", e.target.value)} className="h-10 w-full rounded-[4px] bg-[#f3f3f6] px-3 text-[12px] text-[#3a3a3a] outline-none" />
+                        ) : (
+                          <div className="h-10 rounded-[4px] bg-[#f3f3f6] px-3 flex items-center text-[12px] text-[#3a3a3a]">{formData.username}</div>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-[14px] font-semibold text-[#222] mb-2">Phone Number</label>
+                        {isEditMode ? (
+                          <input value={formData.phone} onChange={(e) => handleInputChange("phone", e.target.value)} className="h-10 w-full rounded-[4px] bg-[#f3f3f6] px-3 text-[12px] text-[#3a3a3a] outline-none" />
+                        ) : (
+                          <div className="h-10 rounded-[4px] bg-[#f3f3f6] px-3 flex items-center text-[12px] text-[#3a3a3a]">{formData.phone}</div>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-[14px] font-semibold text-[#222] mb-2">Email</label>
+                        {isEditMode ? (
+                          <input value={formData.email} onChange={(e) => handleInputChange("email", e.target.value)} className="h-10 w-full rounded-[4px] bg-[#f3f3f6] px-3 text-[12px] text-[#3a3a3a] outline-none" />
+                        ) : (
+                          <div className="h-10 rounded-[4px] bg-[#f3f3f6] px-3 flex items-center text-[12px] text-[#3a3a3a]">{formData.email}</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-[#d9d9d9] rounded-[6px] overflow-hidden">
+                  <div className="h-[78px] bg-[#f3d58d] px-6 flex items-start pt-5 font-semibold text-[15px] text-[#1b1b1b]">
+                    Shop Details
+                  </div>
+                  <div className="relative px-8 pb-7 pt-0">
+                    <div className="absolute left-1/2 -translate-x-1/2 -top-14 w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-lg bg-white">
+                      <Image src="/images/place2.avif" alt="Shop" fill className="object-cover" />
+                    </div>
+                    <div className="absolute left-1/2 translate-x-[28px] top-[24px] w-8 h-8 rounded-full bg-[#bdbdbd] border-2 border-white flex items-center justify-center text-white shadow-sm">
+                      <Camera size={15} />
+                    </div>
+
+                    <div className="pt-20 space-y-5">
+                      <div>
+                        <label className="block text-[14px] font-semibold text-[#222] mb-2">Shop Name</label>
+                        {isEditMode ? (
+                          <input value={formData.shopName} onChange={(e) => handleInputChange("shopName", e.target.value)} className="h-10 w-full rounded-[4px] bg-[#f3f3f6] px-3 text-[12px] text-[#3a3a3a] outline-none" />
+                        ) : (
+                          <div className="h-10 rounded-[4px] bg-[#f3f3f6] px-3 flex items-center text-[12px] text-[#3a3a3a]">{formData.shopName}</div>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-[14px] font-semibold text-[#222] mb-2">Location</label>
+                        {isEditMode ? (
+                          <input value={formData.location} onChange={(e) => handleInputChange("location", e.target.value)} className="h-10 w-full rounded-[4px] bg-[#f3f3f6] px-3 text-[12px] text-[#3a3a3a] outline-none" />
+                        ) : (
+                          <div className="h-10 rounded-[4px] bg-[#f3f3f6] px-3 flex items-center text-[12px] text-[#3a3a3a]">{formData.location}</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {isEditMode && (
+                  <div className="flex justify-end gap-3 pt-2">
+                    <button type="button" onClick={handleDiscard} className="h-10 px-5 rounded-[8px] bg-[#d8dbe2] text-[#222] text-[13px] font-semibold">
+                      Discard Changes
+                    </button>
+                    <button type="button" onClick={handleSave} className="h-10 px-7 rounded-[8px] bg-[#efb02e] text-[#1f1f1f] text-[13px] font-semibold">
+                      Save Changes
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="mt-12 bg-[#f0aa19] py-8 px-8 lg:px-10 text-[#5a4514]">
-        <div className="mx-auto max-w-[1400px] flex items-start justify-between gap-8">
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 bg-white rounded-lg flex items-center justify-center font-bold" style={{ color: "#157a4f" }}>
-                G
-              </div>
-              <span className="text-lg font-semibold">GOLO</span>
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center px-4">
+          <div className="w-full max-w-[420px] rounded-[14px] bg-white shadow-2xl border border-[#e5e5e5] overflow-hidden">
+            <div className="px-6 py-5 border-b border-[#ececec]">
+              <h3 className="text-[18px] font-semibold text-[#1b1b1b]">Confirm Logout</h3>
+              <p className="mt-2 text-[13px] text-[#666]">Are you sure you want to log out of your merchant account?</p>
             </div>
-            <p className="text-[12px] max-w-[250px] leading-relaxed">
-              The all-in-one management platforms for modern businesses. Empowering growth through analytics and innovative product management.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-3 gap-12 text-[12px]">
-            <div>
-              <p className="font-semibold mb-3">Links</p>
-              <ul className="space-y-1.5">
-                <li><button className="hover:underline">Overview</button></li>
-                <li><button className="hover:underline">Inventory</button></li>
-                <li><button className="hover:underline">Posts</button></li>
-                <li><button className="hover:underline">Profile</button></li>
-              </ul>
-            </div>
-            <div>
-              <p className="font-semibold mb-3">Support</p>
-              <ul className="space-y-1.5">
-                <li><button className="hover:underline">Analytics</button></li>
-                <li><button className="hover:underline">Contact</button></li>
-              </ul>
-            </div>
-            <div>
-              <p className="font-semibold mb-3">Support</p>
-              <ul className="space-y-1.5">
-                <li><button className="hover:underline">Help Center</button></li>
-                <li><button className="hover:underline">Security</button></li>
-                <li><button className="hover:underline">Terms of Service</button></li>
-              </ul>
+            <div className="px-6 py-4 flex items-center justify-end gap-3 bg-[#fafafa]">
+              <button type="button" onClick={() => setShowLogoutConfirm(false)} className="h-9 px-4 rounded-[8px] border border-[#cfd5dc] bg-white text-[12px] font-semibold text-[#555]">
+                Cancel
+              </button>
+              <button type="button" onClick={confirmLogout} className="h-9 px-4 rounded-[8px] bg-[#ef4d4d] text-white text-[12px] font-semibold">
+                Logout
+              </button>
             </div>
           </div>
         </div>
+      )}
 
-        <div className="mt-6 border-t border-[#e2a112] pt-4 text-[11px] flex items-center justify-between">
-          <p>© 2024 GOLO Dashboard. All rights reserved.</p>
-          <div className="flex items-center gap-3">
-            <span>Made with ♥️ Vaily</span>
+      <footer className="bg-[#f0b330] text-[#1b1b1b] px-4 lg:px-8 py-7 mt-6">
+        <div className="max-w-[1500px] mx-auto flex flex-col lg:flex-row gap-8 lg:gap-12 items-start justify-between">
+          <div className="max-w-[240px]">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 bg-white rounded-sm flex items-center justify-center font-bold text-[#157a4f]">G</div>
+              <span className="text-[18px] font-semibold text-[#157a4f]">GOLO</span>
+            </div>
+            <p className="text-[10px] leading-[1.35] text-[#fff8de] max-w-[150px]">
+              The all-in-one management platform for modern businesses. Empowering growth through analytics and intuitive product management.
+            </p>
           </div>
+
+          <div className="grid grid-cols-3 gap-14 lg:gap-20 text-[10px] text-[#6b520f]">
+            <div>
+              <p className="font-semibold text-[#1b1b1b] mb-3">Links</p>
+              <ul className="space-y-2">
+                <li>Overview</li>
+                <li>Inventory</li>
+                <li>Posts</li>
+                <li>Profile</li>
+              </ul>
+            </div>
+            <div>
+              <p className="font-semibold text-[#1b1b1b] mb-3">&nbsp;</p>
+              <ul className="space-y-2">
+                <li>Analytics</li>
+                <li>Contact</li>
+              </ul>
+            </div>
+            <div>
+              <p className="font-semibold text-[#1b1b1b] mb-3">Support</p>
+              <ul className="space-y-2">
+                <li>Help Center</li>
+                <li>Security</li>
+                <li>Terms of Service</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="flex gap-4 mt-auto lg:pb-2 text-[#1877f2]">
+            <span className="h-5 w-5 rounded-full bg-[#f3ba3b] flex items-center justify-center text-[#1877f2] text-[10px] font-bold">f</span>
+            <span className="h-5 w-5 rounded-[2px] bg-[#f3ba3b] flex items-center justify-center text-[#0a66c2] text-[9px] font-bold">in</span>
+            <span className="h-5 w-5 rounded-full bg-[#f3ba3b] flex items-center justify-center text-[#e1306c] text-[10px] font-bold">ig</span>
+            <span className="h-5 w-5 rounded-[2px] bg-[#f3ba3b] flex items-center justify-center text-[#ff0000] text-[10px] font-bold">▶</span>
+          </div>
+        </div>
+
+        <div className="max-w-[1500px] mx-auto mt-6 flex items-center justify-between text-[9px] text-[#5f4710]">
+          <p>© 2026 GOLO Dashboard. All rights reserved.</p>
+          <p>Made with ♥ by V</p>
         </div>
       </footer>
     </div>
