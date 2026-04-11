@@ -1,53 +1,79 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Megaphone, Plus, Search, User } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { getMyBannerPromotions, payForBannerPromotion } from "../../lib/api";
 
-const bannerRows = [
-  {
-    image: "/images/banner3.avif",
-    title: "Weekend Flash Banner",
-    category: "Fashion",
-    postedDate: "02/ 04/ 2026",
-    status: "Active",
-    visibility: "05/ 04/ 2026 - 12/ 04/ 2026",
-    budget: "Rs. 1,680",
-  },
-  {
-    image: "/images/deal2.avif",
-    title: "Summer Home Picks",
-    category: "Home Decor",
-    postedDate: "28/ 03/ 2026",
-    status: "Active",
-    visibility: "30/ 03/ 2026 - 09/ 04/ 2026",
-    budget: "Rs. 2,420",
-  },
-  {
-    image: "/images/place2.avif",
-    title: "Festival Grocery Deal",
-    category: "Groceries",
-    postedDate: "18/ 03/ 2026",
-    status: "Expired",
-    visibility: "20/ 03/ 2026 - 28/ 03/ 2026",
-    budget: "Rs. 980",
-  },
-  {
-    image: "/images/banner3.avif",
-    title: "Electronics Spotlight",
-    category: "Electronics",
-    postedDate: "10/ 03/ 2026",
-    status: "Expired",
-    visibility: "12/ 03/ 2026 - 18/ 03/ 2026",
-    budget: "Rs. 2,100",
-  },
-];
+function formatDate(dateStr) {
+  if (!dateStr) return "-";
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function normalizeStatus(status) {
+  const map = {
+    under_review: "Under Review",
+    approved: "Approved",
+    rejected: "Rejected",
+    active: "Active",
+    expired: "Expired",
+  };
+  return map[status] || status;
+}
 
 export default function MerchantBannersPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
+  const [rows, setRows] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [listLoading, setListLoading] = useState(false);
+  const [actionMessage, setActionMessage] = useState("");
+  const [actionError, setActionError] = useState("");
+
+  const loadRequests = async () => {
+    setListLoading(true);
+    setActionError("");
+    try {
+      const res = await getMyBannerPromotions();
+      setRows(Array.isArray(res?.data) ? res.data : []);
+    } catch (error) {
+      setActionError(error?.data?.message || "Failed to load banner requests.");
+      setRows([]);
+    } finally {
+      setListLoading(false);
+    }
+  };
+
+  const handlePayNow = async (requestId) => {
+    setActionMessage("");
+    setActionError("");
+    try {
+      await payForBannerPromotion(requestId, `MOCK_PAY_${Date.now()}`);
+      setActionMessage("Payment marked successful. Banner is now active.");
+      await loadRequests();
+    } catch (error) {
+      setActionError(error?.data?.message || "Failed to mark payment.");
+    }
+  };
+
+  const filteredRows = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((row) =>
+      String(row.bannerTitle || "").toLowerCase().includes(q),
+    );
+  }, [rows, searchTerm]);
+
+  const summary = useMemo(() => {
+    const total = rows.length;
+    const active = rows.filter((row) => row.status === "active").length;
+    const spend = rows.reduce((sum, row) => sum + Number(row.totalPrice || 0), 0);
+    return { total, active, spend };
+  }, [rows]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -59,6 +85,12 @@ export default function MerchantBannersPage() {
       router.replace("/");
     }
   }, [loading, user, router]);
+
+  useEffect(() => {
+    if (!loading && user && user.accountType === "merchant") {
+      loadRequests();
+    }
+  }, [loading, user]);
 
   if (loading || !user) {
     return <div className="min-h-screen bg-[#ececec]" />;
@@ -110,7 +142,7 @@ export default function MerchantBannersPage() {
             <div className="rounded-[12px] border border-[#e2e2e2] bg-white px-4 py-4 flex items-center justify-between">
               <div>
                 <p className="text-[11px] text-[#666]">Total Banners</p>
-                <p className="text-[34px] font-semibold leading-none mt-1">18</p>
+                <p className="text-[34px] font-semibold leading-none mt-1">{summary.total}</p>
               </div>
               <div className="h-10 w-10 rounded-full bg-[#fef5e2] text-[#efb02e] flex items-center justify-center">
                 <Megaphone size={17} />
@@ -120,7 +152,7 @@ export default function MerchantBannersPage() {
             <div className="rounded-[12px] border border-[#e2e2e2] bg-white px-4 py-4 flex items-center justify-between">
               <div>
                 <p className="text-[11px] text-[#666]">Active Promotions</p>
-                <p className="text-[34px] font-semibold leading-none mt-1">11</p>
+                <p className="text-[34px] font-semibold leading-none mt-1">{summary.active}</p>
               </div>
               <div className="h-10 w-10 rounded-full bg-[#ecf8f0] text-[#2cb56e] flex items-center justify-center text-[16px]">◎</div>
             </div>
@@ -128,7 +160,7 @@ export default function MerchantBannersPage() {
             <div className="rounded-[12px] border border-[#e2e2e2] bg-white px-4 py-4 flex items-center justify-between">
               <div>
                 <p className="text-[11px] text-[#666]">Promotion Spend</p>
-                <p className="text-[34px] font-semibold leading-none mt-1">Rs. 14,920</p>
+                <p className="text-[34px] font-semibold leading-none mt-1">Rs. {summary.spend}</p>
               </div>
               <div className="h-10 w-10 rounded-full bg-[#f4f4f1] text-[#f0aa19] flex items-center justify-center text-[20px]">Rs</div>
             </div>
@@ -141,11 +173,13 @@ export default function MerchantBannersPage() {
                 <input
                   className="h-9 w-full rounded-[8px] border border-[#e2e2e2] bg-white pl-8 pr-3 text-[12px] outline-none"
                   placeholder="Search by banner title"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
 
               <div className="flex items-center gap-2">
-                <button className="h-9 rounded-[8px] border border-[#e2e2e2] bg-white px-4 text-[11px] text-[#666] inline-flex items-center gap-1.5">
+                <button className="h-9 rounded-[8px] border border-[#e2e2e2] bg-white px-4 text-[11px] text-[#666] inline-flex items-center gap-1.5" onClick={loadRequests}>
                   <Download size={12} /> Export CSV
                 </button>
                 <button onClick={() => router.push("/merchant/banners/promote")} className="h-9 rounded-[8px] bg-[#2f9e58] px-4 text-[11px] font-semibold text-white inline-flex items-center gap-1.5">
@@ -155,6 +189,8 @@ export default function MerchantBannersPage() {
             </div>
 
             <div className="mt-4 overflow-hidden rounded-[10px] border border-[#ececec] bg-white">
+              {actionError ? <p className="px-4 py-2 text-[11px] text-[#dc2626]">{actionError}</p> : null}
+              {actionMessage ? <p className="px-4 py-2 text-[11px] text-[#157a4f]">{actionMessage}</p> : null}
               <table className="w-full text-[12px]">
                 <thead className="bg-[#f2f3f5] text-[#666]">
                   <tr>
@@ -165,34 +201,62 @@ export default function MerchantBannersPage() {
                     <th className="px-4 py-3 text-left font-semibold">Visibility Dates</th>
                     <th className="px-4 py-3 text-left font-semibold">Status</th>
                     <th className="px-4 py-3 text-left font-semibold">Budget</th>
+                    <th className="px-4 py-3 text-left font-semibold">Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {bannerRows.map((row) => (
-                    <tr key={row.title} className="border-t border-[#f0f0f0]">
+                  {listLoading ? (
+                    <tr>
+                      <td colSpan={9} className="px-4 py-6 text-center text-[#666]">Loading banners...</td>
+                    </tr>
+                  ) : filteredRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="px-4 py-6 text-center text-[#666]">No banner requests found.</td>
+                    </tr>
+                  ) : filteredRows.map((row) => (
+                    <tr key={row.requestId} className="border-t border-[#f0f0f0]">
                       <td className="px-4 py-3">
                         <div className="h-8 w-8 rounded-full overflow-hidden border border-[#ececec]">
-                          <Image src={row.image} alt={row.title} width={32} height={32} className="h-full w-full object-cover" />
+                          <Image src={row.imageUrl || "/images/banner3.avif"} alt={row.bannerTitle} width={32} height={32} className="h-full w-full object-cover" />
                         </div>
                       </td>
-                      <td className="px-4 py-3 font-semibold text-[#2a2a2a]">{row.title}</td>
-                      <td className="px-4 py-3 text-[#2c2c2c]">{row.category}</td>
-                      <td className={row.status === "Expired" ? "px-4 py-3 text-[#ef4d4d]" : "px-4 py-3 text-[#2c2c2c]"}>{row.postedDate}</td>
-                      <td className="px-4 py-3 text-[#2c2c2c]">{row.visibility}</td>
+                      <td className="px-4 py-3 font-semibold text-[#2a2a2a]">{row.bannerTitle}</td>
+                      <td className="px-4 py-3 text-[#2c2c2c]">{row.bannerCategory}</td>
+                      <td className="px-4 py-3 text-[#2c2c2c]">{formatDate(row.createdAt)}</td>
+                      <td className="px-4 py-3 text-[#2c2c2c]">{formatDate(row.startDate)} - {formatDate(row.endDate)}</td>
                       <td className="px-4 py-3">
-                        {row.status === "Active" ? (
-                          <span className="inline-flex rounded-full bg-[#e7f7ec] px-2 py-0.5 text-[10px] font-semibold text-[#2f9e58]">Active</span>
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                          row.status === "active"
+                            ? "bg-[#e7f7ec] text-[#2f9e58]"
+                            : row.status === "rejected"
+                              ? "bg-[#fee2e2] text-[#dc2626]"
+                              : row.status === "approved"
+                                ? "bg-[#e8f1ff] text-[#1d4ed8]"
+                                : "bg-[#f3f4f6] text-[#4b5563]"
+                        }`}
+                        >
+                          {normalizeStatus(row.status)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-[11px] font-semibold text-[#1f1f1f]">Rs. {row.totalPrice || 0}</td>
+                      <td className="px-4 py-3">
+                        {row.status === "approved" && row.paymentStatus !== "paid" ? (
+                          <button
+                            onClick={() => handlePayNow(row.requestId)}
+                            className="h-7 rounded-[6px] bg-[#157a4f] px-3 text-[10px] font-semibold text-white"
+                          >
+                            Pay Now
+                          </button>
                         ) : (
-                          <span className="inline-flex rounded-full bg-[#ef4d4d] px-2 py-0.5 text-[10px] font-semibold text-white">Expired</span>
+                          <span className="text-[10px] text-[#888]">-</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-[11px] font-semibold text-[#1f1f1f]">{row.budget}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
 
-              <div className="bg-[#d6d9df] px-6 py-4 text-[12px] text-[#565656]">Showing 4 of 18 banners</div>
+              <div className="bg-[#d6d9df] px-6 py-4 text-[12px] text-[#565656]">Showing {filteredRows.length} of {rows.length} banners</div>
             </div>
           </section>
         </div>

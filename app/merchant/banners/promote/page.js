@@ -3,8 +3,9 @@
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarDays, ChevronLeft, CreditCard, Upload, User } from "lucide-react";
+import { CalendarDays, ChevronLeft, Upload, User } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
+import { submitBannerPromotionRequest } from "../../../lib/api";
 
 const bannerCategories = [
   "Fashion",
@@ -70,11 +71,57 @@ export default function PromoteBannerPage() {
   const [bannerPreview, setBannerPreview] = useState("");
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [submitting, setSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState("");
+  const [submitError, setSubmitError] = useState("");
 
   const selectedDays = useMemo(() => selectedDates.length, [selectedDates]);
   const subtotal = selectedDays * DAILY_BANNER_RATE;
   const platformFee = selectedDays > 0 ? 49 : 0;
   const totalPrice = subtotal + platformFee;
+
+  const handleSubmitForApproval = async () => {
+    setSubmitMessage("");
+    setSubmitError("");
+
+    if (!bannerTitle.trim()) {
+      setSubmitError("Banner title is required.");
+      return;
+    }
+
+    if (!bannerPreview) {
+      setSubmitError("Please upload a banner image before submitting.");
+      return;
+    }
+
+    if (selectedDates.length === 0) {
+      setSubmitError("Please select at least one visibility date.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await submitBannerPromotionRequest({
+        bannerTitle: bannerTitle.trim(),
+        bannerCategory,
+        imageUrl: bannerPreview,
+        selectedDates,
+        totalPrice,
+        dailyRate: DAILY_BANNER_RATE,
+        platformFee,
+        recommendedSize: "1920 x 520 px",
+      });
+
+      setSubmitMessage("Banner request submitted for admin review.");
+      setBannerTitle("");
+      setSelectedDates([]);
+      setBannerPreview("");
+    } catch (error) {
+      setSubmitError(error?.data?.message || "Failed to submit banner request.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     if (!loading && !user) {
@@ -137,7 +184,10 @@ export default function PromoteBannerPage() {
             <div className="rounded-[12px] border border-[#e2e2e2] bg-white p-5">
               <h1 className="text-[38px] font-semibold leading-none text-[#1f1f1f]">Promote Your Banner</h1>
               <p className="mt-3 text-[13px] text-[#6f6f6f] max-w-[700px]">
-                Upload your banner creative, pick category, choose visibility dates, and continue to payment for homepage promotion.
+                Upload your banner creative, pick category, choose visibility dates, and submit for admin approval.
+              </p>
+              <p className="mt-2 text-[12px] text-[#4c4c4c]">
+                Homepage banner spec: <span className="font-semibold">1920 x 520 px</span>. Only <span className="font-semibold">5 banners</span> are active at a time.
               </p>
 
               <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -188,7 +238,7 @@ export default function PromoteBannerPage() {
                         <Upload size={16} />
                       </div>
                       <p className="text-[13px] font-semibold text-[#2a2a2a]">Click to upload banner image</p>
-                      <p className="text-[11px] text-[#757575]">Recommended ratio 16:6, max 5MB</p>
+                      <p className="text-[11px] text-[#757575]">Recommended 1920 x 520 px (ratio ~3.7:1), max 5MB</p>
                     </label>
                   </div>
                 </div>
@@ -385,12 +435,19 @@ export default function PromoteBannerPage() {
                 </div>
               </div>
 
-              <button className="mt-6 h-10 w-full rounded-[8px] bg-[#2f9e58] text-white text-[13px] font-semibold inline-flex items-center justify-center gap-2">
-                <CreditCard size={15} /> Proceed to Payment
+              <button
+                onClick={handleSubmitForApproval}
+                disabled={submitting}
+                className="mt-6 h-10 w-full rounded-[8px] bg-[#2f9e58] disabled:bg-[#9fcfad] text-white text-[13px] font-semibold inline-flex items-center justify-center"
+              >
+                {submitting ? "Submitting..." : "Submit For Approval"}
               </button>
 
+              {submitError ? <p className="mt-3 text-[11px] text-[#dc2626]">{submitError}</p> : null}
+              {submitMessage ? <p className="mt-3 text-[11px] text-[#157a4f]">{submitMessage}</p> : null}
+
               <p className="mt-3 text-[11px] text-[#7a7a7a] leading-[1.45]">
-                Your banner will be scheduled on homepage after successful payment. Backend integration is pending.
+                Request status will be shown in Banner Promotions list as Under Review, Rejected, or Approved. Pay option appears after approval.
               </p>
             </aside>
           </section>

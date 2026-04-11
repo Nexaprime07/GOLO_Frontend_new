@@ -394,6 +394,28 @@ export async function promoteAd(adId, { promotionPackage, duration }) {
     });
 }
 
+export async function submitBannerPromotionRequest(payload) {
+    return apiClient('/ads/banner-promotions/request', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+    });
+}
+
+export async function getMyBannerPromotions() {
+    return apiClient('/ads/banner-promotions/my');
+}
+
+export async function payForBannerPromotion(requestId, paymentReference) {
+    return apiClient(`/ads/banner-promotions/${requestId}/pay`, {
+        method: 'POST',
+        body: JSON.stringify({ paymentReference }),
+    });
+}
+
+export async function getActiveHomepageBanners(limit = 5) {
+    return apiClient(`/ads/banner-promotions/active?limit=${limit}`);
+}
+
 // ============================================================
 // PAYMENTS APIs
 // ============================================================
