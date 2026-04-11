@@ -96,6 +96,7 @@ export default function MerchantProfilePage() {
             <button onClick={() => router.push("/merchant/orders")}>Orders</button>
             <button onClick={() => router.push("/merchant/products")}>Products</button>
             <button onClick={() => router.push("/merchant/offers")}>Offers</button>
+            <button onClick={() => router.push("/merchant/banners")}>Banners</button>
             <button onClick={() => router.push("/merchant/analytics")}>Analytics</button>
           </nav>
 

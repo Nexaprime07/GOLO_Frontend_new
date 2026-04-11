@@ -65,6 +65,7 @@ export default function MerchantAnalyticsPage() {
             <button onClick={() => router.push("/merchant/orders")}>Orders</button>
             <button onClick={() => router.push("/merchant/products")}>Products</button>
             <button onClick={() => router.push("/merchant/offers")}>Offers</button>
+            <button onClick={() => router.push("/merchant/banners")}>Banners</button>
             <button onClick={() => router.push("/merchant/analytics")} className="relative h-16 text-[#157a4f]">
               Analytics
               <span className="absolute left-0 right-0 -bottom-px h-[2px] bg-[#157a4f]" />

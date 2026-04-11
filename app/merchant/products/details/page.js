@@ -90,6 +90,7 @@ export default function MerchantProductDetailsPage() {
               <span className="absolute left-0 right-0 -bottom-px h-[2px] bg-[#157a4f]" />
             </button>
             <button onClick={() => router.push("/merchant/offers")}>Offers</button>
+            <button onClick={() => router.push("/merchant/banners")}>Banners</button>
             <button onClick={() => router.push("/merchant/analytics")}>Analytics</button>
           </nav>
 
