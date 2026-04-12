@@ -2,20 +2,28 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Pencil, User } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
+import { getMerchantProductById } from "../../../lib/api";
 
 export default function MerchantProductDetailsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const productId = searchParams.get("id");
   const { user, loading, logout } = useAuth();
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const [fetchError, setFetchError] = useState("");
+  const [originalData, setOriginalData] = useState(null);
   const [formData, setFormData] = useState({
-    name: "Printed Shirt",
-    category: "Clothing",
-    price: "500",
-    stockQuantity: "100",
-    description: "A stylish and comfortable shirt crafted from high-quality, breathable fabric that feels soft against the skin. Designed with a modern fit, it offers a perfect balance of elegance. The neatly stitched seams, and refined collar makes it suitable for both casual outings and semi-formal occasions"
+    id: "",
+    name: "",
+    category: "",
+    price: "",
+    stockQuantity: "",
+    description: "",
+    image: "/images/deal2.avif",
   });
 
   const handleMerchantLogout = async () => {
@@ -28,20 +36,14 @@ export default function MerchantProductDetailsPage() {
   };
 
   const handleSaveChanges = () => {
-    // Handle save logic here (API call, etc.)
-    console.log("Saving changes:", formData);
+    // Update endpoint is not implemented yet; keep UX intact for now.
     setIsEditMode(false);
   };
 
   const handleDiscardChanges = () => {
-    // Reset form data to original values
-    setFormData({
-      name: "Printed Shirt",
-      category: "Clothing",
-      price: "500",
-      stockQuantity: "100",
-      description: "A stylish and comfortable shirt crafted from high-quality, breathable fabric that feels soft against the skin. Designed with a modern fit, it offers a perfect balance of elegance. The neatly stitched seams, and refined collar makes it suitable for both casual outings and semi-formal occasions"
-    });
+    if (originalData) {
+      setFormData(originalData);
+    }
     setIsEditMode(false);
   };
 
@@ -62,6 +64,40 @@ export default function MerchantProductDetailsPage() {
       router.replace("/");
     }
   }, [loading, user, router]);
+
+  useEffect(() => {
+    if (!user || user.accountType !== "merchant") return;
+    if (!productId) {
+      router.replace("/merchant/products");
+      return;
+    }
+
+    const loadProduct = async () => {
+      try {
+        setIsFetching(true);
+        setFetchError("");
+        const res = await getMerchantProductById(productId);
+        const product = res?.data;
+        const mapped = {
+          id: product?.id || "",
+          name: product?.name || "",
+          category: product?.category || "",
+          price: String(product?.price || ""),
+          stockQuantity: String(product?.stockQuantity || ""),
+          description: product?.description || "",
+          image: product?.image || "/images/deal2.avif",
+        };
+        setOriginalData(mapped);
+        setFormData(mapped);
+      } catch (error) {
+        setFetchError(error?.message || "Failed to load product details");
+      } finally {
+        setIsFetching(false);
+      }
+    };
+
+    loadProduct();
+  }, [user, productId, router]);
 
   if (loading || !user) {
     return <div className="min-h-screen bg-[#efefef]" />;
@@ -111,6 +147,9 @@ export default function MerchantProductDetailsPage() {
           </button>
 
           <section className="rounded-[12px] border border-[#dddddd] bg-white p-5">
+            {fetchError ? (
+              <p className="mb-4 text-[12px] text-[#ef4d4d]">{fetchError}</p>
+            ) : null}
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-[35px] font-semibold leading-none">Product Details</h1>
               {!isEditMode && (
@@ -154,7 +193,7 @@ export default function MerchantProductDetailsPage() {
                   <p className="text-[14px] font-semibold mb-2">Image Uploaded</p>
                   <div className="rounded-[12px] border border-[#e5e5e5] bg-[#fbfbfb] p-3">
                     <div className="relative overflow-hidden rounded-[10px] border border-[#e5e5e5] bg-[#f4f4f4] h-[320px]">
-                      <Image src="/images/deal2.avif" alt="Printed shirt" fill className="object-cover" />
+                      <Image src={formData.image || "/images/deal2.avif"} alt={formData.name || "Product"} fill className="object-cover" />
                     </div>
                   </div>
                 </div>

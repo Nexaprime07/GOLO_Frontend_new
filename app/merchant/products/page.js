@@ -1,22 +1,28 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Download, Plus, Search, User } from "lucide-react";
+import { Download, Eye, Package, Plus, Search, Trash2, User, Wallet } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-
-const products = [
-  { name: "Shirts", price: "₹240", status: "In Stock", stock: "45 units", stockTone: "normal", image: "/images/deal2.avif" },
-  { name: "Pants", price: "₹299", status: "Low Stock", stock: "8 units", stockTone: "normal", image: "/images/banner3.avif" },
-  { name: "Skirts", price: "₹550", status: "Out of Stock", stock: "0 units", stockTone: "danger", image: "/images/place2.avif" },
-  { name: "Dress", price: "₹1000", status: "In Stock", stock: "22 units", stockTone: "normal", image: "/images/deal2.avif" },
-  { name: "T - Shirt", price: "₹320", status: "In Stock", stock: "124 units", stockTone: "normal", image: "/images/banner3.avif" },
-];
+import { deleteMerchantProduct, getMerchantProducts } from "../../lib/api";
 
 export default function MerchantProductsPage() {
   const router = useRouter();
   const { user, loading, logout } = useAuth();
+  const [products, setProducts] = useState([]);
+  const [stats, setStats] = useState({
+    totalProducts: 0,
+    inventoryValue: 0,
+    lowStockProducts: 0,
+    outOfStockProducts: 0,
+  });
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, page: 1, pages: 1, limit: 10 });
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [isFetching, setIsFetching] = useState(false);
+  const [fetchError, setFetchError] = useState("");
 
   const handleMerchantLogout = async () => {
     await logout();
@@ -33,6 +39,59 @@ export default function MerchantProductsPage() {
       router.replace("/");
     }
   }, [loading, user, router]);
+
+  useEffect(() => {
+    if (!user || user.accountType !== "merchant") return;
+
+    const fetchProducts = async () => {
+      try {
+        setIsFetching(true);
+        setFetchError("");
+        const res = await getMerchantProducts({ page, limit: 10, search });
+        setProducts(res?.data?.products || []);
+        setStats(
+          res?.data?.stats || {
+            totalProducts: 0,
+            inventoryValue: 0,
+            lowStockProducts: 0,
+            outOfStockProducts: 0,
+          }
+        );
+        setPagination(
+          res?.pagination || {
+            total: 0,
+            page,
+            pages: 1,
+            limit: 10,
+          }
+        );
+      } catch (error) {
+        setFetchError(error?.message || "Failed to load products");
+      } finally {
+        setIsFetching(false);
+      }
+    };
+
+    fetchProducts();
+  }, [user, page, search]);
+
+  const handleDeleteProduct = async (productId) => {
+    try {
+      await deleteMerchantProduct(productId);
+      setProducts((prev) => prev.filter((item) => item.id !== productId));
+      setStats((prev) => ({
+        ...prev,
+        totalProducts: Math.max(0, (prev.totalProducts || 0) - 1),
+      }));
+    } catch (error) {
+      window.alert(error?.message || "Failed to delete product");
+    }
+  };
+
+  const inventoryValueLabel = useMemo(() => {
+    const value = Number(stats?.inventoryValue || 0);
+    return `Rs ${Math.round(value).toLocaleString("en-IN")}`;
+  }, [stats?.inventoryValue]);
 
   if (loading || !user) {
     return <div className="min-h-screen bg-[#efefef]" />;
@@ -84,25 +143,31 @@ export default function MerchantProductsPage() {
             <div className="rounded-[12px] border border-[#e2e2e2] bg-white px-4 py-4 flex items-center justify-between">
               <div>
                 <p className="text-[11px] text-[#666]">Total Products</p>
-                <p className="text-[34px] font-semibold leading-none mt-1">412</p>
+                <p className="text-[34px] font-semibold leading-none mt-1">{stats.totalProducts || 0}</p>
               </div>
-              <div className="h-10 w-10 rounded-full bg-[#f4f4f1] text-[#2cb56e] flex items-center justify-center">⬡</div>
+              <div className="h-10 w-10 rounded-full bg-[#f4f4f1] text-[#2cb56e] flex items-center justify-center">
+                <Package size={18} />
+              </div>
             </div>
 
             <div className="rounded-[12px] border border-[#e2e2e2] bg-white px-4 py-4 flex items-center justify-between">
               <div>
                 <p className="text-[11px] text-[#666]">Inventory Value</p>
-                <p className="text-[34px] font-semibold leading-none mt-1">₹45,210</p>
+                <p className="text-[34px] font-semibold leading-none mt-1">{inventoryValueLabel}</p>
               </div>
-              <div className="h-10 w-10 rounded-full bg-[#f4f4f1] text-[#e2a112] flex items-center justify-center text-[20px]">₹</div>
+              <div className="h-10 w-10 rounded-full bg-[#f4f4f1] text-[#e2a112] flex items-center justify-center">
+                <Wallet size={18} />
+              </div>
             </div>
 
             <div className="rounded-[12px] border border-[#e2e2e2] bg-white px-4 py-4 flex items-center justify-between">
               <div>
-                <p className="text-[11px] text-[#666]">Total Offers</p>
-                <p className="text-[34px] font-semibold leading-none mt-1">36</p>
+                <p className="text-[11px] text-[#666]">Out Of Stock</p>
+                <p className="text-[34px] font-semibold leading-none mt-1">{stats.outOfStockProducts || 0}</p>
               </div>
-              <div className="h-10 w-10 rounded-full bg-[#f7eef0] text-[#f27f9f] flex items-center justify-center">✦</div>
+              <div className="h-10 w-10 rounded-full bg-[#f7eef0] text-[#f27f9f] flex items-center justify-center">
+                <Package size={18} />
+              </div>
             </div>
           </section>
 
@@ -111,6 +176,14 @@ export default function MerchantProductsPage() {
               <div className="relative w-full max-w-[620px]">
                 <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a4a4a4]" />
                 <input
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      setPage(1);
+                      setSearch(searchInput.trim());
+                    }
+                  }}
                   className="h-9 w-full rounded-[8px] border border-[#e2e2e2] bg-white pl-8 pr-3 text-[12px] outline-none"
                   placeholder="Search by product name"
                 />
@@ -120,11 +193,22 @@ export default function MerchantProductsPage() {
                 <button className="h-9 rounded-[8px] border border-[#e2e2e2] bg-white px-4 text-[11px] text-[#666] inline-flex items-center gap-1.5">
                   <Download size={12} /> Export CSV
                 </button>
+                <button
+                  onClick={() => {
+                    setPage(1);
+                    setSearch(searchInput.trim());
+                  }}
+                  className="h-9 rounded-[8px] border border-[#e2e2e2] bg-white px-4 text-[11px] text-[#666]"
+                >
+                  Apply Search
+                </button>
                 <button onClick={() => router.push("/merchant/products/add")} className="h-9 rounded-[8px] bg-[#2f9e58] px-4 text-[11px] font-semibold text-white inline-flex items-center gap-1.5">
                   <Plus size={12} /> Add New Product
                 </button>
               </div>
             </div>
+
+            {fetchError ? <p className="mt-3 text-[12px] text-[#ef4d4d]">{fetchError}</p> : null}
 
             <div className="mt-4 overflow-hidden rounded-[10px] border border-[#ececec] bg-white">
               <table className="w-full text-[12px]">
@@ -140,14 +224,14 @@ export default function MerchantProductsPage() {
                 </thead>
                 <tbody>
                   {products.map((item) => (
-                    <tr key={item.name} className="border-t border-[#f0f0f0]">
+                    <tr key={item.id} className="border-t border-[#f0f0f0]">
                       <td className="px-4 py-3">
                         <div className="h-8 w-8 rounded-full overflow-hidden border border-[#ececec]">
-                          <Image src={item.image} alt={item.name} width={32} height={32} className="h-full w-full object-cover" />
+                          <Image src={item.image || "/images/deal2.avif"} alt={item.name} width={32} height={32} className="h-full w-full object-cover" />
                         </div>
                       </td>
                       <td className="px-4 py-3 font-semibold text-[#2a2a2a]">{item.name}</td>
-                      <td className="px-4 py-3 font-semibold">{item.price}</td>
+                      <td className="px-4 py-3 font-semibold">{item.priceLabel || `?${item.price}`}</td>
                       <td className="px-4 py-3">
                         {item.status === "Out of Stock" ? (
                           <span className="inline-flex rounded-full bg-[#ef4d4d] px-2 py-0.5 text-[10px] font-semibold text-white">Out of Stock</span>
@@ -155,27 +239,50 @@ export default function MerchantProductsPage() {
                           <span>{item.status}</span>
                         )}
                       </td>
-                      <td className={`px-4 py-3 ${item.stockTone === "danger" ? "text-[#ef4d4d]" : ""}`}>{item.stock}</td>
+                      <td className={`px-4 py-3 ${item.status === "Out of Stock" ? "text-[#ef4d4d]" : ""}`}>{item.stock}</td>
                       <td className="px-4 py-3 text-[11px]">
                         <button
-                          onClick={() => router.push("/merchant/products/details")}
-                          className="text-[#f0aa19] font-semibold"
+                          onClick={() => router.push(`/merchant/products/details?id=${item.id}`)}
+                          className="inline-flex items-center gap-1 rounded-[6px] border border-[#e5b54e] bg-[#fff7e2] px-3 py-1 text-[#b77905] font-semibold"
                         >
-                          View 👁
+                          <Eye size={12} /> View
                         </button>
                         <span className="mx-2 text-[#cfcfcf]">/</span>
-                        <button className="text-[#ef4d4d] font-semibold">Delete 🗑</button>
+                        <button onClick={() => handleDeleteProduct(item.id)} className="text-[#ef4d4d] font-semibold">
+                          <span className="inline-flex items-center gap-1 rounded-[6px] border border-[#f0c6c6] bg-[#fff0f0] px-3 py-1 text-[#d63f3f] font-semibold">
+                            <Trash2 size={12} /> Delete
+                          </span>
+                        </button>
                       </td>
                     </tr>
                   ))}
+                  {!isFetching && products.length === 0 ? (
+                    <tr className="border-t border-[#f0f0f0]">
+                      <td colSpan={6} className="px-4 py-6 text-center text-[12px] text-[#777]">
+                        No products found
+                      </td>
+                    </tr>
+                  ) : null}
                 </tbody>
               </table>
 
               <div className="flex items-center justify-between border-t border-[#ececec] bg-[#f2f3f5] px-4 py-3 text-[11px] text-[#666]">
-                <p>Showing 5 of 97 products</p>
+                <p>Showing {products.length} of {pagination.total || 0} products</p>
                 <div className="flex items-center gap-1">
-                  <button className="h-7 rounded-[6px] border border-[#e1e1e1] bg-white px-3 text-[#b3b3b3]">Previous</button>
-                  <button className="h-7 rounded-[6px] border border-[#7fc69a] bg-[#eefaf2] px-3 text-[#2f9e58]">Next</button>
+                  <button
+                    disabled={page <= 1}
+                    onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                    className="h-7 rounded-[6px] border border-[#e1e1e1] bg-white px-3 text-[#666] disabled:text-[#b3b3b3]"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    disabled={page >= (pagination.pages || 1)}
+                    onClick={() => setPage((prev) => prev + 1)}
+                    className="h-7 rounded-[6px] border border-[#7fc69a] bg-[#eefaf2] px-3 text-[#2f9e58] disabled:opacity-60"
+                  >
+                    Next
+                  </button>
                 </div>
               </div>
             </div>
@@ -202,7 +309,7 @@ export default function MerchantProductsPage() {
             <div className="mt-3 space-y-2 text-[13px]"><p>Help Center</p><p>Security</p><p>Terms of Service</p></div>
           </div>
         </div>
-        <div className="mx-auto w-full max-w-[1400px] px-8 lg:px-10 py-3 border-t border-[#d49b22] flex items-center justify-between gap-3 text-[11px]"><p>© 2026 GOLO Dashboard. All rights reserved.</p></div>
+        <div className="mx-auto w-full max-w-[1400px] px-8 lg:px-10 py-3 border-t border-[#d49b22] flex items-center justify-between gap-3 text-[11px]"><p>� 2026 GOLO Dashboard. All rights reserved.</p></div>
       </footer>
     </div>
   );

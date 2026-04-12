@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, User, ChevronLeft } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
+import { createMerchantProduct } from "../../../lib/api";
 
 export default function AddProductPage() {
   const router = useRouter();
@@ -17,6 +18,8 @@ export default function AddProductPage() {
   const [description, setDescription] = useState("");
   const [brandImage, setBrandImage] = useState("/images/deal2.avif");
   const [productImages, setProductImages] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const handleMerchantLogout = async () => {
     await logout();
@@ -38,6 +41,33 @@ export default function AddProductPage() {
 
   const triggerFileInput = () => {
     fileInputRef.current?.click();
+  };
+
+  const handlePublishProduct = async () => {
+    if (!productName.trim() || !category.trim() || !stockQuantity || !regularPrice) {
+      setSubmitError("Please fill all required fields");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setSubmitError("");
+
+      await createMerchantProduct({
+        name: productName.trim(),
+        category: category.trim(),
+        stockQuantity: Number(stockQuantity),
+        price: Number(regularPrice),
+        description: description.trim(),
+        images: productImages,
+      });
+
+      router.push("/merchant/products");
+    } catch (error) {
+      setSubmitError(error?.message || "Failed to publish product");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   useEffect(() => {
@@ -274,6 +304,7 @@ export default function AddProductPage() {
               <div>
                 <h3 className="text-[14px] font-semibold text-[#333]">Ready to go?</h3>
                 <p className="text-[12px] text-[#666] mt-1">Review your product details before publishing</p>
+                {submitError ? <p className="mt-2 text-[12px] text-[#ef4d4d]">{submitError}</p> : null}
               </div>
 
               <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -286,7 +317,11 @@ export default function AddProductPage() {
                 <button className="h-10 rounded-[8px] bg-white border border-[#d5d5d5] px-5 text-[12px] font-semibold text-[#6f6f6f] hover:bg-[#f9f9f9] transition">
                   Save as Draft
                 </button>
-                <button className="h-10 rounded-[8px] bg-[#efb02e] px-5 text-[12px] font-semibold text-[#5a4514] hover:bg-[#e2a112] transition inline-flex items-center gap-1.5">
+                <button
+                  disabled={isSubmitting}
+                  onClick={handlePublishProduct}
+                  className="h-10 rounded-[8px] bg-[#efb02e] px-5 text-[12px] font-semibold text-[#5a4514] hover:bg-[#e2a112] transition inline-flex items-center gap-1.5 disabled:opacity-60"
+                >
                   ➕ Publish Product
                 </button>
               </div>

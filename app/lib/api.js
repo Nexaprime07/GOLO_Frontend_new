@@ -31,11 +31,18 @@ export async function submitUserReport(userId, reason, description) {
 // ============================================================
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3002');
+const PUBLIC_AUTH_ENDPOINTS = new Set([
+    '/users/login',
+    '/users/register',
+    '/users/social-auth',
+    '/users/refresh',
+]);
 
 // --------------- Core Fetch Wrapper ---------------
 
 export async function apiClient(endpoint, options = {}) {
     const url = `${BASE_URL}${endpoint}`;
+    const isPublicAuthEndpoint = [...PUBLIC_AUTH_ENDPOINTS].some((path) => endpoint.startsWith(path));
 
     const headers = {
         'Content-Type': 'application/json',
@@ -49,7 +56,7 @@ export async function apiClient(endpoint, options = {}) {
             // Debug token format
             console.log(`[API] Using token for ${endpoint}: ${token.substring(0, 20)}...`);
             headers['Authorization'] = `Bearer ${token}`;
-        } else {
+        } else if (!isPublicAuthEndpoint) {
             console.warn(`[API] No token found in localStorage for ${endpoint}`);
         }
     }
@@ -67,7 +74,7 @@ export async function apiClient(endpoint, options = {}) {
     const response = await fetch(url, config);
 
     // Handle 401 — try to refresh token
-    if (response.status === 401 && typeof window !== 'undefined') {
+    if (response.status === 401 && typeof window !== 'undefined' && !isPublicAuthEndpoint) {
         console.warn(`[API] Got 401 for ${endpoint} - attempting token refresh`);
         const refreshed = await tryRefreshToken();
         if (refreshed) {
@@ -631,6 +638,33 @@ export async function deleteConversation(conversationId) {
 export async function getCallHistory({ page = 1, limit = 100 } = {}) {
     const params = new URLSearchParams({ page, limit });
     return apiClient(`/calls/history?${params.toString()}`);
+}
+
+// ============================================================
+// MERCHANT PRODUCTS APIs
+// ============================================================
+
+export async function getMerchantProducts({ page = 1, limit = 10, search = '' } = {}) {
+    const params = new URLSearchParams({ page, limit });
+    if (search) params.append('search', search);
+    return apiClient(`/merchant/products?${params.toString()}`);
+}
+
+export async function createMerchantProduct(payload) {
+    return apiClient('/merchant/products', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+    });
+}
+
+export async function getMerchantProductById(productId) {
+    return apiClient(`/merchant/products/${productId}`);
+}
+
+export async function deleteMerchantProduct(productId) {
+    return apiClient(`/merchant/products/${productId}`, {
+        method: 'DELETE',
+    });
 }
 
 // ==================== AD REPORTING & MODERATION ====================
