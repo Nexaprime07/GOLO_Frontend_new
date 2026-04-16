@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -36,31 +36,42 @@ import {
   Trash2,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-
-const topCards = [
-  { label: "Total Sent", value: "1.2M", trend: "+12.5%", icon: Send, down: false },
-  { label: "Scheduled", value: "482", trend: "0.8%", icon: CalendarCheck, down: false },
-  { label: "Failed Delivery", value: "1,042", trend: "4.3%", icon: AlertCircle, down: true },
-  { label: "Avg. Open Rate", value: "24.8%", trend: "+5.4%", icon: BarChart3, down: false },
-  { label: "Active Alerts", value: "12", trend: "+2.1%", icon: CheckCircle2, down: false },
-];
-
-const rows = [
-  { id: "NOTIF-8 921", title: "System Maintenance: Cluster", tags: ["Email", "In-App"], audience: "All Merchants", status: "Sent" },
-  { id: "NOTIF-8 922", title: "Holiday Discount Offer", tags: ["Push", "Email"], audience: "Customers", status: "Sent" },
-  { id: "NOTIF-8 923", title: "Payment Gateway Failure", tags: ["SMS", "Push"], audience: "Service Providers", status: "Scheduled" },
-  { id: "NOTIF-8 924", title: "New Feature: Multi-Currency", tags: ["In-App"], audience: "All", status: "Sent" },
-  { id: "NOTIF-8 925", title: "Monthly Performance Report", tags: ["Email"], audience: "Merchants", status: "Failed" },
-  { id: "NOTIF-8 921", title: "System Maintenance: Cluster", tags: ["Email", "In-App"], audience: "All Merchants", status: "Sent" },
-  { id: "NOTIF-8 922", title: "Holiday Discount Offer", tags: ["Push", "Email"], audience: "Customers", status: "Sent" },
-  { id: "NOTIF-8 923", title: "Payment Gateway Failure", tags: ["SMS", "Push"], audience: "Service Providers", status: "Sent" },
-  { id: "NOTIF-8 924", title: "New Feature: Multi-Currency", tags: ["In-App"], audience: "All", status: "Sent" },
-  { id: "NOTIF-8 925", title: "Monthly Performance Report", tags: ["Email"], audience: "Merchants", status: "Failed" },
-];
+import {
+  getNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+} from "../../lib/api";
 
 export default function MerchantNotificationsPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
+  const [rows, setRows] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const loadNotifications = async () => {
+    try {
+      setPageLoading(true);
+      setError("");
+      const res = await getNotifications({ page: 1, limit: 50 });
+      const payload = res?.data || {};
+      const notifications = Array.isArray(payload.notifications) ? payload.notifications : [];
+      setRows(notifications.map((n) => ({
+        id: n._id,
+        title: n.message || n.type || "Notification",
+        tags: [n.type || "in-app"],
+        audience: n.adTitle || "Merchant",
+        status: n.read ? "Read" : "Unread",
+        createdAt: n.createdAt,
+      })));
+      setUnreadCount(Number(payload.unreadCount || 0));
+    } catch (err) {
+      setError(err?.message || "Failed to load notifications");
+    } finally {
+      setPageLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!loading && !user) {
@@ -71,6 +82,42 @@ export default function MerchantNotificationsPage() {
       router.replace("/");
     }
   }, [loading, user, router]);
+
+  useEffect(() => {
+    if (!loading && user?.accountType === "merchant") {
+      loadNotifications();
+    }
+  }, [loading, user]);
+
+  const topCards = useMemo(() => {
+    const read = rows.filter((row) => row.status === "Read").length;
+    const unread = rows.filter((row) => row.status === "Unread").length;
+    return [
+      { label: "Total Notifications", value: String(rows.length), trend: "Live", icon: Send, down: false },
+      { label: "Unread", value: String(unreadCount || unread), trend: "Needs attention", icon: CalendarCheck, down: false },
+      { label: "Read", value: String(read), trend: "Processed", icon: AlertCircle, down: false },
+      { label: "Avg. Open Rate", value: rows.length ? `${Math.round((read / rows.length) * 100)}%` : "0%", trend: "Live", icon: BarChart3, down: false },
+      { label: "Active Alerts", value: String(unread), trend: "Current", icon: CheckCircle2, down: unread > 0 },
+    ];
+  }, [rows, unreadCount]);
+
+  const markOneRead = async (id) => {
+    try {
+      await markNotificationRead(id);
+      await loadNotifications();
+    } catch (err) {
+      setError(err?.message || "Failed to mark notification as read");
+    }
+  };
+
+  const markAllRead = async () => {
+    try {
+      await markAllNotificationsRead();
+      await loadNotifications();
+    } catch (err) {
+      setError(err?.message || "Failed to mark all notifications as read");
+    }
+  };
 
   if (loading || !user) return <div className="min-h-screen bg-[#f3f4f6]" />;
   if (user.accountType !== "merchant") return null;
@@ -185,10 +232,12 @@ export default function MerchantNotificationsPage() {
                   <span className="text-[9px] px-2 py-1 rounded-full bg-[#f3f4f6] text-gray-600">Syncing Live</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button className="h-8 px-3 rounded-[6px] border border-[#e5e7eb] text-[11px] inline-flex items-center gap-1"><Filter size={11} /> Filters</button>
+                  <button onClick={markAllRead} className="h-8 px-3 rounded-[6px] border border-[#e5e7eb] text-[11px] inline-flex items-center gap-1"><Filter size={11} /> Mark All Read</button>
                   <button className="h-8 px-3 rounded-[6px] border border-[#e5e7eb] text-[11px] inline-flex items-center gap-1"><Download size={11} /> Export CSV</button>
                 </div>
               </div>
+
+              {error ? <p className="px-4 py-2 text-[12px] text-[#ef4444]">{error}</p> : null}
 
               <div className="px-4 py-3 border-b border-[#eceff2]">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -210,7 +259,9 @@ export default function MerchantNotificationsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((row, index) => (
+                    {pageLoading ? (
+                      <tr><td className="px-4 py-4" colSpan={4}>Loading notifications...</td></tr>
+                    ) : rows.map((row, index) => (
                       <tr key={`${row.id}-${index}`} className={`border-t border-[#eef1f3] ${index === 0 ? "bg-[#fffaf0] border-y border-dashed border-[#f0b74d]" : ""}`}>
                         <td className="px-4 py-2.5 text-gray-500">{row.id}</td>
                         <td className="px-4 py-2.5">
@@ -222,7 +273,12 @@ export default function MerchantNotificationsPage() {
                           </div>
                         </td>
                         <td className="px-4 py-2.5">{row.audience}</td>
-                        <td className="px-4 py-2.5"><span className={`text-[9px] px-2 py-[3px] rounded-full ${statusClass(row.status)}`}>{row.status}</span></td>
+                        <td className="px-4 py-2.5">
+                          <span className={`text-[9px] px-2 py-[3px] rounded-full ${statusClass(row.status)}`}>{row.status}</span>
+                          {row.status === "Unread" ? (
+                            <button onClick={() => markOneRead(row.id)} className="ml-2 text-[10px] text-[#157A4F]">Mark read</button>
+                          ) : null}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -320,8 +376,8 @@ export default function MerchantNotificationsPage() {
 }
 
 function statusClass(status) {
-  if (status === "Sent") return "bg-[#f3f4f6] text-gray-700";
-  if (status === "Scheduled") return "bg-[#fff3dd] text-[#d18a0f]";
+  if (status === "Read") return "bg-[#f3f4f6] text-gray-700";
+  if (status === "Unread") return "bg-[#fff3dd] text-[#d18a0f]";
   return "bg-[#fee2e2] text-[#ef4444]";
 }
 

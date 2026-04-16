@@ -5,18 +5,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, Edit3, User } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import {
+  getMerchantPendingRedemptions,
+  getMerchantRedemptionHistory,
+  getMerchantReviewStats,
+  updateProfile,
+} from "../../lib/api";
 
 const topTabs = ["Profile Settings", "Loyalty Rewards", "Help", "Settings", "Logout"];
-
-const loyaltyRows = [
-  { customer: "Amit Singh", offers: 16, points: 146, star: true },
-  { customer: "Rakesh Patel", offers: 14, points: 102, star: true },
-  { customer: "Amit Singh", offers: 10, points: 102, star: true },
-  { customer: "Rakesh Patel", offers: 10, points: 95, star: false },
-  { customer: "Amit Singh", offers: 6, points: 73, star: false },
-  { customer: "Rakesh Patel", offers: 4, points: 50, star: false },
-  { customer: "Amit Singh", offers: 2, points: 23, star: false },
-];
 
 export default function MerchantProfilePage() {
   const router = useRouter();
@@ -24,6 +20,10 @@ export default function MerchantProfilePage() {
   const [activeTab, setActiveTab] = useState("Profile Settings");
   const [isEditMode, setIsEditMode] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [loyaltyRows, setLoyaltyRows] = useState([]);
+  const [loyaltySummary, setLoyaltySummary] = useState({ totalCustomers: 0, rewardChamps: 0, rewardPoints: 0 });
+  const [pendingHistoryCount, setPendingHistoryCount] = useState(0);
+  const [saveError, setSaveError] = useState("");
   const [formData, setFormData] = useState({
     username: "Mahesh Patil",
     phone: "+91 XXXXXXXXXX",
@@ -58,7 +58,21 @@ export default function MerchantProfilePage() {
   };
 
   const handleSave = () => {
-    setIsEditMode(false);
+    (async () => {
+      try {
+        setSaveError("");
+        await updateProfile({
+          name: formData.username,
+          phone: formData.phone,
+          email: formData.email,
+          businessName: formData.shopName,
+          location: formData.location,
+        });
+        setIsEditMode(false);
+      } catch (err) {
+        setSaveError(err?.message || "Failed to save profile");
+      }
+    })();
   };
 
   useEffect(() => {
@@ -71,6 +85,63 @@ export default function MerchantProfilePage() {
       router.replace("/");
     }
   }, [loading, user, router]);
+
+  useEffect(() => {
+    if (!loading && user) {
+      setFormData((prev) => ({
+        ...prev,
+        username: user.name || prev.username,
+        phone: user.phone || prev.phone,
+        email: user.email || prev.email,
+        shopName: user.businessName || user.shopName || prev.shopName,
+        location: user.location || prev.location,
+      }));
+    }
+  }, [loading, user]);
+
+  useEffect(() => {
+    const loadLoyalty = async () => {
+      if (!user || user.accountType !== "merchant") return;
+      try {
+        const [historyRes, pendingRes, reviewsRes] = await Promise.all([
+          getMerchantRedemptionHistory({ page: 1, limit: 200 }),
+          getMerchantPendingRedemptions({ page: 1, limit: 200 }),
+          getMerchantReviewStats(),
+        ]);
+
+        const history = Array.isArray(historyRes?.data) ? historyRes.data : [];
+        const pending = Array.isArray(pendingRes?.data) ? pendingRes.data : [];
+
+        const byUser = new Map();
+        history.forEach((item) => {
+          const key = item.userEmail || item.userName || "Unknown Customer";
+          const existing = byUser.get(key) || { customer: item.userName || "Customer", offers: 0, points: 0 };
+          existing.offers += 1;
+          existing.points += 10;
+          byUser.set(key, existing);
+        });
+
+        const rows = Array.from(byUser.values())
+          .sort((a, b) => b.points - a.points)
+          .slice(0, 20)
+          .map((row, index) => ({ ...row, star: index < 3 }));
+
+        setLoyaltyRows(rows);
+        setPendingHistoryCount(pending.length);
+
+        const reviewScore = Number(reviewsRes?.data?.averageRating || 0);
+        const rewardPoints = rows.reduce((sum, row) => sum + row.points, 0) + Math.round(reviewScore * 10);
+        setLoyaltySummary({
+          totalCustomers: rows.length,
+          rewardChamps: rows.filter((row) => row.star).length,
+          rewardPoints,
+        });
+      } catch {
+      }
+    };
+
+    loadLoyalty();
+  }, [user]);
 
   if (loading || !user) {
     return <div className="min-h-screen bg-[#ececec]" />;
@@ -136,15 +207,15 @@ export default function MerchantProfilePage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="h-[56px] rounded-[8px] border border-[#b8bdc6] bg-white px-4 flex items-center justify-between">
                   <p className="text-[13px] font-semibold text-[#1f9b57]">Total Customers</p>
-                  <p className="text-[30px] leading-none font-semibold text-[#1f1f1f]">228</p>
+                  <p className="text-[30px] leading-none font-semibold text-[#1f1f1f]">{loyaltySummary.totalCustomers}</p>
                 </div>
                 <div className="h-[56px] rounded-[8px] border border-[#b8bdc6] bg-white px-4 flex items-center justify-between">
                   <p className="text-[13px] font-semibold text-[#f1a61b]">Reward Champs</p>
-                  <p className="text-[30px] leading-none font-semibold text-[#1f1f1f]">3</p>
+                  <p className="text-[30px] leading-none font-semibold text-[#1f1f1f]">{loyaltySummary.rewardChamps}</p>
                 </div>
                 <div className="h-[56px] rounded-[8px] border border-[#b8bdc6] bg-white px-4 flex items-center justify-between">
                   <p className="text-[13px] font-semibold text-[#323232]">Reward Points</p>
-                  <p className="text-[30px] leading-none font-semibold text-[#1f1f1f]">100</p>
+                  <p className="text-[30px] leading-none font-semibold text-[#1f1f1f]">{loyaltySummary.rewardPoints}</p>
                 </div>
               </div>
 
@@ -170,7 +241,7 @@ export default function MerchantProfilePage() {
               </div>
 
               <div className="rounded-[8px] bg-[#d9dbe0] px-5 py-3 flex items-center justify-between">
-                <p className="text-[11px] text-[#5f6064]">Showing 5 of 97 products</p>
+                <p className="text-[11px] text-[#5f6064]">Showing {loyaltyRows.length} customers · Pending redemptions {pendingHistoryCount}</p>
                 <div className="flex items-center gap-2">
                   <button className="h-7 px-3 rounded-[8px] border border-[#8f949d] bg-white text-[10px] text-[#5f6064]">Previous</button>
                   <button className="h-7 px-3 rounded-[8px] border border-[#86c490] bg-[#e6f8eb] text-[10px] text-[#1f9b57]">Next</button>
@@ -272,6 +343,7 @@ export default function MerchantProfilePage() {
 
                 {isEditMode && (
                   <div className="flex justify-end gap-3 pt-2">
+                    {saveError ? <p className="text-[12px] text-[#ef4d4d] mr-auto self-center">{saveError}</p> : null}
                     <button type="button" onClick={handleDiscard} className="h-10 px-5 rounded-[8px] bg-[#d8dbe2] text-[#222] text-[13px] font-semibold">
                       Discard Changes
                     </button>

@@ -71,7 +71,17 @@ export async function apiClient(endpoint, options = {}) {
         'Authorization': headers['Authorization'] ? 'Present' : 'Missing',
     });
 
-    const response = await fetch(url, config);
+    let response;
+    try {
+        response = await fetch(url, config);
+    } catch (fetchError) {
+        const error = new Error('Failed to connect to server. Please check backend/CORS/network.');
+        error.status = 0;
+        error.code = 'NETWORK_ERROR';
+        error.cause = fetchError;
+        error.endpoint = endpoint;
+        throw error;
+    }
 
     // Handle 401 — try to refresh token
     if (response.status === 401 && typeof window !== 'undefined' && !isPublicAuthEndpoint) {
@@ -89,7 +99,15 @@ export async function apiClient(endpoint, options = {}) {
 }
 
 async function handleResponse(response) {
-    const data = await response.json();
+    let data = null;
+    const contentType = response.headers.get('content-type') || '';
+
+    if (contentType.includes('application/json')) {
+        data = await response.json();
+    } else {
+        const text = await response.text();
+        data = { message: text || 'Unexpected server response' };
+    }
 
     if (!response.ok) {
         const error = new Error(data.message || 'API request failed');
@@ -412,6 +430,19 @@ export async function getMyBannerPromotions() {
     return apiClient('/banners/promotions/my');
 }
 
+export async function updateMyBannerPromotion(requestId, payload) {
+    return apiClient(`/banners/promotions/${requestId}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+    });
+}
+
+export async function deleteMyBannerPromotion(requestId) {
+    return apiClient(`/banners/promotions/${requestId}`, {
+        method: 'DELETE',
+    });
+}
+
 export async function payForBannerPromotion(requestId, paymentReference) {
     return apiClient(`/banners/promotions/${requestId}/pay`, {
         method: 'POST',
@@ -420,7 +451,17 @@ export async function payForBannerPromotion(requestId, paymentReference) {
 }
 
 export async function getActiveHomepageBanners(limit = 5) {
-    return apiClient(`/banners/promotions/active?limit=${limit}`);
+    try {
+        return await apiClient(`/banners/promotions/active?limit=${limit}`);
+    } catch (error) {
+        // Homepage should never crash on banner API/network failures.
+        console.warn('[API] Falling back to empty homepage banners:', error?.message);
+        return {
+            success: true,
+            data: [],
+            fallback: true,
+        };
+    }
 }
 
 // ============================================================
@@ -787,6 +828,13 @@ export async function getMerchantProductById(productId) {
     return apiClient(`/merchant/products/${productId}`);
 }
 
+export async function updateMerchantProduct(productId, payload) {
+    return apiClient(`/merchant/products/${productId}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+    });
+}
+
 export async function deleteMerchantProduct(productId) {
     return apiClient(`/merchant/products/${productId}`, {
         method: 'DELETE',
@@ -824,6 +872,19 @@ export async function getAllReports() {
  */
 export async function updateReportStatus(reportId, status, adminNotes) {
     return apiClient(`/ads/reports/${reportId}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status, adminNotes }),
+    });
+}
+
+export async function getMerchantModerationReports(status = 'all') {
+    const params = new URLSearchParams();
+    if (status && status !== 'all') params.append('status', status);
+    return apiClient(`/ads/reports/merchant/my?${params.toString()}`);
+}
+
+export async function updateMerchantModerationReportStatus(reportId, status, adminNotes) {
+    return apiClient(`/ads/reports/${reportId}/merchant-status`, {
         method: 'PUT',
         body: JSON.stringify({ status, adminNotes }),
     });
@@ -894,4 +955,60 @@ export async function getAdminStats() {
 
 export async function getAdminLogs(page = 1, limit = 50) {
     return apiClient(`/admin/logs?page=${page}&limit=${limit}`);
+}
+
+// ============================================================
+// MERCHANT DASHBOARD / ORDERS / REVIEWS / ANALYTICS APIs
+// ============================================================
+
+export async function getMerchantDashboardSummary() {
+    return apiClient('/merchant-dashboard/summary');
+}
+
+export async function getMerchantOrders({ page = 1, limit = 20, status = 'all' } = {}) {
+    const params = new URLSearchParams({ page, limit, status });
+    return apiClient(`/orders/merchant?${params.toString()}`);
+}
+
+export async function getMerchantOrderStats() {
+    return apiClient('/orders/merchant/stats');
+}
+
+export async function updateMerchantOrderStatus(orderId, status) {
+    return apiClient(`/orders/${orderId}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+    });
+}
+
+export async function getMerchantReviews({ page = 1, limit = 20, status = 'all', search = '' } = {}) {
+    const params = new URLSearchParams({ page, limit, status, search });
+    return apiClient(`/reviews/merchant?${params.toString()}`);
+}
+
+export async function getMerchantReviewStats() {
+    return apiClient('/reviews/merchant/stats');
+}
+
+export async function updateMerchantReviewStatus(reviewId, status) {
+    return apiClient(`/reviews/${reviewId}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+    });
+}
+
+export async function getAnalyticsDeviceBreakdown() {
+    return apiClient('/analytics/device-breakdown');
+}
+
+export async function getAnalyticsTopRegions() {
+    return apiClient('/analytics/top-regions');
+}
+
+export async function getAnalyticsTopPages() {
+    return apiClient('/analytics/top-pages');
+}
+
+export async function getAnalyticsEvents() {
+    return apiClient('/analytics/events');
 }

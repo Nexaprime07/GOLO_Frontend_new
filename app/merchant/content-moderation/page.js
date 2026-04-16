@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -35,27 +35,31 @@ import {
   UserRound,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-
-const topCards = [
-  { label: "Flagged Listings", value: "1,284", delta: "↗ +12.5%", icon: Flag, red: false },
-  { label: "Reported Images", value: "842", delta: "↗ +3.2%", icon: ImageIcon, red: false },
-  { label: "Messages Flagged", value: "2,410", delta: "↗ +18.4%", icon: MessageSquare, red: false },
-  { label: "Pending Reviews", value: "452", delta: "↘ -4.1%", icon: Clock3, red: true },
-  { label: "Removed Today", value: "156", delta: "↘ -22.1%", icon: Trash2, red: true },
-  { label: "Users Suspended", value: "28", delta: "↗ +1.5%", icon: Ban, red: false },
-];
-
-const tableRows = [
-  ["iPhone 15 Pro Max - Unlock", "Potential Fraud", "89%", "Flagged"],
-  ["Luxury Penthouse - Western", "Misleading Info", "45%", "Pending"],
-  ["Vintage Rolex Submariner", "Counterfeit Suspect", "72%", "Under Review"],
-  ["Home Service - Plumbing", "Spam Listings", "94%", "Flagged"],
-  ["Toyota Land Cruiser V8", "Duplicate Content", "31%", "Pending"],
-];
+import {
+  getMerchantModerationReports,
+  updateMerchantModerationReportStatus,
+} from "../../lib/api";
 
 export default function MerchantContentModerationPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
+  const [reports, setReports] = useState([]);
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [error, setError] = useState("");
+  const [pageLoading, setPageLoading] = useState(true);
+
+  const loadReports = async (status = filterStatus) => {
+    try {
+      setPageLoading(true);
+      setError("");
+      const res = await getMerchantModerationReports(status);
+      setReports(Array.isArray(res?.data) ? res.data : []);
+    } catch (err) {
+      setError(err?.message || "Failed to load reports");
+    } finally {
+      setPageLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!loading && !user) {
@@ -66,6 +70,36 @@ export default function MerchantContentModerationPage() {
       router.replace("/");
     }
   }, [loading, user, router]);
+
+  useEffect(() => {
+    if (!loading && user?.accountType === "merchant") {
+      loadReports("all");
+    }
+  }, [loading, user]);
+
+  const topCards = useMemo(() => {
+    const pending = reports.filter((report) => report.status === "pending").length;
+    const reviewed = reports.filter((report) => report.status === "reviewed").length;
+    const actionTaken = reports.filter((report) => report.status === "action_taken").length;
+    const fraud = reports.filter((report) => report.reason === "fraud").length;
+    return [
+      { label: "Flagged Listings", value: String(new Set(reports.map((r) => r.adId)).size), delta: "Live", icon: Flag, red: false },
+      { label: "Reported Images", value: String(reports.length), delta: "Live", icon: ImageIcon, red: false },
+      { label: "Messages Flagged", value: String(fraud), delta: "Fraud", icon: MessageSquare, red: false },
+      { label: "Pending Reviews", value: String(pending), delta: "Needs action", icon: Clock3, red: true },
+      { label: "Reviewed", value: String(reviewed), delta: "Processed", icon: Trash2, red: false },
+      { label: "Action Taken", value: String(actionTaken), delta: "Resolved", icon: Ban, red: false },
+    ];
+  }, [reports]);
+
+  const setReportStatus = async (reportId, status) => {
+    try {
+      await updateMerchantModerationReportStatus(reportId, status, "Updated by merchant moderation panel");
+      await loadReports(filterStatus);
+    } catch (err) {
+      setError(err?.message || "Failed to update report status");
+    }
+  };
 
   if (loading || !user) return <div className="min-h-screen bg-[#f3f4f6]" />;
   if (user.accountType !== "merchant") return null;
@@ -160,10 +194,10 @@ export default function MerchantContentModerationPage() {
 
           <section className="mt-3 bg-white border border-[#e6e8ec] rounded-[10px] p-2.5 flex items-center justify-between gap-2">
             <div className="flex gap-2 flex-wrap">
-              <FilterPill icon={Filter} text="City: Pune" />
-              <FilterPill icon={Layers} text="Category: Electronics" />
-              <FilterPill icon={Flag} text="Severity: High" />
-              <FilterPill icon={AlertTriangle} text="AI Risk: > 80%" />
+              <FilterPill icon={Filter} text="All" onClick={() => { setFilterStatus("all"); loadReports("all"); }} />
+              <FilterPill icon={Layers} text="Pending" onClick={() => { setFilterStatus("pending"); loadReports("pending"); }} />
+              <FilterPill icon={Flag} text="Reviewed" onClick={() => { setFilterStatus("reviewed"); loadReports("reviewed"); }} />
+              <FilterPill icon={AlertTriangle} text="Action Taken" onClick={() => { setFilterStatus("action_taken"); loadReports("action_taken"); }} />
             </div>
             <div className="flex gap-2">
               <button className="h-8 px-3 rounded-[6px] text-[10px] border border-[#e5e7eb]">Clear Filters</button>
@@ -197,21 +231,28 @@ export default function MerchantContentModerationPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {tableRows.map((row) => (
-                      <tr key={row[0]} className="border-t border-[#eef1f3]">
+                    {pageLoading ? (
+                      <tr><td className="px-3 py-3" colSpan={6}>Loading moderation queue...</td></tr>
+                    ) : reports.length === 0 ? (
+                      <tr><td className="px-3 py-3" colSpan={6}>No reports for selected filter.</td></tr>
+                    ) : reports.map((row) => (
+                      <tr key={row.reportId} className="border-t border-[#eef1f3]">
                         <td className="px-3 py-2.5"><div className="h-8 w-8 rounded-md bg-gray-200" /></td>
-                        <td className="px-3 py-2.5 font-semibold">{row[0]}</td>
-                        <td className="px-3 py-2.5 text-[#ef4444] font-semibold">{row[1]}</td>
-                        <td className="px-3 py-2.5"><span className="px-2 py-0.5 rounded-full bg-[#f4f5f6]">{row[2]}</span></td>
-                        <td className="px-3 py-2.5"><span className={`px-2 py-0.5 rounded-full ${row[3] === "Flagged" ? "bg-[#fee2e2] text-[#dc2626]" : "bg-[#f4f5f6]"}`}>{row[3]}</span></td>
-                        <td className="px-3 py-2.5 text-gray-500">...</td>
+                        <td className="px-3 py-2.5 font-semibold">{row.adTitle || row.adId}</td>
+                        <td className="px-3 py-2.5 text-[#ef4444] font-semibold">{String(row.reason || "other").replace("_", " ")}</td>
+                        <td className="px-3 py-2.5"><span className="px-2 py-0.5 rounded-full bg-[#f4f5f6]">{Math.min(99, (Number(row.adReportCount || 1) * 12) + 35)}%</span></td>
+                        <td className="px-3 py-2.5"><span className="px-2 py-0.5 rounded-full bg-[#f4f5f6]">{row.status}</span></td>
+                        <td className="px-3 py-2.5 text-gray-500 flex gap-2">
+                          <button onClick={() => setReportStatus(row.reportId, "reviewed")} className="text-[#157A4F]">Review</button>
+                          <button onClick={() => setReportStatus(row.reportId, "action_taken")} className="text-[#ef4444]">Action</button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
 
                 <div className="px-3 py-2.5 border-t border-[#eceff2] flex items-center justify-between text-[11px] text-gray-500">
-                  <span>Showing 5 of 452 pending reviews</span>
+                  <span>Showing {reports.length} reports</span>
                   <div className="flex gap-1">
                     <button className="h-6 px-2 rounded border border-[#e5e7eb] text-[10px]">Previous</button>
                     <button className="h-6 px-2 rounded border border-[#e5e7eb] text-[10px]">Next</button>
@@ -262,6 +303,8 @@ export default function MerchantContentModerationPage() {
                 </div>
               </div>
             </div>
+
+            {error ? <p className="text-[12px] text-[#ef4444]">{error}</p> : null}
 
             <div className="space-y-3">
               <div className="bg-[#eef4f0] border border-[#dae7de] rounded-[10px] p-3">
@@ -372,9 +415,9 @@ function SideSub({ label }) {
   return <p className="text-[11px] text-[#8b93a1] pl-9 mb-1">{label}</p>;
 }
 
-function FilterPill({ icon: Icon, text }) {
+function FilterPill({ icon: Icon, text, onClick }) {
   return (
-    <button className="h-8 px-3 rounded-[6px] border border-[#e5e7eb] bg-[#fafbfc] text-[10px] inline-flex items-center gap-1.5">
+    <button onClick={onClick} className="h-8 px-3 rounded-[6px] border border-[#e5e7eb] bg-[#fafbfc] text-[10px] inline-flex items-center gap-1.5">
       <Icon size={11} className="text-gray-500" /> {text}
     </button>
   );
