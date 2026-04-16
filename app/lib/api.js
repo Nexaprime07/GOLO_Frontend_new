@@ -465,6 +465,132 @@ export async function getPaymentById(paymentId) {
     return apiClient(`/payments/${paymentId}`);
 }
 
+// ============================================================
+// VOUCHERS / OFFERS / REDEMPTION APIs
+// ============================================================
+
+/**
+ * Claim an offer - User claims a deal and gets a voucher/QR code
+ */
+export async function claimOffer(offerId) {
+    return apiClient('/vouchers/claim', {
+        method: 'POST',
+        body: JSON.stringify({ offerId }),
+    });
+}
+
+/**
+ * Get all user's claimed vouchers (claimed, redeemed, expired)  */
+export async function getMyVouchers({ page = 1, limit = 10, status } = {}) {
+    const params = new URLSearchParams({ page, limit });
+    if (status) params.append('status', status); // 'active', 'claimed', 'redeemed', 'expired'
+    return apiClient(`/vouchers/my-vouchers?${params}`);
+}
+
+/**
+ * Get single voucher details by ID
+ */
+export async function getVoucherById(voucherId) {
+    return apiClient(`/vouchers/${voucherId}`);
+}
+
+/**
+ * Download voucher QR code as image/PDF
+ */
+export async function downloadVoucherQR(voucherId) {
+    return apiClient(`/vouchers/${voucherId}/download-qr`, {
+        method: 'GET',
+    });
+}
+
+/**
+ * Share voucher with friend
+ */
+export async function shareVoucher(voucherId, friendEmail) {
+    return apiClient(`/vouchers/${voucherId}/share`, {
+        method: 'POST',
+        body: JSON.stringify({ friendEmail }),
+    });
+}
+
+/**
+ * Merchant scans QR code to verify and redeem
+ */
+export async function redeemVoucher(voucherId, verificationData) {
+    // Support both old string format and new object format
+    let body;
+    if (typeof verificationData === 'string') {
+        // Backward compatibility: if a string is passed, treat it as qrCode
+        body = JSON.stringify({ qrCode: verificationData });
+    } else if (typeof verificationData === 'object') {
+        // New format: pass the object as is
+        body = JSON.stringify(verificationData);
+    } else {
+        throw new Error('Invalid verification data');
+    }
+
+    return apiClient(`/vouchers/${voucherId}/redeem`, {
+        method: 'POST',
+        body,
+    });
+}
+
+/**
+ * Merchant verifies QR code validity without redeeming
+ */
+export async function verifyVoucher(voucherId, qrCode) {
+    return apiClient(`/vouchers/${voucherId}/verify`, {
+        method: 'POST',
+        body: JSON.stringify({ qrCode }),
+    });
+}
+
+/**
+ * Merchant verifies voucher using manual verification code
+ */
+export async function verifyVoucherByCode(code) {
+    return apiClient(`/vouchers/verify-code`, {
+        method: 'POST',
+        body: JSON.stringify({ code }),
+    });
+}
+
+/**
+ * Generate verification code on-demand when user reaches redeem page
+ * This defers code generation for faster claim process
+ */
+export async function generateVerificationCode(voucherId) {
+    return apiClient(`/vouchers/${voucherId}/generate-code`, {
+        method: 'POST',
+    });
+}
+
+/**
+ * Get merchant's pending redemptions
+ */
+export async function getMerchantPendingRedemptions({ page = 1, limit = 20, status } = {}) {
+    const params = new URLSearchParams({ page, limit });
+    if (status) params.append('status', status); // 'pending', 'redeemed'
+    return apiClient(`/vouchers/merchant/pending?${params}`);
+}
+
+/**
+ * Get merchant's redemption history
+ */
+export async function getMerchantRedemptionHistory({ page = 1, limit = 20 } = {}) {
+    const params = new URLSearchParams({ page, limit });
+    return apiClient(`/vouchers/merchant/history?${params}`);
+}
+
+/**
+ * Get all active offers for a merchant
+ */
+export async function getMerchantOffers({ page = 1, limit = 20, status } = {}) {
+    const params = new URLSearchParams({ page, limit });
+    if (status) params.append('status', status); // 'active', 'expired'
+    return apiClient(`/vouchers/merchant/offers?${params}`);
+}
+
 function loadRazorpayScript() {
     return new Promise((resolve) => {
         if (typeof window === 'undefined') return resolve(false);

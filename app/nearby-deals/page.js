@@ -10,14 +10,14 @@ import CategoryBar from "../components/CategoryBar";
 import Footer from "../components/Footer";
 
 const dealCards = [
-  { title: "50% Off Signature Thali", place: "The Royal Maratha", rating: 4.8, reviews: 120, price: 249, oldPrice: 499, tag: "FLAT 50% OFF", km: "1.2 km", img: "/images/deal2.avif", validTill: "Valid till 30 Apr", category: "Food & Dining" },
-  { title: "Buy 1 Get 1 Free", place: "Sky Lounge", rating: 4.5, reviews: 120, price: 199, oldPrice: 398, tag: "BOGO", km: "2.5 km", img: "/images/banner3.avif", validTill: "Valid till 20 Apr", category: "Nightlife" },
-  { title: "Organic Facial Spa", place: "Glow & Shine Wellness", rating: 4.9, reviews: 120, price: 899, oldPrice: 1500, tag: "40% OFF", km: "0.8 km", img: "/images/place2.avif", validTill: "Valid till 26 Apr", category: "Beauty & Wellness" },
-  { title: "50% Off Signature Thali", place: "The Royal Maratha", rating: 4.8, reviews: 120, price: 249, oldPrice: 499, tag: "FLAT 50% OFF", km: "1.2 km", img: "/images/deal2.avif", validTill: "Valid till 30 Apr", category: "Food & Dining" },
-  { title: "Weekend Breakfast", place: "Hotel Sayaji", rating: 4.7, reviews: 120, price: 599, oldPrice: 799, tag: "SAVE ₹200", km: "3.1 km", img: "/images/deal2.avif", validTill: "Valid till 24 Apr", category: "Hotels" },
-  { title: "Car Deep Cleaning", place: "Pro Wash Kolhapur", rating: 4.4, reviews: 120, price: 1200, oldPrice: 2000, tag: "LIMITED TIME", km: "4.2 km", img: "/images/banner3.avif", validTill: "Valid till 18 Apr", category: "Automotive" },
-  { title: "Classic Pizza Combo", place: "Little Italy", rating: 4.6, reviews: 120, price: 349, oldPrice: 550, tag: "COMBO DEAL", km: "1.9 km", img: "/images/deal2.avif", validTill: "Valid till 21 Apr", category: "Food & Dining" },
-  { title: "Weekend Breakfast", place: "Hotel Sayaji", rating: 4.7, reviews: 120, price: 599, oldPrice: 799, tag: "SAVE ₹200", km: "3.1 km", img: "/images/deal2.avif", validTill: "Valid till 24 Apr", category: "Hotels" },
+  { id: "69df41f49c0ab3754e756506", title: "50% Off Signature Thali", place: "The Royal Maratha", rating: 4.8, reviews: 120, price: 249, oldPrice: 499, tag: "FLAT 50% OFF", km: "1.2 km", img: "/images/deal2.avif", validTill: "Valid till 30 Apr", category: "Food & Dining" },
+  { id: "69df41f49c0ab3754e756507", title: "Buy 1 Get 1 Free", place: "Sky Lounge", rating: 4.5, reviews: 120, price: 199, oldPrice: 398, tag: "BOGO", km: "2.5 km", img: "/images/banner3.avif", validTill: "Valid till 20 Apr", category: "Nightlife" },
+  { id: "69df41f49c0ab3754e756508", title: "Organic Facial Spa", place: "Glow & Shine Wellness", rating: 4.9, reviews: 120, price: 899, oldPrice: 1500, tag: "40% OFF", km: "0.8 km", img: "/images/place2.avif", validTill: "Valid till 26 Apr", category: "Beauty & Wellness" },
+  { id: "69df41f49c0ab3754e756506", title: "50% Off Signature Thali", place: "The Royal Maratha", rating: 4.8, reviews: 120, price: 249, oldPrice: 499, tag: "FLAT 50% OFF", km: "1.2 km", img: "/images/deal2.avif", validTill: "Valid till 30 Apr", category: "Food & Dining" },
+  { id: "69df41f49c0ab3754e756509", title: "Weekend Breakfast", place: "Hotel Sayaji", rating: 4.7, reviews: 120, price: 599, oldPrice: 799, tag: "SAVE ₹200", km: "3.1 km", img: "/images/deal2.avif", validTill: "Valid till 24 Apr", category: "Hotels" },
+  { id: "69df41f49c0ab3754e75650a", title: "Car Deep Cleaning", place: "Pro Wash Kolhapur", rating: 4.4, reviews: 120, price: 1200, oldPrice: 2000, tag: "LIMITED TIME", km: "4.2 km", img: "/images/banner3.avif", validTill: "Valid till 18 Apr", category: "Automotive" },
+  { id: "69df41f49c0ab3754e75650b", title: "Classic Pizza Combo", place: "Little Italy", rating: 4.6, reviews: 120, price: 349, oldPrice: 550, tag: "COMBO DEAL", km: "1.9 km", img: "/images/deal2.avif", validTill: "Valid till 21 Apr", category: "Food & Dining" },
+  { id: "69df41f49c0ab3754e756509", title: "Weekend Breakfast", place: "Hotel Sayaji", rating: 4.7, reviews: 120, price: 599, oldPrice: 799, tag: "SAVE ₹200", km: "3.1 km", img: "/images/deal2.avif", validTill: "Valid till 24 Apr", category: "Hotels" },
 ];
 
 const repeatedDeals = [...dealCards, ...dealCards];
@@ -144,7 +144,7 @@ function NearbyDealsPageContent() {
                     <p className="mt-1 text-[10px] text-gray-400">{deal.validTill}</p>
                     <p className="mt-2 text-xl font-extrabold text-gray-900">₹{deal.price} <span className="ml-1 text-xs font-semibold text-gray-400 line-through">₹{deal.oldPrice}</span></p>
                     <button
-                      onClick={() => router.push("/nearby-deals/deal")}
+                      onClick={() => router.push(`/nearby-deals/deal?offerId=${deal.id}`)}
                       className="mt-3 w-full rounded-lg border border-gray-200 bg-[#F7F7F7] py-2 text-xs font-bold text-gray-800 transition-colors duration-200 hover:border-[#157A4F] hover:bg-[#157A4F] hover:text-white"
                     >
                       View Deal

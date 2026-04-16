@@ -31,7 +31,7 @@ const latestReviews = [
 
 export default function MerchantDashboardPage() {
   const router = useRouter();
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, getUserAccountType } = useAuth();
 
   const handleMerchantLogout = async () => {
     await logout();
@@ -44,16 +44,20 @@ export default function MerchantDashboardPage() {
       return;
     }
 
-    if (!loading && user && user.accountType !== "merchant") {
-      router.replace("/");
+    if (!loading && user) {
+      const accountType = user?.accountType || getUserAccountType();
+      if (accountType !== "merchant") {
+        router.replace("/");
+      }
     }
-  }, [loading, user, router]);
+  }, [loading, user, router, getUserAccountType]);
 
   if (loading || !user) {
     return <div className="min-h-screen bg-[#efefef]" />;
   }
 
-  if (user.accountType !== "merchant") return null;
+  const accountType = user?.accountType || getUserAccountType();
+  if (accountType !== "merchant") return null;
 
   return (
     <div className="min-h-screen bg-[#ececec] text-[#1b1b1b]" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
@@ -76,6 +80,7 @@ export default function MerchantDashboardPage() {
             <button onClick={() => router.push("/merchant/orders")}>Orders</button>
             <button onClick={() => router.push("/merchant/products")}>Products</button>
             <button onClick={() => router.push("/merchant/offers")}>Offers</button>
+            <button onClick={() => router.push("/merchant/redeem")} className="hover:text-[#157a4f]">Redeem QR</button>
             <button onClick={() => router.push("/merchant/banners")}>Banners</button>
             <button onClick={() => router.push("/merchant/analytics")}>Analytics</button>
           </nav>

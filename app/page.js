@@ -33,14 +33,17 @@ export default function Home() {
   const [recentAds, setRecentAds] = useState([]);
   const [loadingRecent, setLoadingRecent] = useState(true);
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, loading, getUserAccountType } = useAuth();
 
   // Redirect merchants to merchant dashboard
   useEffect(() => {
-    if (!loading && user && user.accountType === "merchant") {
-      router.replace("/merchant/dashboard");
+    if (!loading && user) {
+      const accountType = user?.accountType || getUserAccountType();
+      if (accountType === "merchant") {
+        router.replace("/merchant/dashboard");
+      }
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, getUserAccountType]);
 
   useEffect(() => {
     async function fetchRecent() {

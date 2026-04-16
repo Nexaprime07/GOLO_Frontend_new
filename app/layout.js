@@ -1,5 +1,6 @@
 import "./globals.css";
 import { AuthProvider } from "./context/AuthContext";
+import { VoucherProvider } from "./context/VoucherContext";
 
 export const metadata = {
   title: "Golo",
@@ -10,7 +11,11 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <VoucherProvider>
+            {children}
+          </VoucherProvider>
+        </AuthProvider>
       </body>
     </html>
   );

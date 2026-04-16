@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
+import { useVoucher } from "../context/VoucherContext";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { CalendarDays, ChevronRight, Search, Tag, ShieldCheck, CircleHelp, ArrowUpDown, ExternalLink } from "lucide-react";
@@ -18,63 +19,6 @@ const stats = [
 
 const tabs = ["All Deals", "Active", "Claimed", "Redeemed", "Expired"];
 
-const deals = [
-  {
-    status: "Active",
-    badge: "-50%",
-    title: "50% Off Signature Dinner Menu",
-    merchant: "GOURMET GARDEN",
-    image: "/images/deal2.avif",
-    expiry: "Expires Oct 24, 2024",
-    button: "Redeem Now",
-  },
-  {
-    status: "Claimed",
-    badge: "8000",
-    title: "Buy 1 Get 1 Free Movie Ticket",
-    merchant: "LUMINA CINEMA",
-    image: "/images/banner3.avif",
-    expiry: "Expires Oct 15, 2024",
-    button: "View Code",
-  },
-  {
-    status: "Redeemed",
-    badge: "FREE",
-    title: "7-Day Unlimited Premium Pass",
-    merchant: "URBAN FITNESS",
-    image: "/images/place2.avif",
-    expiry: "Redeemed on Oct 08, 2024",
-    button: "View Offer",
-  },
-  {
-    status: "Expired",
-    badge: "$5 OFF",
-    title: "Coffee & Pastry Morning Bundle",
-    merchant: "BREW & BEAN",
-    image: "/images/banner3.avif",
-    expiry: "Expires Sep 30, 2024",
-    button: "View Offer",
-  },
-  {
-    status: "Active",
-    badge: "FREE",
-    title: "Screen Protector Installation",
-    merchant: "TECHHUB REPAIR",
-    image: "/images/place2.avif",
-    expiry: "Expires Oct 29, 2024",
-    button: "Redeem Now",
-  },
-  {
-    status: "Claimed",
-    badge: "-30%",
-    title: "Full Exterior Gold Service",
-    merchant: "ELITE CAR WASH",
-    image: "/images/deal2.avif",
-    expiry: "Expires Oct 21, 2024",
-    button: "View Code",
-  },
-];
-
 const quickTips = [
   "Always present your QR code to the merchant staff before ordering.",
   "Most deals are valid for 30 days. Check individual card expiry dates.",
@@ -85,20 +29,41 @@ const helpLinks = ["Help Center", "Chat Support"];
 
 export default function MyDeals() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading, getUserAccountType } = useAuth();
+  const { myVouchers, fetchMyVouchers, loading: voucherLoading } = useVoucher();
+  const [activeTab, setActiveTab] = useState("All Deals");
+  const [filteredDeals, setFilteredDeals] = useState([]);
 
-  // Redirect merchants away from user pages
+  // Fetch vouchers on mount
   useEffect(() => {
-    if (!loading && user && user.accountType === "merchant") {
-      router.replace("/merchant/dashboard");
+    if (user) {
+      fetchMyVouchers({ page: 1, limit: 6 });
     }
-  }, [user, loading, router]);
+  }, [user, fetchMyVouchers]);
 
-  if (loading) {
-    return <div className="min-h-screen bg-[#f7f6f2]" />;
-  }
+  // Filter vouchers by tab
+  useEffect(() => {
+    if (!myVouchers || myVouchers.length === 0) {
+      setFilteredDeals([]);
+      return;
+    }
+
+    let filtered = myVouchers;
+    if (activeTab === "Active") {
+      filtered = myVouchers.filter(v => v.status === "active");
+    } else if (activeTab === "Claimed") {
+      filtered = myVouchers.filter(v => v.status === "claimed");
+    } else if (activeTab === "Redeemed") {
+      filtered = myVouchers.filter(v => v.status === "redeemed");
+    } else if (activeTab === "Expired") {
+      filtered = myVouchers.filter(v => v.status === "expired");
+    }
+    
+    setFilteredDeals(filtered);
+  }, [activeTab, myVouchers]);
 
   if (user && user.accountType === "merchant") {
+    router.replace("/merchant/dashboard");
     return null;
   }
 
@@ -147,7 +112,8 @@ export default function MyDeals() {
                     {tabs.map((tab, index) => (
                       <button
                         key={tab}
-                        className={`h-8 px-4 rounded-full text-[12px] font-medium border transition ${index === 0 ? "bg-[#1f8c55] border-[#1f8c55] text-white" : "bg-white border-[#e0e0e0] text-[#666] hover:border-[#cfcfcf] hover:text-[#333]"}`}
+                        onClick={() => setActiveTab(tab)}
+                        className={`h-8 px-4 rounded-full text-[12px] font-medium border transition ${activeTab === tab ? "bg-[#1f8c55] border-[#1f8c55] text-white" : "bg-white border-[#e0e0e0] text-[#666] hover:border-[#cfcfcf] hover:text-[#333]"}`}
                       >
                         {tab}
                       </button>
@@ -168,8 +134,8 @@ export default function MyDeals() {
               </div>
 
               <div className="mt-6 grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {deals.map((deal) => (
-                  <article key={deal.title} className="group rounded-[12px] border border-[#282828] bg-white overflow-hidden shadow-[0_1px_0_rgba(0,0,0,0.03)]">
+                {filteredDeals.map((deal) => (
+                  <article key={deal.title || deal._id} className="group rounded-[12px] border border-[#282828] bg-white overflow-hidden shadow-[0_1px_0_rgba(0,0,0,0.03)]">
                     <div className="relative h-[132px] bg-[#f3efe5] overflow-hidden">
                       <Image src={deal.image} alt={deal.title} fill className="object-cover" />
                       <div className="absolute inset-x-0 top-0 flex items-start justify-between px-2 py-2">
@@ -203,7 +169,7 @@ export default function MyDeals() {
               </div>
 
               <div className="mt-10 border-t border-[#ececec] pt-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-[12px] text-[#6f6f6f]">
-                <p>Showing 1 to 6 of 6 deals</p>
+                <p>Showing {voucherLoading ? "loading..." : filteredDeals.length > 0 ? `1 to ${filteredDeals.length}` : "0"} of {myVouchers?.length || 0} deals</p>
                 <div className="flex items-center gap-2">
                   <button className="h-8 px-3 rounded-md border border-[#e4e4e4] bg-white text-[#888]">Previous</button>
                   <button className="h-8 w-8 rounded-md border border-[#9fd0eb] bg-[#eaf5fb] text-[#2c6d92] font-semibold">1</button>

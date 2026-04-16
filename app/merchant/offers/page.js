@@ -79,6 +79,9 @@ export default function MerchantOffersPage() {
               Offers
               <span className="absolute left-0 right-0 -bottom-px h-[2px] bg-[#157a4f]" />
             </button>
+            <button onClick={() => router.push("/merchant/redeem")} className="relative h-16 hover:text-[#157a4f]">
+              Redeem QR
+            </button>
             <button onClick={() => router.push("/merchant/banners")}>Banners</button>
             <button onClick={() => router.push("/merchant/analytics")}>Analytics</button>
           </nav>

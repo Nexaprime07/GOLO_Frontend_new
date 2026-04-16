@@ -1,0 +1,631 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "../../context/AuthContext";
+import { useVoucher } from "../../context/VoucherContext";
+import { Html5QrcodeScanner } from "html5-qrcode";
+import { Check, AlertCircle, Zap } from "lucide-react";
+import { verifyVoucherByCode } from "../../lib/api";
+
+export default function MerchantQRScannerPage() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+  const { verifyVoucherHandler, redeemVoucherHandler, generateVerificationCodeHandler, loading: voucherLoading } = useVoucher();
+  
+  const qrScannerRef = useRef(null);
+  const [scanResult, setScanResult] = useState(null);
+  const [verificationStatus, setVerificationStatus] = useState(null); // 'valid', 'invalid', 'redeemed'
+  const [scanError, setScanError] = useState("");
+  const [manualQRCode, setManualQRCode] = useState("");
+  const [isManualEntry, setIsManualEntry] = useState(false);
+  const [scanner, setScanner] = useState(null);
+  const [cameraStatus, setCameraStatus] = useState("inactive"); // 'inactive', 'initializing', 'active', 'error', 'permission-denied'
+  const [scannerReady, setScannerReady] = useState(false); // Track if scanner actually started
+
+  // Check merchant access
+  useEffect(() => {
+    if (!authLoading && (!user || user.accountType !== "merchant")) {
+      router.push("/login?redirect=/merchant/redeem");
+    }
+  }, [user, authLoading, router]);
+
+  // Check camera permission status on mount
+  useEffect(() => {
+    const checkCameraPermission = async () => {
+      try {
+        if (!navigator.permissions || !navigator.permissions.query) {
+          console.log("Permissions API not supported");
+          return;
+        }
+        
+        const permission = await navigator.permissions.query({ name: "camera" });
+        console.log("Camera permission status:", permission.state);
+      } catch (err) {
+        console.log("Could not check camera permission:", err);
+      }
+    };
+
+    checkCameraPermission();
+  }, []);
+
+  // Generate verification code on-demand when voucher is scanned
+  useEffect(() => {
+    const generateCode = async () => {
+      if (scanResult?.voucherId && !scanResult?.verificationCode && verificationStatus === "valid") {
+        try {
+          console.log("Generating verification code for voucher:", scanResult.voucherId);
+          const response = await generateVerificationCodeHandler(scanResult._id || scanResult.voucherId);
+          
+          // Update scanResult with the generated verification code
+          if (response?.data?.verificationCode) {
+            setScanResult(prev => ({
+              ...prev,
+              verificationCode: response.data.verificationCode
+            }));
+          }
+        } catch (err) {
+          console.error("Failed to generate verification code:", err);
+        }
+      }
+    };
+
+    generateCode();
+  }, [scanResult, verificationStatus, generateVerificationCodeHandler]);
+
+  // Cleanup scanner on unmount or when switching to manual entry
+  useEffect(() => {
+    return () => {
+      if (scanner && scannerReady) {
+        try {
+          // stop() returns a Promise, need to handle it properly
+          scanner.stop().catch(() => {
+            // Ignore errors during cleanup
+          });
+        } catch (err) {
+          // Silently ignore cleanup errors
+        }
+      }
+    };
+  }, [scanner, scannerReady]);
+
+  // Initialize scanner when qr-reader div is in DOM and not inactive
+  useEffect(() => {
+    if (cameraStatus === "inactive" || cameraStatus === "permission-denied") {
+      return; // Don't initialize in these states
+    }
+
+    const initializeScanner = async () => {
+      try {
+        const qrElement = document.getElementById("qr-reader");
+        if (!qrElement) {
+          console.log("QR element not found, retrying...");
+          setTimeout(initializeScanner, 100);
+          return;
+        }
+
+        console.log("Found QR element, initializing Html5QrcodeScanner...");
+
+        // Clear the element
+        qrElement.innerHTML = "";
+
+        // Create the scanner instance
+        const html5QrCode = new Html5QrcodeScanner(
+          "qr-reader",
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0,
+            rememberLastUsedCamera: true,
+            showTorchButtonIfSupported: true,
+            disableFlip: false,
+            useBarCodeDetectorIfAvailable: true,
+            formatsToSupport: ["QR_CODE"],
+          },
+          false
+        );
+
+        // Define success callback
+        const onScanSuccess = (qrCodeMessage) => {
+          console.log("✓ QR Code detected:", qrCodeMessage);
+          processScan(qrCodeMessage);
+          // Pause scanning after detecting a code
+          try {
+            html5QrCode.pause();
+          } catch (err) {
+            console.error("Error pausing scanner:", err);
+          }
+        };
+
+        // Define error callback - ignore errors during scanning
+        const onScanError = (error) => {
+          // Silently ignore - this happens constantly during scanning
+        };
+
+        // First render the UI
+        console.log("Calling render() to create UI elements...");
+        html5QrCode.render(onScanSuccess, onScanError);
+        console.log("✓ Scanner UI rendered successfully");
+        console.log("Waiting for camera to become available...");
+
+        // Wait a moment for UI to render
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Check what elements were created
+        console.log("Elements in qr-reader:", qrElement.innerHTML.substring(0, 500));
+        
+        // Look for a camera/permission button and click it
+        const cameraButton = qrElement.querySelector('button');
+        console.log("Camera button found:", !!cameraButton);
+        
+        if (cameraButton) {
+          console.log("Button text:", cameraButton.textContent);
+          console.log("Clicking camera permission button...");
+          cameraButton.click();
+          console.log("Button clicked!");
+        }
+
+        // Now wait for video element with actual delay for permissions
+        let attempts = 0;
+        const maxAttempts = 100; // 100 * 100ms = 10 seconds with permissions dialog
+
+        const checkCameraActive = setInterval(() => {
+          attempts++;
+          const videoElement = qrElement.querySelector('video');
+          
+          if (!videoElement) {
+            if (attempts % 10 === 0) {
+              console.log(`Attempt ${attempts}: Video element not found yet...`);
+            }
+          } else {
+            console.log(`Attempt ${attempts}: Video element found`, {
+              srcObject: !!videoElement.srcObject,
+              srcObjectActive: videoElement.srcObject?.active,
+              videoReadyState: videoElement.readyState,
+              videoNetworkState: videoElement.networkState,
+            });
+          }
+          
+          if (videoElement && videoElement.srcObject && videoElement.srcObject.active) {
+            clearInterval(checkCameraActive);
+            console.log("✓ Camera stream is now active!");
+            console.log("Scanner instance type:", typeof html5QrCode);
+            console.log("Scanner has stop method:", typeof html5QrCode.stop === 'function');
+            setScanner(html5QrCode);
+            setScannerReady(true);
+            setCameraStatus("active");
+            console.log("✓ QR scanner is ready and scanning!");
+            return;
+          }
+
+          if (attempts >= maxAttempts) {
+            clearInterval(checkCameraActive);
+            console.log(`⚠ Camera timeout after ${attempts} attempts. Video element state:`, {
+              exists: !!videoElement,
+              hasSrcObject: !!videoElement?.srcObject,
+              isActive: videoElement?.srcObject?.active,
+              readyState: videoElement?.readyState,
+              networkState: videoElement?.networkState,
+            });
+            // Set scanner as active anyway and let it try to scan
+            setScanner(html5QrCode);
+            setScannerReady(true);
+            setCameraStatus("active");
+          }
+        }, 100);
+
+      } catch (err) {
+        console.error("Scanner initialization error:", err);
+        setCameraStatus("error");
+        setScanError(err.message || "Failed to initialize scanner. Please try again.");
+      }
+    };
+
+    if (cameraStatus === "initializing") {
+      const timeout = setTimeout(initializeScanner, 300);
+      return () => clearTimeout(timeout);
+    }
+  }, [cameraStatus]);
+
+  const processScan = async (input) => {
+    setScanError("");
+    setVerificationStatus(null);
+
+    try {
+      let verifyResponse;
+
+      // Check if it's a manual verification code (XXXX-XXXX-XXXX format)
+      if (/^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/i.test(input)) {
+        console.log("Processing as manual verification code:", input);
+        
+        // Verify using verification code
+        verifyResponse = await verifyVoucherByCode(input);
+        
+        if (verifyResponse?.valid) {
+          setScanResult({
+            voucherId: verifyResponse.data?.voucherId,
+            verificationCode: verifyResponse.data?.verificationCode,
+            customerName: verifyResponse.data?.userName,
+            offerTitle: verifyResponse.data?.offerTitle,
+            discount: verifyResponse.data?.discount,
+          });
+          setVerificationStatus("valid");
+        } else {
+          setVerificationStatus("invalid");
+          setScanError(verifyResponse?.message || "Invalid or expired voucher");
+        }
+      } 
+      // Otherwise treat as QR code scan
+      else if (input.startsWith("voucher-")) {
+        console.log("Processing as QR code scan:", input);
+        
+        // QR code format from backend: "voucher-{voucherId}-{offerId}"
+        // Example: "voucher-VOUCHER-1713427200000-OFFER-123456"
+        
+        // Extract voucherId from the QR code
+        const parts = input.split("-");
+        if (parts.length < 3) {
+          setVerificationStatus("invalid");
+          setScanError("Invalid QR code format");
+          return;
+        }
+
+        // voucherId is parts[1] + "-" + parts[2] (e.g., "VOUCHER-1713427200000")
+        const voucherId = parts[1] + "-" + parts[2];
+
+        // Verify using the full QR code string
+        verifyResponse = await verifyVoucherHandler(voucherId, input);
+        
+        if (verifyResponse?.valid) {
+          setScanResult({
+            voucherId,
+            qrCode: input, // Store the full QR code for redemption
+            customerName: verifyResponse.data?.userName,
+            offerTitle: verifyResponse.data?.offerTitle,
+            discount: verifyResponse.data?.discount,
+          });
+          setVerificationStatus("valid");
+        } else {
+          setVerificationStatus("invalid");
+          setScanError(verifyResponse?.message || "Invalid or expired voucher");
+        }
+      } 
+      else {
+        setVerificationStatus("invalid");
+        setScanError("Invalid code format. Use QR code or verification code (XXXX-XXXX-XXXX)");
+      }
+    } catch (err) {
+      setVerificationStatus("invalid");
+      setScanError(err.data?.message || "Failed to verify voucher");
+      console.error("Scan processing error:", err);
+    }
+  };
+
+  // Request camera permission and set status for useEffect to initialize
+  const requestCameraPermission = async () => {
+    try {
+      console.log("Starting camera initialization...");
+      setScanError("");
+      // Directly set to initializing - let html5-qrcode handle permissions
+      setCameraStatus("initializing");
+      
+    } catch (err) {
+      console.error("Camera error:", err);
+      setCameraStatus("error");
+      setScanError(err.message || "Failed to access camera");
+    }
+  };
+
+  const handleRedeemVoucher = async () => {
+    if (!scanResult) return;
+
+    try {
+      // Use either QR code or verification code
+      const verificationData = {
+        ...(scanResult.qrCode && { qrCode: scanResult.qrCode }),
+        ...(scanResult.verificationCode && { verificationCode: scanResult.verificationCode }),
+      };
+      
+      await redeemVoucherHandler(scanResult.voucherId, verificationData);
+      setVerificationStatus("redeemed");
+      
+      // Clear after 3 seconds
+      setTimeout(() => {
+        setScanResult(null);
+        setVerificationStatus(null);
+        if (scanner && scannerReady) {
+          try {
+            scanner.resume();
+          } catch (err) {
+            console.error("Error resuming scanner:", err);
+          }
+        }
+      }, 3000);
+    } catch (err) {
+      setScanError(err.data?.message || "Failed to redeem voucher");
+    }
+  };
+
+  if (authLoading) {
+    return <div className="min-h-screen bg-[#ececec]" />;
+  }
+
+  return (
+    <div className="min-h-screen bg-[#ececec]">
+      <header className="sticky top-0 z-[9999] h-16 bg-[#efb02e] border-b border-[#d7a02a] px-8 flex items-center justify-between shadow-sm">
+        <button onClick={() => router.push("/merchant/dashboard")} className="flex items-center gap-3 cursor-pointer">
+          <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow font-bold" style={{ color: "#157a4f" }}>
+            G
+          </div>
+          <span className="text-xl font-semibold tracking-wide text-[#157a4f]">GOLO</span>
+        </button>
+
+        <nav className="flex items-center gap-8 text-[12px] font-semibold text-[#5a4514]">
+          <button onClick={() => router.push("/merchant/orders")}>Orders</button>
+          <button onClick={() => router.push("/merchant/offers")}>Offers</button>
+          <button onClick={() => router.push("/merchant/redeem")} className="h-16 text-[#157a4f] border-b-[2px] border-[#157a4f]">
+            Redeem QR
+          </button>
+        </nav>
+      </header>
+
+      <main className="w-full max-w-[1200px] mx-auto px-6 py-8">
+        <section className="rounded-[12px] border border-[#d5d5d5] bg-white p-8 shadow-sm">
+          <h1 className="text-[42px] font-semibold leading-none text-[#1e1e1e]">Scan Voucher QR Code</h1>
+          <p className="mt-3 text-[13px] text-[#6f6f6f]">
+            Use your device camera to scan customer voucher QR codes and redeem them.
+          </p>
+
+          <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_1fr]">
+            {/* QR SCANNER */}
+            <div className="rounded-[12px] border-2 border-dashed border-[#e0e0e0] p-6 bg-[#fafafa]">
+              <p className="text-[14px] font-bold text-[#1e1e1e] mb-4">Camera Scanner</p>
+              
+              {!isManualEntry ? (
+                <div className="space-y-4">
+                  {cameraStatus === "inactive" && (
+                    <button
+                      onClick={requestCameraPermission}
+                      className="w-full py-8 rounded-[8px] bg-black border-2 border-dashed border-[#555] text-white text-[14px] font-semibold hover:bg-gray-900 flex flex-col items-center justify-center"
+                      style={{ aspectRatio: "1" }}
+                    >
+                      📷 Enable Camera
+                    </button>
+                  )}
+
+                  {cameraStatus !== "inactive" && (
+                    <>
+                      <div 
+                        id="qr-reader"
+                        className="relative overflow-hidden rounded-[8px] mx-auto"
+                        style={{ 
+                          width: "100%",
+                          maxWidth: "400px",
+                          height: "400px",
+                          backgroundColor: "#000",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center"
+                        }}
+                      />
+                      
+                      {(cameraStatus === "initializing" || cameraStatus === "error" || cameraStatus === "permission-denied") && (
+                        <div className="text-center p-4 bg-yellow-50 rounded-[8px] border border-yellow-200">
+                          {cameraStatus === "initializing" && (
+                            <>
+                              <Zap size={24} className="mx-auto text-yellow-600 animate-spin mb-2" />
+                              <p className="text-yellow-800 text-[12px] mb-2">Initializing camera...</p>
+                              <p className="text-yellow-700 text-[10px]">Allow camera access in the permission dialog</p>
+                            </>
+                          )}
+                          {cameraStatus === "error" && (
+                            <>
+                              <AlertCircle size={24} className="mx-auto text-red-600 mb-2" />
+                              <p className="text-red-700 text-[12px] mb-3">{scanError}</p>
+                              <button
+                                onClick={() => setCameraStatus("inactive")}
+                                className="px-4 py-2 bg-red-600 text-white text-[11px] font-semibold rounded-[6px] hover:bg-red-700"
+                              >
+                                Back to Scanner
+                              </button>
+                            </>
+                          )}
+                          {cameraStatus === "permission-denied" && (
+                            <>
+                              <AlertCircle size={24} className="mx-auto text-yellow-600 mb-2" />
+                              <p className="text-yellow-800 text-[12px] mb-3">{scanError}</p>
+                              <button
+                                onClick={() => {
+                                  setCameraStatus("inactive");
+                                  setScanError("");
+                                }}
+                                className="px-4 py-2 bg-yellow-600 text-white text-[11px] font-semibold rounded-[6px] hover:bg-yellow-700"
+                              >
+                                Try Again
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                  
+                  <button
+                    onClick={async () => {
+                      // Cleanup scanner before switching to manual entry
+                      if (scanner && scannerReady) {
+                        try {
+                          console.log("Stopping scanner...", typeof scanner.stop);
+                          if (typeof scanner.stop === 'function') {
+                            await scanner.stop();
+                          }
+                          setScannerReady(false);
+                        } catch (err) {
+                          console.error("Error stopping scanner:", err);
+                          setScannerReady(false);
+                        }
+                      }
+                      setIsManualEntry(true);
+                    }}
+                    className="w-full py-2 rounded-[8px] border border-[#d5d5d5] bg-white text-[12px] font-semibold text-[#157a4f] hover:bg-[#f8f8f8]"
+                  >
+                    Or Enter Code Manually
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    autoFocus
+                    type="text"
+                    value={manualQRCode}
+                    onChange={(e) => setManualQRCode(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        processScan(manualQRCode);
+                      }
+                    }}
+                    placeholder="Paste QR code or voucher ID..."
+                    className="w-full px-4 py-3 rounded-[8px] border border-[#d5d5d5] text-[12px] focus:border-[#157a4f] focus:outline-none"
+                  />
+                  
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      onClick={() => processScan(manualQRCode)}
+                      className="flex-1 py-2 rounded-[8px] bg-[#157a4f] text-[12px] font-semibold text-white hover:bg-[#126a3f]"
+                    >
+                      Verify
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsManualEntry(false);
+                        setManualQRCode("");
+                        // Reset camera status so user can enable it again
+                        setCameraStatus("inactive");
+                      }}
+                      className="flex-1 py-2 rounded-[8px] border border-[#d5d5d5] bg-white text-[12px] font-semibold text-[#666] hover:bg-[#f8f8f8]"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* VERIFICATION RESULT */}
+            <div>
+              <p className="text-[14px] font-bold text-[#1e1e1e] mb-4">Verification Status</p>
+
+              {!verificationStatus && (
+                <div className="rounded-[12px] border border-[#d5d5d5] bg-[#f9f9f9] p-6 text-center">
+                  <Zap size={48} className="mx-auto text-[#ccc]" />
+                  <p className="mt-4 text-[13px] text-[#666]">Scan a QR code to verify the voucher</p>
+                </div>
+              )}
+
+              {verificationStatus === "valid" && scanResult && (
+                <div className="rounded-[12px] border border-green-200 bg-green-50 p-6 space-y-4">
+                  <div className="flex gap-3">
+                    <Check className="text-green-600 flex-shrink-0" size={20} />
+                    <div>
+                      <p className="text-[14px] font-bold text-green-900">Voucher Valid</p>
+                      <p className="text-[12px] text-green-800 mt-1">This voucher can be redeemed</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 text-[12px] bg-white rounded-[8px] p-4">
+                    <div className="flex justify-between">
+                      <span className="text-[#666]">Customer:</span>
+                      <span className="font-semibold">{scanResult.customerName || "N/A"}</span>
+                    </div>
+                    <div className="flex justify-between border-t pt-2">
+                      <span className="text-[#666]">Offer:</span>
+                      <span className="font-semibold text-right max-w-[200px]">{scanResult.offerTitle}</span>
+                    </div>
+                    <div className="flex justify-between border-t pt-2">
+                      <span className="text-[#666]">Discount:</span>
+                      <span className="font-semibold">{scanResult.discount || "N/A"}</span>
+                    </div>
+                  </div>
+
+                  {scanResult.verificationCode && (
+                    <div className="rounded-[8px] border-2 border-[#157a4f] bg-[#f0fdf4] p-4">
+                      <p className="text-[11px] text-[#666] font-semibold mb-2 uppercase tracking-widest">Verification Code</p>
+                      <p className="text-[20px] font-bold text-[#157a4f] tracking-[0.15em] text-center" style={{fontFamily: 'monospace'}}>
+                        {scanResult.verificationCode}
+                      </p>
+                      <p className="text-[10px] text-[#999] mt-2 text-center">Ask customer to provide this code</p>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleRedeemVoucher}
+                    disabled={voucherLoading}
+                    className="w-full py-3 rounded-[8px] bg-[#157a4f] text-[12px] font-semibold text-white hover:bg-[#126a3f] disabled:opacity-60"
+                  >
+                    {voucherLoading ? "Redeeming..." : "✓ Redeem Voucher"}
+                  </button>
+                </div>
+              )}
+
+              {verificationStatus === "redeemed" && (
+                <div className="rounded-[12px] border border-blue-200 bg-blue-50 p-6 text-center">
+                  <Check className="mx-auto text-blue-600" size={48} />
+                  <p className="mt-4 text-[14px] font-bold text-blue-900">Successfully Redeemed!</p>
+                  <p className="text-[12px] text-blue-800 mt-2">Voucher has been marked as redeemed</p>
+                </div>
+              )}
+
+              {verificationStatus === "invalid" && (
+                <div className="rounded-[12px] border border-red-200 bg-red-50 p-6">
+                  <div className="flex gap-3">
+                    <AlertCircle className="text-red-600 flex-shrink-0" size={20} />
+                    <div>
+                      <p className="text-[14px] font-bold text-red-900">Voucher Invalid</p>
+                      <p className="text-[12px] text-red-800 mt-2">{scanError || "This voucher cannot be redeemed"}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* REDEMPTION HISTORY */}
+        <section className="mt-8 rounded-[12px] border border-[#d5d5d5] bg-white p-8 shadow-sm">
+          <h2 className="text-[24px] font-semibold text-[#1e1e1e]">Today's Redemptions</h2>
+          <p className="mt-2 text-[12px] text-[#6f6f6f]">QR codes scanned and redeemed today</p>
+
+          <div className="mt-6 rounded-[8px] border border-[#d5d5d5] overflow-hidden">
+            <table className="w-full text-[12px]">
+              <thead className="bg-[#f9f9f9] border-b border-[#d5d5d5]">
+                <tr>
+                  <th className="text-left px-4 py-3 font-bold">Customer</th>
+                  <th className="text-left px-4 py-3 font-bold">Offer</th>
+                  <th className="text-left px-4 py-3 font-bold">Discount</th>
+                  <th className="text-left px-4 py-3 font-bold">Time</th>
+                  <th className="text-left px-4 py-3 font-bold">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-t border-[#d5d5d5]">
+                  <td className="px-4 py-3">John Doe</td>
+                  <td className="px-4 py-3">30% Off Massage</td>
+                  <td className="px-4 py-3">₹500</td>
+                  <td className="px-4 py-3">10:30 AM</td>
+                  <td className="px-4 py-3"><span className="bg-[#d3f3dd] text-[#15803d] px-2 py-0.5 rounded text-[10px] font-semibold">Redeemed</span></td>
+                </tr>
+                <tr className="border-t border-[#d5d5d5]">
+                  <td className="px-4 py-3">Sarah Smith</td>
+                  <td className="px-4 py-3">Buy 1 Get 1</td>
+                  <td className="px-4 py-3">₹300</td>
+                  <td className="px-4 py-3">11:15 AM</td>
+                  <td className="px-4 py-3"><span className="bg-[#d3f3dd] text-[#15803d] px-2 py-0.5 rounded text-[10px] font-semibold">Redeemed</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
