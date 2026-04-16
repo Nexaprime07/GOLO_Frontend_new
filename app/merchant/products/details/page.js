@@ -5,7 +5,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Pencil, User } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
-import { getMerchantProductById } from "../../../lib/api";
+import { getMerchantProductById, updateMerchantProduct } from "../../../lib/api";
 
 export default function MerchantProductDetailsPage() {
   return (
@@ -22,7 +22,9 @@ function MerchantProductDetailsContent() {
   const { user, loading, logout } = useAuth();
   const [isEditMode, setIsEditMode] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [fetchError, setFetchError] = useState("");
+  const [saveMessage, setSaveMessage] = useState("");
   const [originalData, setOriginalData] = useState(null);
   const [formData, setFormData] = useState({
     id: "",
@@ -43,9 +45,43 @@ function MerchantProductDetailsContent() {
     setIsEditMode(true);
   };
 
-  const handleSaveChanges = () => {
-    // Update endpoint is not implemented yet; keep UX intact for now.
-    setIsEditMode(false);
+  const handleSaveChanges = async () => {
+    if (!formData?.id) return;
+
+    try {
+      setIsSaving(true);
+      setFetchError("");
+      setSaveMessage("");
+
+      const payload = {
+        name: formData.name,
+        category: formData.category,
+        price: Number(formData.price || 0),
+        stockQuantity: Number(formData.stockQuantity || 0),
+        description: formData.description,
+      };
+
+      const res = await updateMerchantProduct(formData.id, payload);
+      const updated = res?.data;
+      const mapped = {
+        id: updated?.id || formData.id,
+        name: updated?.name || formData.name,
+        category: updated?.category || formData.category,
+        price: String(updated?.price ?? formData.price),
+        stockQuantity: String(updated?.stockQuantity ?? formData.stockQuantity),
+        description: updated?.description || formData.description,
+        image: updated?.image || formData.image,
+      };
+
+      setOriginalData(mapped);
+      setFormData(mapped);
+      setIsEditMode(false);
+      setSaveMessage("Product updated successfully");
+    } catch (error) {
+      setFetchError(error?.data?.message || error?.message || "Failed to update product");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDiscardChanges = () => {
@@ -158,6 +194,9 @@ function MerchantProductDetailsContent() {
             {fetchError ? (
               <p className="mb-4 text-[12px] text-[#ef4d4d]">{fetchError}</p>
             ) : null}
+            {saveMessage ? (
+              <p className="mb-4 text-[12px] text-[#157a4f]">{saveMessage}</p>
+            ) : null}
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-[35px] font-semibold leading-none">Product Details</h1>
               {!isEditMode && (
@@ -267,9 +306,10 @@ function MerchantProductDetailsContent() {
                 </button>
                 <button
                   onClick={handleSaveChanges}
+                  disabled={isSaving}
                   className="h-9 rounded-[8px] bg-[#efb02e] px-6 text-[13px] font-semibold text-[#19462a] hover:bg-[#e8ad2f] transition"
                 >
-                  Save Changes
+                  {isSaving ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             )}

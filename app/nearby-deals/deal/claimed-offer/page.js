@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { CircleHelp, Download, MapPin, Share2, Star, Ticket, Copy, Check } from "lucide-react";
 import { useVoucher } from "../../../context/VoucherContext";
 import { useAuth } from "../../../context/AuthContext";
@@ -54,6 +54,14 @@ function QrPattern() {
 }
 
 export default function ClaimedOfferPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#f3f3f3]" />}>
+      <ClaimedOfferContent />
+    </Suspense>
+  );
+}
+
+function ClaimedOfferContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
