@@ -5,7 +5,6 @@ import { SearchIcon, MapPin, X, Loader2 } from "lucide-react";
 import { searchLocations, reverseGeocode, validateCoordinates, getIndiaCenter } from "../services/leafletService";
 
 let L; // Declare L for lazy loading
-let leafletCSSLoaded = false;
 
 /**
  * LocationPickerContent Component
@@ -36,57 +35,11 @@ function LocationPickerContent({ isOpen, onClose, onLocationSelect, initialLocat
     console.log("📊 [State Update] showResults:", showResults, "| searchResults count:", searchResults.length, "| loading:", loading);
   }, [showResults, searchResults, loading]);
 
-  // Load Leaflet and CSS on client side
+  // Load Leaflet on client side
+  // CSS is now imported globally in globals.css
   useEffect(() => {
     if (typeof window !== 'undefined' && !L) {
-      Promise.all([
-        import('leaflet'),
-        // Ensure CSS is loaded with multiple CDN fallbacks
-        new Promise((resolve) => {
-          if (leafletCSSLoaded) {
-            resolve();
-            return;
-          }
-          
-          const cdnUrls = [
-            'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css',
-            'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
-            'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css',
-          ];
-          
-          let attemptIndex = 0;
-          
-          const loadCSS = (index) => {
-            if (index >= cdnUrls.length) {
-              // All CDNs failed, but continue anyway
-              leafletCSSLoaded = true;
-              setTimeout(resolve, 100);
-              return;
-            }
-            
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = cdnUrls[index];
-            link.crossOrigin = 'anonymous';
-            
-            const handleSuccess = () => {
-              leafletCSSLoaded = true;
-              setTimeout(resolve, 100);
-            };
-            
-            const handleFailure = () => {
-              loadCSS(index + 1);
-            };
-            
-            link.onload = handleSuccess;
-            link.onerror = handleFailure;
-            
-            document.head.appendChild(link);
-          };
-          
-          loadCSS(0);
-        })
-      ]).then(([leafletModule]) => {
+      import('leaflet').then((leafletModule) => {
         L = leafletModule.default;
         setLeafletLoaded(true);
       }).catch(err => {
