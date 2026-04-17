@@ -29,11 +29,17 @@ export function AuthProvider({ children }) {
 
         const { accessToken, refreshToken, user: userData } = response.data;
 
+        // Ensure accountType is preserved from response or fallback to login parameter
+        const userDataWithType = {
+            ...userData,
+            accountType: userData?.accountType || accountType || 'user'
+        };
+
         localStorage.setItem("accessToken", accessToken);
         localStorage.setItem("refreshToken", refreshToken);
-        localStorage.setItem("user", JSON.stringify(userData));
+        localStorage.setItem("user", JSON.stringify(userDataWithType));
 
-        setUser(userData);
+        setUser(userDataWithType);
         return response;
     }, []);
 
@@ -92,6 +98,10 @@ export function AuthProvider({ children }) {
         }
     }, []);
 
+    const getUserAccountType = useCallback(() => {
+        return user?.accountType || 'user';
+    }, [user]);
+
     const value = {
         user,
         loading,
@@ -100,6 +110,7 @@ export function AuthProvider({ children }) {
         register,
         logout,
         refreshProfile,
+        getUserAccountType,  // Safe way to get account type
     };
 
     return (

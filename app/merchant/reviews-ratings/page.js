@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -27,6 +27,7 @@ import {
   CircleX,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { getMerchantReviewStats, getMerchantReviews, updateMerchantReviewStatus } from "../../lib/api";
 
 const statCards = [
   { label: "Total Reviews", value: "24,892", trend: "+12.5%", tone: "text-[#157A4F]", spark: "#157A4F", icon: MessageSquare },
@@ -86,6 +87,10 @@ const reviews = [
 export default function MerchantReviewsRatingsPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
+  const [stats, setStats] = useState(null);
+  const [reviewsData, setReviewsData] = useState([]);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     if (!loading && !user) {
@@ -96,6 +101,43 @@ export default function MerchantReviewsRatingsPage() {
       router.replace("/");
     }
   }, [loading, user, router]);
+
+  useEffect(() => {
+    const loadReviews = async () => {
+      if (!user || user.accountType !== "merchant") return;
+      try {
+        const [statsRes, reviewsRes] = await Promise.all([
+          getMerchantReviewStats(),
+          getMerchantReviews({ status: statusFilter, search: searchTerm, page: 1, limit: 30 }),
+        ]);
+        setStats(statsRes?.data || null);
+        setReviewsData(reviewsRes?.data || []);
+      } catch (err) {
+        console.error("Failed to load reviews:", err);
+      }
+    };
+
+    loadReviews();
+  }, [user, statusFilter, searchTerm]);
+
+  const dynamicStatCards = useMemo(() => {
+    return [
+      { ...statCards[0], value: String(stats?.totalReviews ?? statCards[0].value) },
+      { ...statCards[1], value: String(stats?.averageRating ?? statCards[1].value) },
+      { ...statCards[2], value: String(stats?.flaggedReviews ?? statCards[2].value) },
+      { ...statCards[3], value: String(stats?.pendingModeration ?? statCards[3].value) },
+    ];
+  }, [stats]);
+
+  const handleStatusUpdate = async (reviewId, newStatus) => {
+    try {
+      await updateMerchantReviewStatus(reviewId, newStatus);
+      const refreshed = await getMerchantReviews({ status: statusFilter, search: searchTerm, page: 1, limit: 30 });
+      setReviewsData(refreshed?.data || []);
+    } catch (err) {
+      console.error("Failed to update review status:", err);
+    }
+  };
 
   if (loading || !user) return <div className="min-h-screen bg-[#f3f4f6]" />;
   if (user.accountType !== "merchant") return null;
@@ -167,7 +209,7 @@ export default function MerchantReviewsRatingsPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-              {statCards.map(({ label, value, trend, tone, spark, icon: Icon }) => (
+              {dynamicStatCards.map(({ label, value, trend, tone, spark, icon: Icon }) => (
                 <div key={label} className="bg-white border border-[#e6e8ec] rounded-[10px] px-4 py-3">
                   <div className="flex items-center justify-between">
                     <div className="h-6 w-6 rounded-md border border-[#e7ecef] text-gray-500 flex items-center justify-center">
@@ -198,13 +240,26 @@ export default function MerchantReviewsRatingsPage() {
               </div>
 
               <div className="px-4 py-3 border-b border-[#eceff2] flex items-center justify-between gap-2">
-                <input className="h-9 w-[280px] rounded-[8px] border border-[#e5e7eb] px-3 text-[11px]" placeholder="Search keywords..." />
+                <input
+                  className="h-9 w-[280px] rounded-[8px] border border-[#e5e7eb] px-3 text-[11px]"
+                  placeholder="Search keywords..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
                 <div className="flex items-center gap-2">
                   <select className="h-9 rounded-[8px] border border-[#e5e7eb] bg-white px-3 text-[11px]">
                     <option>All Ratings</option>
                   </select>
-                  <select className="h-9 rounded-[8px] border border-[#e5e7eb] bg-white px-3 text-[11px]">
-                    <option>All Status</option>
+                  <select
+                    className="h-9 rounded-[8px] border border-[#e5e7eb] bg-white px-3 text-[11px]"
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                  >
+                    <option value="all">All Status</option>
+                    <option value="approved">Approved</option>
+                    <option value="pending">Pending</option>
+                    <option value="flagged">Flagged</option>
+                    <option value="rejected">Rejected</option>
                   </select>
                   <button className="h-9 px-3 rounded-[8px] border border-transparent text-gray-500 text-[11px]">Clear Filters</button>
                 </div>
@@ -222,20 +277,20 @@ export default function MerchantReviewsRatingsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {reviews.map((row) => (
-                      <tr key={row.name} className="border-t border-[#eef1f3] align-top">
+                    {(reviewsData.length ? reviewsData : reviews).map((row) => (
+                      <tr key={row._id || row.name} className="border-t border-[#eef1f3] align-top">
                         <td className="px-4 py-3">
                           <div className="flex items-start gap-2.5">
                             <div className="h-7 w-7 rounded-full bg-[#d8dde3]" />
                             <div>
-                              <p className="font-bold text-[12px] leading-none">{row.name}</p>
-                              <p className="text-[10px] text-gray-400 mt-1">{row.date}</p>
+                              <p className="font-bold text-[12px] leading-none">{row.userName || row.name}</p>
+                              <p className="text-[10px] text-gray-400 mt-1">{row.date || new Date(row.createdAt).toLocaleDateString()}</p>
                             </div>
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <p className="text-[#f59e0b] text-[12px] leading-none">{"★".repeat(row.stars)}<span className="text-gray-300">{"★".repeat(5 - row.stars)}</span></p>
-                          <p className="text-[9px] text-gray-400 mt-1">{row.score}</p>
+                          <p className="text-[#f59e0b] text-[12px] leading-none">{"★".repeat(row.rating || row.stars || 0)}<span className="text-gray-300">{"★".repeat(5 - (row.rating || row.stars || 0))}</span></p>
+                          <p className="text-[9px] text-gray-400 mt-1">{row.score || `Score: ${(row.rating || 0).toFixed(1)}`}</p>
                         </td>
                         <td className="px-4 py-3">
                           <p className="text-[12px] text-[#1f2937] max-w-[420px]">{row.content}</p>
@@ -250,15 +305,14 @@ export default function MerchantReviewsRatingsPage() {
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`text-[10px] px-2 py-1 rounded-full ${row.status === "Approved" ? "bg-[#e7f5ec] text-[#157A4F]" : row.status === "Pending" ? "bg-[#f3f4f6] text-gray-700" : "bg-[#fee2e2] text-[#ef4444]"}`}>
-                            {row.status}
+                          <span className={`text-[10px] px-2 py-1 rounded-full ${String(row.status).toLowerCase() === "approved" ? "bg-[#e7f5ec] text-[#157A4F]" : String(row.status).toLowerCase() === "pending" ? "bg-[#f3f4f6] text-gray-700" : "bg-[#fee2e2] text-[#ef4444]"}`}>
+                            {String(row.status).charAt(0).toUpperCase() + String(row.status).slice(1)}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-[12px]">
-                          <div className="flex items-center gap-3 text-gray-500">
-                            <span>○</span>
-                            <span>◌</span>
-                            <span>...</span>
+                          <div className="flex items-center gap-2 text-gray-500">
+                            <button onClick={() => handleStatusUpdate(row._id, "approved")} className="text-[10px] px-2 py-1 border rounded">Approve</button>
+                            <button onClick={() => handleStatusUpdate(row._id, "flagged")} className="text-[10px] px-2 py-1 border rounded">Flag</button>
                           </div>
                         </td>
                       </tr>

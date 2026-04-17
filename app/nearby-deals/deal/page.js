@@ -2,6 +2,8 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import {
   ChevronRight,
   Circle,
@@ -14,6 +16,8 @@ import {
   Star,
   Ticket,
 } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import { useVoucher } from "../../context/VoucherContext";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 
@@ -58,7 +62,44 @@ const recommended = [
 ];
 
 export default function NearbyDealDetailsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#F3F3F3]" />}>
+      <NearbyDealDetailsContent />
+    </Suspense>
+  );
+}
+
+function NearbyDealDetailsContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user } = useAuth();
+  const { claimOfferHandler, loading, error } = useVoucher();
+  const [isClaiméd, setIsClaimed] = useState(false);
+  const [claimError, setClaimError] = useState("");
+
+  // Get offer ID from URL params
+  const offerId = searchParams.get("offerId") || "69df41f49c0ab3754e756506";
+
+  const handleClaimOffer = async () => {
+    if (!user) {
+      router.push("/login?redirect=/nearby-deals/deal");
+      return;
+    }
+
+    setClaimError("");
+    try {
+      const response = await claimOfferHandler(offerId);
+      setIsClaimed(true);
+      // Get the voucherId from the response
+      const voucherId = response?.data?.voucher?._id || response?.data?._id;
+      // Redirect to claimed-offer page after successful claim
+      setTimeout(() => {
+        router.push(`/nearby-deals/deal/claimed-offer?voucherId=${voucherId}`);
+      }, 500);
+    } catch (err) {
+      setClaimError(err.data?.message || "Failed to claim offer");
+    }
+  };
 
   return (
     <main className="min-h-screen bg-[#F3F3F3]">
@@ -105,11 +146,18 @@ export default function NearbyDealDetailsPage() {
                   <span className="rounded-full bg-[#efbe51] px-2 py-0.5 text-[10px] font-bold text-[#402800]">44% OFF</span>
                 </div>
 
+                {claimError && (
+                  <p style={{ color: "red", fontSize: "13px", marginBottom: "12px", textAlign: "center" }}>
+                    ⚠️ {claimError}
+                  </p>
+                )}
+
                 <button
-                  onClick={() => router.push("/nearby-deals/deal/claimed-offer")}
-                  className="mt-4 h-11 w-full rounded-[8px] border border-[#157a4f] bg-white text-[17px] font-bold text-[#157a4f] transition-all duration-200 hover:bg-[#157a4f] hover:text-white active:scale-[0.99]"
+                  onClick={handleClaimOffer}
+                  disabled={loading || isClaiméd}
+                  className="mt-4 h-11 w-full rounded-[8px] border border-[#157a4f] bg-white text-[17px] font-bold text-[#157a4f] transition-all duration-200 hover:bg-[#157a4f] hover:text-white active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Claim Offer
+                  {loading ? "Claiming..." : isClaiméd ? "✓ Claimed" : "Claim Offer"}
                 </button>
 
                 <p className="mt-3 text-center text-[10px] text-[#7e8892]">

@@ -1,45 +1,36 @@
 "use client";
 
-import Image from "next/image";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Plus, Search, User } from "lucide-react";
+import { Plus, Search, User } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-
-const offerRows = [
-  {
-    image: "/images/deal2.avif",
-    productName: "Diwali Dhamaka",
-    postedDate: "1/ 04/ 2026",
-    status: "Active",
-    expiryDate: "10/ 04/ 2026",
-  },
-  {
-    image: "/images/banner3.avif",
-    productName: "Big Deal",
-    postedDate: "1/ 04/ 2026",
-    status: "Active",
-    expiryDate: "9/ 04/ 2026",
-  },
-  {
-    image: "/images/place2.avif",
-    productName: "Big Day Sale",
-    postedDate: "28/ 03/ 2026",
-    status: "Expired",
-    expiryDate: "1/ 04/ 2026",
-  },
-  {
-    image: "/images/place2.avif",
-    productName: "Sale Day",
-    postedDate: "17/ 03/ 2026",
-    status: "Expired",
-    expiryDate: "29/ 03/ 2026",
-  },
-];
+import {
+  deleteMyBannerPromotion,
+  getMyBannerPromotions,
+  submitBannerPromotionRequest,
+  updateMyBannerPromotion,
+} from "../../lib/api";
 
 export default function MerchantOffersPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
+  const [offers, setOffers] = useState([]);
+  const [query, setQuery] = useState("");
+  const [pageLoading, setPageLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const loadOffers = async () => {
+    try {
+      setPageLoading(true);
+      setError("");
+      const res = await getMyBannerPromotions();
+      setOffers(Array.isArray(res?.data) ? res.data : []);
+    } catch (err) {
+      setError(err?.message || "Failed to load offers");
+    } finally {
+      setPageLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!loading && !user) {
@@ -51,6 +42,68 @@ export default function MerchantOffersPage() {
       router.replace("/");
     }
   }, [loading, user, router]);
+
+  useEffect(() => {
+    if (!loading && user?.accountType === "merchant") {
+      loadOffers();
+    }
+  }, [loading, user]);
+
+  const filteredOffers = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return offers;
+    return offers.filter((offer) =>
+      String(offer?.bannerTitle || "").toLowerCase().includes(needle),
+    );
+  }, [offers, query]);
+
+  const activeCount = filteredOffers.filter((offer) => offer.status === "active").length;
+  const totalRevenue = filteredOffers.reduce((sum, offer) => sum + Number(offer.totalPrice || 0), 0);
+
+  const onCreateOffer = async () => {
+    const title = window.prompt("Offer title");
+    if (!title) return;
+    const category = window.prompt("Offer category", "Special") || "Special";
+    const imageUrl = window.prompt("Image URL", "https://images.unsplash.com/photo-1556740772-1a741367b93e") || "";
+    const dateInput = window.prompt("Dates (YYYY-MM-DD, comma separated)", new Date().toISOString().slice(0, 10));
+    if (!dateInput) return;
+
+    try {
+      setError("");
+      await submitBannerPromotionRequest({
+        bannerTitle: title,
+        bannerCategory: category,
+        imageUrl,
+        selectedDates: dateInput.split(",").map((d) => d.trim()).filter(Boolean),
+        totalPrice: 0,
+      });
+      await loadOffers();
+    } catch (err) {
+      setError(err?.message || "Failed to create offer");
+    }
+  };
+
+  const onEditOffer = async (offer) => {
+    const bannerTitle = window.prompt("Offer title", offer.bannerTitle || "");
+    if (!bannerTitle) return;
+    const bannerCategory = window.prompt("Offer category", offer.bannerCategory || "Special") || "Special";
+    try {
+      await updateMyBannerPromotion(offer.requestId, { bannerTitle, bannerCategory });
+      await loadOffers();
+    } catch (err) {
+      setError(err?.message || "Failed to update offer");
+    }
+  };
+
+  const onDeleteOffer = async (offer) => {
+    if (!window.confirm(`Delete offer \"${offer.bannerTitle}\"?`)) return;
+    try {
+      await deleteMyBannerPromotion(offer.requestId);
+      await loadOffers();
+    } catch (err) {
+      setError(err?.message || "Failed to delete offer");
+    }
+  };
 
   if (loading || !user) {
     return <div className="min-h-screen bg-[#ececec]" />;
@@ -79,6 +132,9 @@ export default function MerchantOffersPage() {
               Offers
               <span className="absolute left-0 right-0 -bottom-px h-[2px] bg-[#157a4f]" />
             </button>
+            <button onClick={() => router.push("/merchant/redeem")} className="relative h-16 hover:text-[#157a4f]">
+              Redeem QR
+            </button>
             <button onClick={() => router.push("/merchant/banners")}>Banners</button>
             <button onClick={() => router.push("/merchant/analytics")}>Analytics</button>
           </nav>
@@ -102,7 +158,7 @@ export default function MerchantOffersPage() {
             <div className="rounded-[12px] border border-[#e2e2e2] bg-white px-4 py-4 flex items-center justify-between">
               <div>
                 <p className="text-[11px] text-[#666]">Total Offers</p>
-                <p className="text-[34px] font-semibold leading-none mt-1">36</p>
+                <p className="text-[34px] font-semibold leading-none mt-1">{filteredOffers.length}</p>
               </div>
               <div className="h-10 w-10 rounded-full bg-[#f8eff2] text-[#f67da7] flex items-center justify-center text-[18px]">✦</div>
             </div>
@@ -110,7 +166,7 @@ export default function MerchantOffersPage() {
             <div className="rounded-[12px] border border-[#e2e2e2] bg-white px-4 py-4 flex items-center justify-between">
               <div>
                 <p className="text-[11px] text-[#666]">Active Offers</p>
-                <p className="text-[34px] font-semibold leading-none mt-1">28</p>
+                <p className="text-[34px] font-semibold leading-none mt-1">{activeCount}</p>
               </div>
               <div className="h-10 w-10 rounded-full bg-[#f4f4f1] text-[#2cb56e] flex items-center justify-center">⬡</div>
             </div>
@@ -118,7 +174,7 @@ export default function MerchantOffersPage() {
             <div className="rounded-[12px] border border-[#e2e2e2] bg-white px-4 py-4 flex items-center justify-between">
               <div>
                 <p className="text-[11px] text-[#666]">Offer Value</p>
-                <p className="text-[34px] font-semibold leading-none mt-1">₹45,210</p>
+                <p className="text-[34px] font-semibold leading-none mt-1">₹{totalRevenue.toLocaleString()}</p>
               </div>
               <div className="h-10 w-10 rounded-full bg-[#f4f4f1] text-[#efb02e] flex items-center justify-center text-[20px]">₹</div>
             </div>
@@ -129,26 +185,26 @@ export default function MerchantOffersPage() {
               <div className="relative w-full max-w-[620px]">
                 <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a4a4a4]" />
                 <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
                   className="h-9 w-full rounded-[8px] border border-[#e2e2e2] bg-white pl-8 pr-3 text-[12px] outline-none"
                   placeholder="Search by offer name"
                 />
               </div>
 
               <div className="flex items-center gap-2">
-                <button className="h-9 rounded-[8px] border border-[#e2e2e2] bg-white px-4 text-[11px] text-[#666] inline-flex items-center gap-1.5">
-                  <Download size={12} /> Export CSV
-                </button>
-                <button onClick={() => router.push("/merchant/add-new-listing")} className="h-9 rounded-[8px] bg-[#2f9e58] px-4 text-[11px] font-semibold text-white inline-flex items-center gap-1.5">
+                <button onClick={onCreateOffer} className="h-9 rounded-[8px] bg-[#2f9e58] px-4 text-[11px] font-semibold text-white inline-flex items-center gap-1.5">
                   <Plus size={12} /> Add New Offer
                 </button>
               </div>
             </div>
 
+            {error ? <p className="mt-3 text-[12px] text-[#ef4d4d]">{error}</p> : null}
+
             <div className="mt-4 overflow-hidden rounded-[10px] border border-[#ececec] bg-white">
               <table className="w-full text-[12px]">
                 <thead className="bg-[#f2f3f5] text-[#666]">
                   <tr>
-                    <th className="px-4 py-3 text-left font-semibold">Image</th>
                     <th className="px-4 py-3 text-left font-semibold">Product Name</th>
                     <th className="px-4 py-3 text-left font-semibold">Posted Date</th>
                     <th className="px-4 py-3 text-left font-semibold">Status</th>
@@ -157,34 +213,37 @@ export default function MerchantOffersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {offerRows.map((row) => (
-                    <tr key={row.productName} className="border-t border-[#f0f0f0]">
+                  {pageLoading ? (
+                    <tr>
+                      <td className="px-4 py-8 text-center text-[#666]" colSpan={5}>Loading offers...</td>
+                    </tr>
+                  ) : filteredOffers.length === 0 ? (
+                    <tr>
+                      <td className="px-4 py-8 text-center text-[#666]" colSpan={5}>No offers found</td>
+                    </tr>
+                  ) : filteredOffers.map((row) => (
+                    <tr key={row.requestId} className="border-t border-[#f0f0f0]">
+                      <td className="px-4 py-3 font-semibold text-[#2a2a2a]">{row.bannerTitle}</td>
+                      <td className="px-4 py-3 text-[#2c2c2c]">{new Date(row.createdAt).toLocaleDateString()}</td>
                       <td className="px-4 py-3">
-                        <div className="h-8 w-8 rounded-full overflow-hidden border border-[#ececec]">
-                          <Image src={row.image} alt={row.productName} width={32} height={32} className="h-full w-full object-cover" />
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 font-semibold text-[#2a2a2a]">{row.productName}</td>
-                      <td className={row.status === "Expired" ? "px-4 py-3 text-[#ef4d4d]" : "px-4 py-3 text-[#2c2c2c]"}>{row.postedDate}</td>
-                      <td className="px-4 py-3">
-                        {row.status === "Active" ? (
+                        {row.status === "active" ? (
                           <span className="inline-flex rounded-full bg-[#e7f7ec] px-2 py-0.5 text-[10px] font-semibold text-[#2f9e58]">Active</span>
                         ) : (
-                          <span className="inline-flex rounded-full bg-[#ef4d4d] px-2 py-0.5 text-[10px] font-semibold text-white">Expired</span>
+                          <span className="inline-flex rounded-full bg-[#eef0f3] px-2 py-0.5 text-[10px] font-semibold text-[#4a4f57]">{String(row.status || "unknown")}</span>
                         )}
                       </td>
-                      <td className={row.status === "Expired" ? "px-4 py-3 text-[#ef4d4d]" : "px-4 py-3 text-[#2c2c2c]"}>{row.expiryDate}</td>
+                      <td className="px-4 py-3 text-[#2c2c2c]">{new Date(row.endDate).toLocaleDateString()}</td>
                       <td className="px-4 py-3 text-[11px]">
-                        <button className="text-[#f0aa19] font-semibold">View 👁</button>
+                        <button onClick={() => onEditOffer(row)} className="text-[#f0aa19] font-semibold">Edit</button>
                         <span className="mx-2 text-[#cfcfcf]">/</span>
-                        <button className="text-[#ef4d4d] font-semibold">Delete 🗑</button>
+                        <button onClick={() => onDeleteOffer(row)} className="text-[#ef4d4d] font-semibold">Delete</button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
 
-              <div className="bg-[#d6d9df] px-6 py-4 text-[12px] text-[#565656]">Showing 5 of 97 offers</div>
+              <div className="bg-[#d6d9df] px-6 py-4 text-[12px] text-[#565656]">Showing {filteredOffers.length} offers</div>
             </div>
           </section>
         </div>

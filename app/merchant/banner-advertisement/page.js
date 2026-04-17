@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -33,30 +33,33 @@ import {
   Monitor,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-
-const stats = [
-  { label: "ACTIVE BANNER", value: "29", trend: "+14% MoM", icon: Image, line: "#157A4F" },
-  { label: "TOTAL IMPRESSIONS", value: "4.2L", trend: "+8.2% Growth", icon: Target, line: "#157A4F" },
-  { label: "AVG. CTR", value: "3.84%", trend: "-0.4% dip", icon: MousePointer2, line: "#ef4444" },
-  { label: "GROSS REVENUE", value: "₹3,45,000", trend: "+22% ROI", icon: TrendingUp, line: "#157A4F" },
-];
-
-const banners = [
-  { id: "BNN-2024-001", title: "Festival Season Sale", advertiser: "Delhi Bazar", slot: "Homepage Hero", status: "ACTIVE", clicks: "42,400", revenue: "₹50,000", period: "2024-10-01 to 2024-10-31" },
-  { id: "BNN-2024-002", title: "New EV Launch", advertiser: "Mumbai Motors", slot: "Category Page", status: "SCHEDULED", clicks: "0", revenue: "₹0", period: "2024-11-15 to 2024-12-15" },
-  { id: "BNN-2024-003", title: "Winter Collection", advertiser: "FabIndia Store", slot: "Search Page", status: "EXPIRED", clicks: "28,150", revenue: "₹10,000", period: "2024-09-01 to 2024-09-30" },
-  { id: "BNN-2024-004", title: "Grocery Flash Sale", advertiser: "Kirana Plus", slot: "Category Page", status: "ACTIVE", clicks: "15,200", revenue: "₹85,000", period: "2024-10-05 to 2024-10-20" },
-  { id: "BNN-2024-005", title: "Electronics Clearance", advertiser: "TechBangalore", slot: "Homepage Banner", status: "ACTIVE", clicks: "31,000", revenue: "₹1,00,000", period: "2024-10-10 to 2024-11-10" },
-  { id: "BNN-2024-006", title: "Monsoon Offers", advertiser: "Kochi Mart", slot: "Category Page", status: "EXPIRED", clicks: "9,800", revenue: "₹25,000", period: "2024-08-01 to 2024-08-15" },
-  { id: "BNN-2024-007", title: "Diwali Deals", advertiser: "Jaipur Handicrafts", slot: "Homepage Hero", status: "SCHEDULED", clicks: "0", revenue: "₹0", period: "2024-10-20 to 2024-11-05" },
-  { id: "BNN-2024-008", title: "Student Fest Promo", advertiser: "Pune CampusStore", slot: "Search Page", status: "ACTIVE", clicks: "5,400", revenue: "₹32,000", period: "2024-09-20 to 2024-10-05" },
-  { id: "BNN-2024-009", title: "Fashion Week Spotlight", advertiser: "Bengaluru Fashion Co.", slot: "Homepage Banner", status: "SCHEDULED", clicks: "0", revenue: "₹0", period: "2024-11-01 to 2024-11-30" },
-  { id: "BNN-2024-010", title: "Mobile Launch Offer", advertiser: "Hyderabad Mobiles", slot: "Category Page", status: "ACTIVE", clicks: "12,750", revenue: "₹90,000", period: "2024-10-12 to 2024-10-25" },
-];
+import {
+  deleteMyBannerPromotion,
+  getMyBannerPromotions,
+  submitBannerPromotionRequest,
+  updateMyBannerPromotion,
+} from "../../lib/api";
 
 export default function MerchantBannerAdvertisementPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
+  const [banners, setBanners] = useState([]);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [error, setError] = useState("");
+  const [pageLoading, setPageLoading] = useState(true);
+
+  const loadBanners = async () => {
+    try {
+      setPageLoading(true);
+      setError("");
+      const res = await getMyBannerPromotions();
+      setBanners(Array.isArray(res?.data) ? res.data : []);
+    } catch (err) {
+      setError(err?.message || "Failed to load banner promotions");
+    } finally {
+      setPageLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!loading && !user) {
@@ -67,6 +70,79 @@ export default function MerchantBannerAdvertisementPage() {
       router.replace("/");
     }
   }, [loading, user, router]);
+
+  useEffect(() => {
+    if (!loading && user?.accountType === "merchant") {
+      loadBanners();
+    }
+  }, [loading, user]);
+
+  const filteredBanners = useMemo(() => {
+    if (statusFilter === "all") return banners;
+    return banners.filter((banner) => String(banner.status) === statusFilter);
+  }, [banners, statusFilter]);
+
+  const stats = useMemo(() => {
+    const active = banners.filter((banner) => banner.status === "active").length;
+    const total = banners.length;
+    const scheduled = banners.filter((banner) => banner.status === "approved" || banner.status === "under_review").length;
+    const gross = banners.reduce((sum, banner) => sum + Number(banner.totalPrice || 0), 0);
+    return [
+      { label: "ACTIVE BANNER", value: String(active), trend: `${active}/${total}`, icon: Image, line: "#157A4F" },
+      { label: "TOTAL CAMPAIGNS", value: String(total), trend: `${scheduled} pending`, icon: Target, line: "#157A4F" },
+      { label: "SCHEDULED", value: String(scheduled), trend: "Live moderation", icon: MousePointer2, line: "#ef4444" },
+      { label: "GROSS REVENUE", value: `₹${gross.toLocaleString()}`, trend: "Campaign total", icon: TrendingUp, line: "#157A4F" },
+    ];
+  }, [banners]);
+
+  const addBanner = async () => {
+    const bannerTitle = window.prompt("Banner title");
+    if (!bannerTitle) return;
+    const bannerCategory = window.prompt("Banner category", "Promotion") || "Promotion";
+    const imageUrl = window.prompt("Image URL", "https://images.unsplash.com/photo-1556740772-1a741367b93e") || "";
+    const selectedDates = (window.prompt("Dates (YYYY-MM-DD, comma separated)", new Date().toISOString().slice(0, 10)) || "")
+      .split(",")
+      .map((d) => d.trim())
+      .filter(Boolean);
+    if (!selectedDates.length) return;
+    try {
+      await submitBannerPromotionRequest({ bannerTitle, bannerCategory, imageUrl, selectedDates, totalPrice: 0 });
+      await loadBanners();
+    } catch (err) {
+      setError(err?.message || "Failed to create campaign");
+    }
+  };
+
+  const setAction = async (banner, action) => {
+    try {
+      await updateMyBannerPromotion(banner.requestId, { action });
+      await loadBanners();
+    } catch (err) {
+      setError(err?.message || `Failed to ${action} banner`);
+    }
+  };
+
+  const removeBanner = async (banner) => {
+    if (!window.confirm(`Delete banner \"${banner.bannerTitle}\"?`)) return;
+    try {
+      await deleteMyBannerPromotion(banner.requestId);
+      await loadBanners();
+    } catch (err) {
+      setError(err?.message || "Failed to delete banner");
+    }
+  };
+
+  const editBanner = async (banner) => {
+    const bannerTitle = window.prompt("Banner title", banner.bannerTitle || "");
+    if (!bannerTitle) return;
+    const bannerCategory = window.prompt("Banner category", banner.bannerCategory || "Promotion") || "Promotion";
+    try {
+      await updateMyBannerPromotion(banner.requestId, { bannerTitle, bannerCategory });
+      await loadBanners();
+    } catch (err) {
+      setError(err?.message || "Failed to update banner");
+    }
+  };
 
   if (loading || !user) return <div className="min-h-screen bg-[#f3f4f6]" />;
   if (user.accountType !== "merchant") return null;
@@ -121,8 +197,8 @@ export default function MerchantBannerAdvertisementPage() {
             <Bell size={14} />
             <MessageSquare size={14} />
             <div className="text-[11px] flex items-center gap-1">EN <Globe size={12} /></div>
-            <button className="h-8 px-3.5 rounded-[5px] bg-[#157A4F] text-white text-[12px] font-semibold inline-flex items-center gap-1.5">
-              <Plus size={12} /> Create Listing
+            <button onClick={addBanner} className="h-8 px-3.5 rounded-[5px] bg-[#157A4F] text-white text-[12px] font-semibold inline-flex items-center gap-1.5">
+              <Plus size={12} /> Create Campaign
             </button>
             <UserCircle2 size={20} className="text-gray-400" />
           </div>
@@ -151,10 +227,10 @@ export default function MerchantBannerAdvertisementPage() {
           <section className="mt-3 bg-white border border-[#e6e8ec] rounded-[10px] overflow-hidden">
             <div className="px-4 py-3 border-b border-[#eceff2] flex items-center justify-between">
               <div className="inline-flex rounded-[7px] border border-[#e5e7eb] overflow-hidden text-[10px] font-semibold">
-                <button className="h-8 px-4 bg-[#157A4F] text-white">All</button>
-                <button className="h-8 px-4 bg-white text-gray-600">Active</button>
-                <button className="h-8 px-4 bg-white text-gray-600">Scheduled</button>
-                <button className="h-8 px-4 bg-white text-gray-600">Expired</button>
+                <button onClick={() => setStatusFilter("all")} className={`h-8 px-4 ${statusFilter === "all" ? "bg-[#157A4F] text-white" : "bg-white text-gray-600"}`}>All</button>
+                <button onClick={() => setStatusFilter("active")} className={`h-8 px-4 ${statusFilter === "active" ? "bg-[#157A4F] text-white" : "bg-white text-gray-600"}`}>Active</button>
+                <button onClick={() => setStatusFilter("under_review")} className={`h-8 px-4 ${statusFilter === "under_review" ? "bg-[#157A4F] text-white" : "bg-white text-gray-600"}`}>Under Review</button>
+                <button onClick={() => setStatusFilter("expired")} className={`h-8 px-4 ${statusFilter === "expired" ? "bg-[#157A4F] text-white" : "bg-white text-gray-600"}`}>Expired</button>
               </div>
               <div className="flex items-center gap-2">
                 <button className="h-8 px-3 rounded-[7px] border border-[#e5e7eb] text-[10px]">Sort: Performance (High-Low)</button>
@@ -162,42 +238,46 @@ export default function MerchantBannerAdvertisementPage() {
               </div>
             </div>
 
+            {error ? <p className="px-4 py-2 text-[12px] text-[#ef4444]">{error}</p> : null}
+
             <div className="divide-y divide-[#eef1f3]">
-              {banners.map((banner) => (
-                <article key={banner.id} className="grid grid-cols-[72px_1fr_92px_104px_86px] items-center gap-3 px-4 py-2.5">
+              {pageLoading ? (
+                <p className="px-4 py-8 text-[12px] text-gray-500">Loading campaigns...</p>
+              ) : filteredBanners.map((banner) => (
+                <article key={banner.requestId} className="grid grid-cols-[72px_1fr_92px_104px_86px] items-center gap-3 px-4 py-2.5">
                   <div>
                     <div className="h-12 w-12 rounded-full bg-[#d8dde3]" />
-                    <p className="text-[8px] text-gray-400 mt-1">{banner.id}</p>
+                    <p className="text-[8px] text-gray-400 mt-1">{banner.requestId}</p>
                   </div>
 
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-[19px] font-bold leading-none">{banner.title}</h3>
-                      <span className={`text-[8px] px-2 py-[2px] rounded-full font-semibold ${statusChipClass(banner.status)}`}>{banner.status}</span>
+                      <h3 className="text-[19px] font-bold leading-none">{banner.bannerTitle}</h3>
+                      <span className={`text-[8px] px-2 py-[2px] rounded-full font-semibold ${statusChipClass(String(banner.status || '').toUpperCase())}`}>{String(banner.status || '').toUpperCase()}</span>
                     </div>
 
                     <div className="mt-1.5 flex items-center gap-3 text-[10px] text-gray-600">
-                      <span>Advertiser: <span className="font-semibold text-[#1f2937]">{banner.advertiser}</span></span>
-                      <span className="inline-flex items-center gap-1"><Monitor size={10} /> {banner.slot}</span>
+                      <span>Advertiser: <span className="font-semibold text-[#1f2937]">{banner.merchantName}</span></span>
+                      <span className="inline-flex items-center gap-1"><Monitor size={10} /> Homepage</span>
                     </div>
 
-                    <p className="text-[9px] text-gray-500 mt-1 inline-flex items-center gap-1"><CalendarDays size={10} /> Period: {banner.period}</p>
+                    <p className="text-[9px] text-gray-500 mt-1 inline-flex items-center gap-1"><CalendarDays size={10} /> Period: {new Date(banner.startDate).toLocaleDateString()} to {new Date(banner.endDate).toLocaleDateString()}</p>
                   </div>
 
                   <div>
                     <p className="text-[8px] text-gray-500 uppercase">Clicks</p>
-                    <p className="text-[20px] font-bold leading-none mt-1">{banner.clicks}</p>
+                    <p className="text-[20px] font-bold leading-none mt-1">{banner.selectedDays || 0}</p>
                   </div>
 
                   <div>
                     <p className="text-[8px] text-gray-500 uppercase">Revenue</p>
-                    <p className="text-[20px] font-bold leading-none mt-1">{banner.revenue}</p>
+                    <p className="text-[20px] font-bold leading-none mt-1">₹{Number(banner.totalPrice || 0).toLocaleString()}</p>
                   </div>
 
                   <div className="flex items-center gap-3 justify-end text-[#157A4F]">
-                    <button className="h-7 w-7 rounded-full hover:bg-[#f2f7f4] flex items-center justify-center"><Pencil size={12} /></button>
-                    <button className="h-7 w-7 rounded-full hover:bg-[#f2f7f4] flex items-center justify-center"><Pause size={12} /></button>
-                    <button className="h-7 w-7 rounded-full hover:bg-[#fff2f2] text-[#374151] flex items-center justify-center"><Trash2 size={12} /></button>
+                    <button onClick={() => editBanner(banner)} className="h-7 w-7 rounded-full hover:bg-[#f2f7f4] flex items-center justify-center"><Pencil size={12} /></button>
+                    <button onClick={() => setAction(banner, banner.status === "active" ? "pause" : "resume")} className="h-7 w-7 rounded-full hover:bg-[#f2f7f4] flex items-center justify-center"><Pause size={12} /></button>
+                    <button onClick={() => removeBanner(banner)} className="h-7 w-7 rounded-full hover:bg-[#fff2f2] text-[#374151] flex items-center justify-center"><Trash2 size={12} /></button>
                   </div>
                 </article>
               ))}

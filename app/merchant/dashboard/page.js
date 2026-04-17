@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Plus, ChevronRight, ShoppingBag, Box, Star, User } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { useRoleProtection, LoadingScreen } from "../../components/RoleBasedRedirect";
+import { getMerchantDashboardSummary } from "../../lib/api";
 
 const orders = [
   { id: "#2456", time: "Placed 12 hours ago", amount: "₹340", qty: "3 items" },
@@ -31,21 +32,48 @@ const latestReviews = [
 
 export default function MerchantDashboardPage() {
   const router = useRouter();
-  const { user, logout } = useAuth();
-  const { isLoading, isAuthorized } = useRoleProtection("merchant");
+  const { user, loading, logout, getUserAccountType } = useAuth();
+  const [summary, setSummary] = useState(null);
 
   const handleMerchantLogout = async () => {
     await logout();
     router.push("/login");
   };
 
-  if (isLoading) {
-    return <LoadingScreen />;
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace("/login?redirect=/merchant/dashboard");
+      return;
+    }
+
+    if (!loading && user) {
+      const accountType = user?.accountType || getUserAccountType();
+      if (accountType !== "merchant") {
+        router.replace("/");
+      }
+    }
+  }, [loading, user, router, getUserAccountType]);
+
+  useEffect(() => {
+    const loadSummary = async () => {
+      if (!user || (user?.accountType || getUserAccountType()) !== "merchant") return;
+      try {
+        const res = await getMerchantDashboardSummary();
+        setSummary(res?.data || null);
+      } catch (err) {
+        console.error("Failed to load dashboard summary:", err);
+      }
+    };
+
+    loadSummary();
+  }, [user, getUserAccountType]);
+
+  if (loading || !user) {
+    return <div className="min-h-screen bg-[#efefef]" />;
   }
 
-  if (!isAuthorized) {
-    return null;
-  }
+  const accountType = user?.accountType || getUserAccountType();
+  if (accountType !== "merchant") return null;
 
   return (
     <div className="min-h-screen bg-[#ececec] text-[#1b1b1b]" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
@@ -68,6 +96,7 @@ export default function MerchantDashboardPage() {
             <button onClick={() => router.push("/merchant/orders")}>Orders</button>
             <button onClick={() => router.push("/merchant/products")}>Products</button>
             <button onClick={() => router.push("/merchant/offers")}>Offers</button>
+            <button onClick={() => router.push("/merchant/redeem")} className="hover:text-[#157a4f]">Redeem QR</button>
             <button onClick={() => router.push("/merchant/banners")}>Banners</button>
             <button onClick={() => router.push("/merchant/analytics")}>Analytics</button>
           </nav>
@@ -90,8 +119,8 @@ export default function MerchantDashboardPage() {
                   <p className="text-[9px] text-[#737373]">Open Now • Last updated 2 mins ago</p>
                   <h1 className="text-[44px] leading-none font-bold text-[#1f1f1f] mt-1">Moon Cafe</h1>
                   <div className="mt-2 flex items-center gap-6 text-[14px] text-[#424242]">
-                    <span className="inline-flex items-center gap-1"><ShoppingBag size={14} className="text-[#157a4f]" /> <span className="font-bold text-[30px] leading-none">350</span> Total Customers</span>
-                    <span className="inline-flex items-center gap-1"><Star size={14} className="text-[#e9aa1d]" /> <span className="font-bold text-[30px] leading-none">4.8</span> Store Rating</span>
+                    <span className="inline-flex items-center gap-1"><ShoppingBag size={14} className="text-[#157a4f]" /> <span className="font-bold text-[30px] leading-none">{summary?.stats?.totalOrders || 0}</span> Total Orders</span>
+                    <span className="inline-flex items-center gap-1"><Star size={14} className="text-[#e9aa1d]" /> <span className="font-bold text-[30px] leading-none">{summary?.stats?.averageRating || 0}</span> Store Rating</span>
                   </div>
                 </div>
               </div>
@@ -112,7 +141,7 @@ export default function MerchantDashboardPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <h2 className="text-[28px] font-bold leading-none">Shop Visits ↗</h2>
-                  <p className="text-[12px] text-[#666] mt-1">+1,208 more than usual this week</p>
+                  <p className="text-[12px] text-[#666] mt-1">{summary?.stats?.weeklyViews || 0} visits this week</p>
                 </div>
                 <div className="inline-flex rounded-[7px] border border-[#dddddd] overflow-hidden text-[10px]">
                   <button className="h-7 px-3 bg-[#f8f8f8] font-semibold">Weekly</button>
@@ -141,13 +170,13 @@ export default function MerchantDashboardPage() {
             <div className="space-y-3">
               <div className="rounded-[10px] border border-[#dce8dd] bg-[#eef6ef] p-4">
                 <p className="text-[10px] uppercase tracking-wide text-[#79927c]">Order Placed</p>
-                <p className="mt-1 text-[46px] font-extrabold leading-none text-[#223322]">340+</p>
+                <p className="mt-1 text-[46px] font-extrabold leading-none text-[#223322]">{summary?.stats?.totalOrders || 0}</p>
                 <p className="text-[12px] text-[#4a5a4b] mt-1">Last 7 Days <span className="text-[#2e9f5a]">+12%</span></p>
               </div>
 
               <div className="rounded-[10px] border border-[#ebe3cf] bg-[#f8f4e8] p-4">
                 <p className="text-[10px] uppercase tracking-wide text-[#98835a]">Revenue Earned</p>
-                <p className="mt-1 text-[46px] font-extrabold leading-none text-[#4b3913]">₹12,900</p>
+                <p className="mt-1 text-[46px] font-extrabold leading-none text-[#4b3913]">₹{summary?.stats?.revenue || 0}</p>
                 <p className="text-[12px] text-[#7f6a42] mt-1">Last 7 Days <span className="text-[#9d6a1d]">+8.5%</span></p>
               </div>
 
@@ -167,21 +196,21 @@ export default function MerchantDashboardPage() {
               </div>
 
               <div>
-                {orders.map((order) => (
-                  <div key={order.id} className="px-4 py-3 border-b border-[#f0f0f0] last:border-b-0 flex items-center gap-3">
+                {(summary?.recentOrders || orders).map((order) => (
+                  <div key={order._id || order.id} className="px-4 py-3 border-b border-[#f0f0f0] last:border-b-0 flex items-center gap-3">
                     <div className="h-8 w-8 rounded-full bg-[#ebf8ef] border border-[#cce9d4] text-[#1f8f4f] flex items-center justify-center">
                       <Box size={14} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-[15px] font-semibold text-[#252525]">Order {order.id}</p>
-                      <p className="text-[11px] text-[#858585]">{order.time}</p>
+                      <p className="text-[15px] font-semibold text-[#252525]">Order {order.id || `#${order.orderNumber || String(order._id || '').slice(-6)}`}</p>
+                      <p className="text-[11px] text-[#858585]">{order.time || `Placed ${new Date(order.placedAt).toLocaleString()}`}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[16px] font-bold text-[#202020]">{order.amount}</p>
+                      <p className="text-[16px] font-bold text-[#202020]">{typeof order.amount === 'string' ? order.amount : `₹${order.amount || 0}`}</p>
                       <p className="text-[9px] uppercase text-[#8a8a8a]">Amount</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[16px] font-bold text-[#202020]">{order.qty}</p>
+                      <p className="text-[16px] font-bold text-[#202020]">{order.qty || `${order.itemsCount || 1} items`}</p>
                       <p className="text-[9px] uppercase text-[#8a8a8a]">Quantity</p>
                     </div>
                     <button className="text-[#9a9a9a] hover:text-[#333]"><ChevronRight size={14} /></button>
@@ -197,21 +226,21 @@ export default function MerchantDashboardPage() {
               </div>
 
               <div className="mt-3 space-y-3">
-                {latestReviews.map((review) => (
-                  <article key={review.name} className="rounded-[10px] border border-[#ececec] bg-[#fbfbfb] p-3">
+                {(summary?.latestReviews || latestReviews).map((review) => (
+                  <article key={review._id || review.name} className="rounded-[10px] border border-[#ececec] bg-[#fbfbfb] p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-2">
                         <div className="h-7 w-7 rounded-full overflow-hidden border border-[#ddd]">
-                          <Image src={review.avatar} alt={review.name} width={28} height={28} className="h-full w-full object-cover" />
+                          <Image src={review.avatar || "/images/place2.avif"} alt={review.name || "Customer"} width={28} height={28} className="h-full w-full object-cover" />
                         </div>
                         <div>
-                          <p className="text-[13px] font-semibold">{review.name}</p>
-                          <p className="text-[10px] text-[#f0aa19]">★★★★★</p>
+                          <p className="text-[13px] font-semibold">{review.name || review.userName || "Customer"}</p>
+                          <p className="text-[10px] text-[#f0aa19]">{review.rating ? "★".repeat(review.rating) : "★★★★★"}</p>
                         </div>
                       </div>
-                      <span className="text-[10px] text-[#888]">{review.time}</span>
+                      <span className="text-[10px] text-[#888]">{review.time || new Date(review.createdAt).toLocaleDateString()}</span>
                     </div>
-                    <p className="mt-2 text-[11px] leading-5 text-[#5a5a5a]">"{review.text}"</p>
+                    <p className="mt-2 text-[11px] leading-5 text-[#5a5a5a]">"{review.text || review.content}"</p>
                   </article>
                 ))}
               </div>
