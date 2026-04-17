@@ -465,132 +465,6 @@ export async function getPaymentById(paymentId) {
     return apiClient(`/payments/${paymentId}`);
 }
 
-// ============================================================
-// VOUCHERS / OFFERS / REDEMPTION APIs
-// ============================================================
-
-/**
- * Claim an offer - User claims a deal and gets a voucher/QR code
- */
-export async function claimOffer(offerId) {
-    return apiClient('/vouchers/claim', {
-        method: 'POST',
-        body: JSON.stringify({ offerId }),
-    });
-}
-
-/**
- * Get all user's claimed vouchers (claimed, redeemed, expired)  */
-export async function getMyVouchers({ page = 1, limit = 10, status } = {}) {
-    const params = new URLSearchParams({ page, limit });
-    if (status) params.append('status', status); // 'active', 'claimed', 'redeemed', 'expired'
-    return apiClient(`/vouchers/my-vouchers?${params}`);
-}
-
-/**
- * Get single voucher details by ID
- */
-export async function getVoucherById(voucherId) {
-    return apiClient(`/vouchers/${voucherId}`);
-}
-
-/**
- * Download voucher QR code as image/PDF
- */
-export async function downloadVoucherQR(voucherId) {
-    return apiClient(`/vouchers/${voucherId}/download-qr`, {
-        method: 'GET',
-    });
-}
-
-/**
- * Share voucher with friend
- */
-export async function shareVoucher(voucherId, friendEmail) {
-    return apiClient(`/vouchers/${voucherId}/share`, {
-        method: 'POST',
-        body: JSON.stringify({ friendEmail }),
-    });
-}
-
-/**
- * Merchant scans QR code to verify and redeem
- */
-export async function redeemVoucher(voucherId, verificationData) {
-    // Support both old string format and new object format
-    let body;
-    if (typeof verificationData === 'string') {
-        // Backward compatibility: if a string is passed, treat it as qrCode
-        body = JSON.stringify({ qrCode: verificationData });
-    } else if (typeof verificationData === 'object') {
-        // New format: pass the object as is
-        body = JSON.stringify(verificationData);
-    } else {
-        throw new Error('Invalid verification data');
-    }
-
-    return apiClient(`/vouchers/${voucherId}/redeem`, {
-        method: 'POST',
-        body,
-    });
-}
-
-/**
- * Merchant verifies QR code validity without redeeming
- */
-export async function verifyVoucher(voucherId, qrCode) {
-    return apiClient(`/vouchers/${voucherId}/verify`, {
-        method: 'POST',
-        body: JSON.stringify({ qrCode }),
-    });
-}
-
-/**
- * Merchant verifies voucher using manual verification code
- */
-export async function verifyVoucherByCode(code) {
-    return apiClient(`/vouchers/verify-code`, {
-        method: 'POST',
-        body: JSON.stringify({ code }),
-    });
-}
-
-/**
- * Generate verification code on-demand when user reaches redeem page
- * This defers code generation for faster claim process
- */
-export async function generateVerificationCode(voucherId) {
-    return apiClient(`/vouchers/${voucherId}/generate-code`, {
-        method: 'POST',
-    });
-}
-
-/**
- * Get merchant's pending redemptions
- */
-export async function getMerchantPendingRedemptions({ page = 1, limit = 20, status } = {}) {
-    const params = new URLSearchParams({ page, limit });
-    if (status) params.append('status', status); // 'pending', 'redeemed'
-    return apiClient(`/vouchers/merchant/pending?${params}`);
-}
-
-/**
- * Get merchant's redemption history
- */
-export async function getMerchantRedemptionHistory({ page = 1, limit = 20 } = {}) {
-    const params = new URLSearchParams({ page, limit });
-    return apiClient(`/vouchers/merchant/history?${params}`);
-}
-
-/**
- * Get all active offers for a merchant
- */
-export async function getMerchantOffers({ page = 1, limit = 20, status } = {}) {
-    const params = new URLSearchParams({ page, limit });
-    if (status) params.append('status', status); // 'active', 'expired'
-    return apiClient(`/vouchers/merchant/offers?${params}`);
-}
-
 function loadRazorpayScript() {
     return new Promise((resolve) => {
         if (typeof window === 'undefined') return resolve(false);
@@ -894,4 +768,338 @@ export async function getAdminStats() {
 
 export async function getAdminLogs(page = 1, limit = 50) {
     return apiClient(`/admin/logs?page=${page}&limit=${limit}`);
+}
+
+// ============================================================
+// MERCHANT STORE LOCATION APIs
+// ============================================================
+
+/**
+ * Update merchant store location with coordinates
+ * @param {object} locationData - {address, latitude, longitude}
+ * @returns {Promise} - API response
+ */
+export async function updateMerchantStoreLocation(locationData) {
+    return apiClient('/merchant/store-location', {
+        method: 'PUT',
+        body: JSON.stringify({
+            address: locationData.address,
+            latitude: locationData.latitude,
+            longitude: locationData.longitude,
+        }),
+    });
+}
+
+/**
+ * Get merchant store location
+ * @returns {Promise} - Store location with coordinates
+ */
+export async function getMerchantStoreLocation() {
+    return apiClient('/merchant/store-location');
+}
+
+// ============================================================
+// VOUCHER & REDEMPTION APIs
+// ============================================================
+
+/**
+ * Claim an offer and receive a voucher
+ * @param {string} offerId - The offer ID to claim
+ */
+export async function claimOffer(offerId) {
+    return apiClient('/vouchers/claim', {
+        method: 'POST',
+        body: JSON.stringify({ offerId }),
+    });
+}
+
+/**
+ * Get user's claimed vouchers
+ * @param {object} params - {page, limit, status}
+ */
+export async function getMyVouchers({ page = 1, limit = 10, status } = {}) {
+    let url = `/vouchers/my-vouchers?page=${page}&limit=${limit}`;
+    if (status) url += `&status=${status}`;
+    return apiClient(url);
+}
+
+/**
+ * Get single voucher details by ID
+ * @param {string} voucherId - The voucher ID
+ */
+export async function getVoucherById(voucherId) {
+    return apiClient(`/vouchers/${voucherId}`);
+}
+
+/**
+ * Download voucher QR code
+ * @param {string} voucherId - The voucher ID
+ */
+export async function downloadVoucherQR(voucherId) {
+    return apiClient(`/vouchers/${voucherId}/download-qr`);
+}
+
+/**
+ * Share voucher with friend
+ * @param {string} voucherId - The voucher ID
+ * @param {string} friendEmail - Friend's email
+ */
+export async function shareVoucher(voucherId, friendEmail) {
+    return apiClient(`/vouchers/${voucherId}/share`, {
+        method: 'POST',
+        body: JSON.stringify({ friendEmail }),
+    });
+}
+
+/**
+ * Verify voucher using QR code without redeeming
+ * @param {string} voucherId - The voucher ID
+ * @param {string} qrCode - The QR code
+ */
+export async function verifyVoucher(voucherId, qrCode) {
+    return apiClient(`/vouchers/${voucherId}/verify`, {
+        method: 'POST',
+        body: JSON.stringify({ qrCode }),
+    });
+}
+
+/**
+ * Redeem voucher (merchant completes redemption)
+ * @param {string} voucherId - The voucher ID
+ * @param {object} verificationData - {qrCode, verificationCode}
+ */
+export async function redeemVoucher(voucherId, verificationData) {
+    return apiClient(`/vouchers/${voucherId}/redeem`, {
+        method: 'POST',
+        body: JSON.stringify(verificationData),
+    });
+}
+
+/**
+ * Generate verification code on-demand
+ * @param {string} voucherId - The voucher ID
+ */
+export async function generateVerificationCode(voucherId) {
+    return apiClient(`/vouchers/${voucherId}/generate-code`, {
+        method: 'POST',
+    });
+}
+
+/**
+ * Get merchant's pending redemptions
+ * @param {object} params - {page, limit, status}
+ */
+export async function getMerchantPendingRedemptions({ page = 1, limit = 20, status } = {}) {
+    let url = `/vouchers/merchant/pending?page=${page}&limit=${limit}`;
+    if (status) url += `&status=${status}`;
+    return apiClient(url);
+}
+
+/**
+ * Get merchant's redemption history
+ * @param {object} params - {page, limit}
+ */
+export async function getMerchantRedemptionHistory({ page = 1, limit = 20 } = {}) {
+    return apiClient(`/vouchers/merchant/history?page=${page}&limit=${limit}`);
+}
+
+/**
+ * Get merchant's active offers
+ * @param {object} params - {page, limit, status}
+ */
+export async function getMerchantOffers({ page = 1, limit = 20, status } = {}) {
+    let url = `/vouchers/merchant/offers?page=${page}&limit=${limit}`;
+    if (status) url += `&status=${status}`;
+    return apiClient(url);
+}
+
+// ============================================================
+// MERCHANT ANALYTICS & DASHBOARD APIs
+// ============================================================
+
+/**
+ * Get merchant dashboard summary
+ */
+export async function getMerchantDashboardSummary() {
+    return apiClient('/merchant/dashboard/summary');
+}
+
+/**
+ * Get merchant order statistics
+ */
+export async function getMerchantOrderStats() {
+    return apiClient('/merchant/orders/stats');
+}
+
+/**
+ * Get analytics device breakdown
+ * @param {string} dateRange - Time range for analytics (e.g., '7days', '30days')
+ */
+export async function getAnalyticsDeviceBreakdown(dateRange = '7days') {
+    return apiClient(`/analytics/device?dateRange=${dateRange}`);
+}
+
+/**
+ * Get analytics top regions
+ * @param {string} dateRange - Time range for analytics
+ */
+export async function getAnalyticsTopRegions(dateRange = '7days') {
+    return apiClient(`/analytics/regions?dateRange=${dateRange}`);
+}
+
+/**
+ * Get analytics top pages
+ * @param {string} dateRange - Time range for analytics
+ */
+export async function getAnalyticsTopPages(dateRange = '7days') {
+    return apiClient(`/analytics/pages?dateRange=${dateRange}`);
+}
+
+/**
+ * Get analytics events
+ * @param {string} dateRange - Time range for analytics
+ */
+export async function getAnalyticsEvents(dateRange = '7days') {
+    return apiClient(`/analytics/events?dateRange=${dateRange}`);
+}
+
+// ============================================================
+// MERCHANT ORDERS APIs
+// ============================================================
+
+/**
+ * Get merchant orders
+ * @param {object} params - {status, page, limit, search}
+ */
+export async function getMerchantOrders({ status = 'all', page = 1, limit = 30, search } = {}) {
+    let url = `/merchant/orders?page=${page}&limit=${limit}`;
+    if (status !== 'all') url += `&status=${status}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    return apiClient(url);
+}
+
+/**
+ * Update merchant order status
+ * @param {string} orderId - Order ID
+ * @param {string} status - New status
+ */
+export async function updateMerchantOrderStatus(orderId, status) {
+    return apiClient(`/merchant/orders/${orderId}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status }),
+    });
+}
+
+// ============================================================
+// MERCHANT REVIEWS & RATINGS APIs
+// ============================================================
+
+/**
+ * Get merchant reviews and ratings
+ * @param {object} params - {status, search, page, limit}
+ */
+export async function getMerchantReviews({ status, search, page = 1, limit = 30 } = {}) {
+    let url = `/merchant/reviews?page=${page}&limit=${limit}`;
+    if (status) url += `&status=${status}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    return apiClient(url);
+}
+
+/**
+ * Get merchant review statistics
+ */
+export async function getMerchantReviewStats() {
+    return apiClient('/merchant/reviews/stats');
+}
+
+/**
+ * Update merchant review status
+ * @param {string} reviewId - Review ID
+ * @param {string} status - New status
+ * @param {string} response - Merchant response
+ */
+export async function updateMerchantReviewStatus(reviewId, status, response = '') {
+    return apiClient(`/merchant/reviews/${reviewId}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status, response }),
+    });
+}
+
+// ============================================================
+// MERCHANT PRODUCTS APIs
+// ============================================================
+
+/**
+ * Update merchant product
+ * @param {string} productId - Product ID
+ * @param {object} updateData - Product update data
+ */
+export async function updateMerchantProduct(productId, updateData) {
+    return apiClient(`/merchant/products/${productId}`, {
+        method: 'PUT',
+        body: JSON.stringify(updateData),
+    });
+}
+
+// ============================================================
+// BANNER PROMOTION APIs
+// ============================================================
+
+/**
+ * Update banner promotion
+ * @param {string} promotionId - Promotion ID
+ * @param {object} updateData - Promotion update data
+ */
+export async function updateMyBannerPromotion(promotionId, updateData) {
+    return apiClient(`/merchant/banner-promotions/${promotionId}`, {
+        method: 'PUT',
+        body: JSON.stringify(updateData),
+    });
+}
+
+/**
+ * Delete banner promotion
+ * @param {string} promotionId - Promotion ID
+ */
+export async function deleteMyBannerPromotion(promotionId) {
+    return apiClient(`/merchant/banner-promotions/${promotionId}`, {
+        method: 'DELETE',
+    });
+}
+
+// ============================================================
+// CONTENT MODERATION APIs
+// ============================================================
+
+/**
+ * Get merchant moderation reports
+ * @param {object} params - {status, page, limit}
+ */
+export async function getMerchantModerationReports({ status, page = 1, limit = 30 } = {}) {
+    let url = `/merchant/moderation-reports?page=${page}&limit=${limit}`;
+    if (status) url += `&status=${status}`;
+    return apiClient(url);
+}
+
+/**
+ * Update moderation report status
+ * @param {string} reportId - Report ID
+ * @param {string} status - New status
+ */
+export async function updateMerchantModerationReportStatus(reportId, status) {
+    return apiClient(`/merchant/moderation-reports/${reportId}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status }),
+    });
+}
+
+/**
+ * Verify voucher using verification code (manual entry)
+ * @param {string} code - Verification code
+ */
+export async function verifyVoucherByCode(code) {
+    return apiClient(`/vouchers/verify-code`, {
+        method: 'POST',
+        body: JSON.stringify({ code }),
+    });
 }

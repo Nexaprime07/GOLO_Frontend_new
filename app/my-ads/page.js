@@ -8,29 +8,18 @@ import ProfileSidebar from "../components/ProfileSidebar";
 import AdCard from "../components/AdCard";
 import Link from "next/link";
 import { useAuth } from "../context/AuthContext";
+import { useRoleProtection, LoadingScreen } from "../components/RoleBasedRedirect";
 import { getMyAds } from "../lib/api";
 
 export default function MyAds() {
-  const { isAuthenticated, loading: authLoading, user } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const router = useRouter();
+  const { isLoading, isAuthorized } = useRoleProtection("user");
   const [ads, setAds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const limit = 9;
-
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.push("/login");
-    }
-  }, [authLoading, isAuthenticated, router]);
-
-  // Redirect merchants away from user pages
-  useEffect(() => {
-    if (!authLoading && user && user.accountType === "merchant") {
-      router.replace("/merchant/dashboard");
-    }
-  }, [user, authLoading, router]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -52,7 +41,11 @@ export default function MyAds() {
     fetchMyAds();
   }, [isAuthenticated, page]);
 
-  if (authLoading) return null;
+  if (isLoading) return <LoadingScreen />;
+
+  if (!isAuthorized) {
+    return null;
+  }
 
   return (
     <>

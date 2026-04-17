@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import {
   ChevronRight,
   Circle,
@@ -62,6 +62,14 @@ const recommended = [
 ];
 
 export default function NearbyDealDetailsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#F3F3F3]" />}>
+      <NearbyDealDetailsContent />
+    </Suspense>
+  );
+}
+
+function NearbyDealDetailsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();

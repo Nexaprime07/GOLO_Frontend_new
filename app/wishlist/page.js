@@ -9,28 +9,23 @@ import Footer from "../components/Footer";
 import ProfileSidebar from "../components/ProfileSidebar";
 import { getWishlistAds, toggleWishlist } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
+import { useRoleProtection, LoadingScreen } from "../components/RoleBasedRedirect";
 import { Loader2, Heart, Trash2 } from "lucide-react";
 
 export default function WishlistPage() {
   const [ads, setAds] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { isAuthenticated, user, loading: authLoading } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const { isLoading, isAuthorized } = useRoleProtection("user");
   const router = useRouter();
 
-  useEffect(() => {
-    // Only fetch if authenticated, otherwise redirect
-    if (isAuthenticated === false) {
-      router.push("/login");
-      return;
-    }
-  }, [isAuthenticated, router]);
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
 
-  // Redirect merchants away from user pages
-  useEffect(() => {
-    if (!authLoading && user && user.accountType === "merchant") {
-      router.replace("/merchant/dashboard");
-    }
-  }, [user, authLoading, router]);
+  if (!isAuthorized) {
+    return null;
+  }
 
   useEffect(() => {
     if (isAuthenticated === true) {

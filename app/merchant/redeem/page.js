@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 import { useVoucher } from "../../context/VoucherContext";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode";
 import { Check, AlertCircle, Zap } from "lucide-react";
 import { verifyVoucherByCode } from "../../lib/api";
 import MerchantNavbar from "../MerchantNavbar";
@@ -15,14 +15,34 @@ export default function MerchantQRScannerPage() {
   const { verifyVoucherHandler, redeemVoucherHandler, generateVerificationCodeHandler, loading: voucherLoading } = useVoucher();
   
   const qrScannerRef = useRef(null);
+  const isInitializingRef = useRef(false);
   const [scanResult, setScanResult] = useState(null);
   const [verificationStatus, setVerificationStatus] = useState(null); // 'valid', 'invalid', 'redeemed'
   const [scanError, setScanError] = useState("");
   const [manualQRCode, setManualQRCode] = useState("");
   const [isManualEntry, setIsManualEntry] = useState(false);
-  const [scanner, setScanner] = useState(null);
   const [cameraStatus, setCameraStatus] = useState("inactive"); // 'inactive', 'initializing', 'active', 'error', 'permission-denied'
-  const [scannerReady, setScannerReady] = useState(false); // Track if scanner actually started
+
+  const stopScanner = async () => {
+    const scannerInstance = qrScannerRef.current;
+    if (!scannerInstance) {
+      return;
+    }
+
+    try {
+      await scannerInstance.stop();
+    } catch {
+      // Ignore stop errors from partially initialized states.
+    }
+
+    try {
+      await scannerInstance.clear();
+    } catch {
+      // Ignore clear errors from already-cleared DOM.
+    }
+
+    qrScannerRef.current = null;
+  };
 
   // Check merchant access
   useEffect(() => {
@@ -66,11 +86,20 @@ export default function MerchantQRScannerPage() {
             }));
           }
         } catch (err) {
-          // Silently ignore cleanup errors
+          console.error("Failed to generate verification code:", err);
         }
       }
     };
-  }, [scanner, scannerReady]);
+
+    generateCode();
+  }, [scanResult, verificationStatus, generateVerificationCodeHandler]);
+
+  // Cleanup scanner on unmount or when switching to manual entry
+  useEffect(() => {
+    return () => {
+      stopScanner();
+    };
+  }, []);
 
   // Initialize scanner when qr-reader div is in DOM and not inactive
   useEffect(() => {
@@ -79,128 +108,66 @@ export default function MerchantQRScannerPage() {
     }
 
     const initializeScanner = async () => {
+      if (isInitializingRef.current || qrScannerRef.current) {
+        return;
+      }
+
+      isInitializingRef.current = true;
       try {
         const qrElement = document.getElementById("qr-reader");
         if (!qrElement) {
           console.log("QR element not found, retrying...");
+          isInitializingRef.current = false;
           setTimeout(initializeScanner, 100);
           return;
         }
 
-        console.log("Found QR element, initializing Html5QrcodeScanner...");
+        console.log("Found QR element, initializing Html5Qrcode...");
 
         // Clear the element
         qrElement.innerHTML = "";
 
-        // Create the scanner instance
-        const html5QrCode = new Html5QrcodeScanner(
-          "qr-reader",
+        const html5QrCode = new Html5Qrcode("qr-reader");
+        qrScannerRef.current = html5QrCode;
+
+        await html5QrCode.start(
+          { facingMode: "environment" },
           {
             fps: 10,
             qrbox: { width: 250, height: 250 },
             aspectRatio: 1.0,
-            rememberLastUsedCamera: true,
-            showTorchButtonIfSupported: true,
             disableFlip: false,
-            useBarCodeDetectorIfAvailable: true,
-            formatsToSupport: ["QR_CODE"],
           },
-          false
-        );
-
-        // Define success callback
-        const onScanSuccess = (qrCodeMessage) => {
+          (qrCodeMessage) => {
           console.log("✓ QR Code detected:", qrCodeMessage);
           processScan(qrCodeMessage);
-          // Pause scanning after detecting a code
-          try {
-            html5QrCode.pause();
-          } catch (err) {
-            console.error("Error pausing scanner:", err);
-          }
-        };
+          // Stop scanning immediately after a successful read to prevent repeated scans.
+          stopScanner();
+          setCameraStatus("inactive");
+          },
+          () => {
+            // Ignore scan-frame errors; these are noisy and expected.
+          },
+        );
 
-        // Define error callback - ignore errors during scanning
-        const onScanError = (error) => {
-          // Silently ignore - this happens constantly during scanning
-        };
-
-        // First render the UI
-        console.log("Calling render() to create UI elements...");
-        html5QrCode.render(onScanSuccess, onScanError);
-        console.log("✓ Scanner UI rendered successfully");
-        console.log("Waiting for camera to become available...");
-
-        // Wait a moment for UI to render
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Check what elements were created
-        console.log("Elements in qr-reader:", qrElement.innerHTML.substring(0, 500));
-        
-        // Look for a camera/permission button and click it
-        const cameraButton = qrElement.querySelector('button');
-        console.log("Camera button found:", !!cameraButton);
-        
-        if (cameraButton) {
-          console.log("Button text:", cameraButton.textContent);
-          console.log("Clicking camera permission button...");
-          cameraButton.click();
-          console.log("Button clicked!");
-        }
-
-        // Now wait for video element with actual delay for permissions
-        let attempts = 0;
-        const maxAttempts = 100; // 100 * 100ms = 10 seconds with permissions dialog
-
-        const checkCameraActive = setInterval(() => {
-          attempts++;
-          const videoElement = qrElement.querySelector('video');
-          
-          if (!videoElement) {
-            if (attempts % 10 === 0) {
-              console.log(`Attempt ${attempts}: Video element not found yet...`);
-            }
-          } else {
-            console.log(`Attempt ${attempts}: Video element found`, {
-              srcObject: !!videoElement.srcObject,
-              srcObjectActive: videoElement.srcObject?.active,
-              videoReadyState: videoElement.readyState,
-              videoNetworkState: videoElement.networkState,
-            });
-          }
-          
-          if (videoElement && videoElement.srcObject && videoElement.srcObject.active) {
-            clearInterval(checkCameraActive);
-            console.log("✓ Camera stream is now active!");
-            console.log("Scanner instance type:", typeof html5QrCode);
-            console.log("Scanner has stop method:", typeof html5QrCode.stop === 'function');
-            setScanner(html5QrCode);
-            setScannerReady(true);
-            setCameraStatus("active");
-            console.log("✓ QR scanner is ready and scanning!");
-            return;
-          }
-
-          if (attempts >= maxAttempts) {
-            clearInterval(checkCameraActive);
-            console.log(`⚠ Camera timeout after ${attempts} attempts. Video element state:`, {
-              exists: !!videoElement,
-              hasSrcObject: !!videoElement?.srcObject,
-              isActive: videoElement?.srcObject?.active,
-              readyState: videoElement?.readyState,
-              networkState: videoElement?.networkState,
-            });
-            // Set scanner as active anyway and let it try to scan
-            setScanner(html5QrCode);
-            setScannerReady(true);
-            setCameraStatus("active");
-          }
-        }, 100);
+        setCameraStatus("active");
+        console.log("✓ QR scanner is ready and scanning!");
 
       } catch (err) {
         console.error("Scanner initialization error:", err);
-        setCameraStatus("error");
-        setScanError(err.message || "Failed to initialize scanner. Please try again.");
+        const message = err?.message || "Failed to initialize scanner. Please try again.";
+        if (
+          message.toLowerCase().includes("permission") ||
+          message.toLowerCase().includes("notallowed")
+        ) {
+          setCameraStatus("permission-denied");
+        } else {
+          setCameraStatus("error");
+        }
+        setScanError(message);
+        qrScannerRef.current = null;
+      } finally {
+        isInitializingRef.current = false;
       }
     };
 
@@ -316,13 +283,7 @@ export default function MerchantQRScannerPage() {
       setTimeout(() => {
         setScanResult(null);
         setVerificationStatus(null);
-        if (scanner && scannerReady) {
-          try {
-            scanner.resume();
-          } catch (err) {
-            console.error("Error resuming scanner:", err);
-          }
-        }
+        setCameraStatus("inactive");
       }, 3000);
     } catch (err) {
       setScanError(err.data?.message || "Failed to redeem voucher");
@@ -421,18 +382,8 @@ export default function MerchantQRScannerPage() {
                   <button
                     onClick={async () => {
                       // Cleanup scanner before switching to manual entry
-                      if (scanner && scannerReady) {
-                        try {
-                          console.log("Stopping scanner...", typeof scanner.stop);
-                          if (typeof scanner.stop === 'function') {
-                            await scanner.stop();
-                          }
-                          setScannerReady(false);
-                        } catch (err) {
-                          console.error("Error stopping scanner:", err);
-                          setScannerReady(false);
-                        }
-                      }
+                      await stopScanner();
+                      setCameraStatus("inactive");
                       setIsManualEntry(true);
                     }}
                     className="w-full py-2 rounded-[8px] border border-[#d5d5d5] bg-white text-[12px] font-semibold text-[#157a4f] hover:bg-[#f8f8f8]"

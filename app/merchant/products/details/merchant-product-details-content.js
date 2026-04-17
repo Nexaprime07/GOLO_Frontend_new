@@ -1,31 +1,20 @@
 "use client";
 
 import Image from "next/image";
-import { Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Pencil, User } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
-import MerchantNavbar from "../../MerchantNavbar";
-import { getMerchantProductById, updateMerchantProduct } from "../../../lib/api";
+import { getMerchantProductById } from "../../../lib/api";
 
-export default function MerchantProductDetailsPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-[#efefef]" />}>
-      <MerchantProductDetailsContent />
-    </Suspense>
-  );
-}
-
-function MerchantProductDetailsContent() {
+export default function MerchantProductDetailsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const productId = searchParams.get("id");
   const { user, loading, logout } = useAuth();
   const [isEditMode, setIsEditMode] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [fetchError, setFetchError] = useState("");
-  const [saveMessage, setSaveMessage] = useState("");
   const [originalData, setOriginalData] = useState(null);
   const [formData, setFormData] = useState({
     id: "",
@@ -46,43 +35,9 @@ function MerchantProductDetailsContent() {
     setIsEditMode(true);
   };
 
-  const handleSaveChanges = async () => {
-    if (!formData?.id) return;
-
-    try {
-      setIsSaving(true);
-      setFetchError("");
-      setSaveMessage("");
-
-      const payload = {
-        name: formData.name,
-        category: formData.category,
-        price: Number(formData.price || 0),
-        stockQuantity: Number(formData.stockQuantity || 0),
-        description: formData.description,
-      };
-
-      const res = await updateMerchantProduct(formData.id, payload);
-      const updated = res?.data;
-      const mapped = {
-        id: updated?.id || formData.id,
-        name: updated?.name || formData.name,
-        category: updated?.category || formData.category,
-        price: String(updated?.price ?? formData.price),
-        stockQuantity: String(updated?.stockQuantity ?? formData.stockQuantity),
-        description: updated?.description || formData.description,
-        image: updated?.image || formData.image,
-      };
-
-      setOriginalData(mapped);
-      setFormData(mapped);
-      setIsEditMode(false);
-      setSaveMessage("Product updated successfully");
-    } catch (error) {
-      setFetchError(error?.data?.message || error?.message || "Failed to update product");
-    } finally {
-      setIsSaving(false);
-    }
+  const handleSaveChanges = () => {
+    // Update endpoint is not implemented yet; keep UX intact for now.
+    setIsEditMode(false);
   };
 
   const handleDiscardChanges = () => {
@@ -151,8 +106,35 @@ function MerchantProductDetailsContent() {
   if (user.accountType !== "merchant") return null;
 
   return (
-    <div className="min-h-screen bg-[#ececec] text-[#1b1b1b]" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
-      <MerchantNavbar activeKey="products" />
+    <>
+      <header className="sticky top-0 z-[9999] h-16 bg-[#efb02e] border-b border-[#d7a02a] px-8 lg:px-10 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-3 min-w-[180px]">
+          <button type="button" onClick={() => router.push("/merchant/dashboard")} className="flex items-center gap-3 cursor-pointer">
+            <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow font-bold" style={{ color: "#157a4f" }}>
+              G
+            </div>
+            <span className="text-xl font-semibold tracking-wide text-[#157a4f]">GOLO</span>
+          </button>
+        </div>
+
+        <div className="ml-auto flex items-center gap-8 text-[12px] font-semibold text-[#5a4514]">
+          <nav className="flex items-center gap-8">
+            <button onClick={() => router.push("/merchant/dashboard")}>Overview</button>
+            <button onClick={() => router.push("/merchant/orders")}>Orders</button>
+            <button onClick={() => router.push("/merchant/products")} className="relative h-16 text-[#157a4f]">
+              Products
+              <span className="absolute left-0 right-0 -bottom-px h-[2px] bg-[#157a4f]" />
+            </button>
+            <button onClick={() => router.push("/merchant/offers")}>Offers</button>
+            <button onClick={() => router.push("/merchant/banners")}>Banners</button>
+            <button onClick={() => router.push("/merchant/analytics")}>Analytics</button>
+          </nav>
+
+          <button type="button" onClick={() => router.push("/merchant/profile")} className="w-10 h-10 rounded-full bg-white shadow-md hover:scale-105 transition flex items-center justify-center" aria-label="Profile">
+            <User size={18} style={{ color: "#157a4f" }} />
+          </button>
+        </div>
+      </header>
 
       <main className="w-full px-8 lg:px-10 py-6">
         <div className="mx-auto w-full max-w-[1400px] space-y-4">
@@ -167,9 +149,6 @@ function MerchantProductDetailsContent() {
           <section className="rounded-[12px] border border-[#dddddd] bg-white p-5">
             {fetchError ? (
               <p className="mb-4 text-[12px] text-[#ef4d4d]">{fetchError}</p>
-            ) : null}
-            {saveMessage ? (
-              <p className="mb-4 text-[12px] text-[#157a4f]">{saveMessage}</p>
             ) : null}
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-[35px] font-semibold leading-none">Product Details</h1>
@@ -280,10 +259,9 @@ function MerchantProductDetailsContent() {
                 </button>
                 <button
                   onClick={handleSaveChanges}
-                  disabled={isSaving}
                   className="h-9 rounded-[8px] bg-[#efb02e] px-6 text-[13px] font-semibold text-[#19462a] hover:bg-[#e8ad2f] transition"
                 >
-                  {isSaving ? "Saving..." : "Save Changes"}
+                  Save Changes
                 </button>
               </div>
             )}
@@ -312,6 +290,6 @@ function MerchantProductDetailsContent() {
         </div>
         <div className="mx-auto w-full max-w-[1400px] px-8 lg:px-10 py-3 border-t border-[#d49b22] flex items-center justify-between gap-3 text-[11px]"><p>© 2026 GOLO Dashboard. All rights reserved.</p></div>
       </footer>
-    </div>
+    </>
   );
 }

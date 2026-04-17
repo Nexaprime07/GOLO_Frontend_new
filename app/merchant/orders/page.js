@@ -6,79 +6,7 @@ import { useRouter } from "next/navigation";
 import { Bell, Download, Plus, ShoppingBag, Star, User } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import MerchantNavbar from "../MerchantNavbar";
-
-const orders = [
-  {
-    id: "#2456",
-    status: "New Order",
-    amount: "₹340",
-    items: "3 items",
-    time: "Purchased 1 hour ago",
-    date: "12 Jan 2026",
-    customer: "Amit Kumar",
-    customerType: "Returning Customer",
-    avatar: "/images/place2.avif",
-    fulfillmentStatus: "pending",
-    action: "Accept Order",
-    actionTone: "primary",
-  },
-  {
-    id: "#2455",
-    status: "New Order",
-    amount: "₹1,250",
-    items: "5 items",
-    time: "Purchased 2 hours ago",
-    date: "12 Jan 2026",
-    customer: "Priya Sharma",
-    customerType: "Returning Customer",
-    avatar: "/images/deal2.avif",
-    fulfillmentStatus: "completed",
-    action: "Accepted",
-    actionTone: "muted",
-  },
-  {
-    id: "#2454",
-    status: "New Order",
-    amount: "₹890",
-    items: "2 items",
-    time: "Purchased 4 hours ago",
-    date: "11 Jan 2026",
-    customer: "Rajesh Patil",
-    customerType: "Returning Customer",
-    avatar: "/images/banner3.avif",
-    fulfillmentStatus: "completed",
-    action: "Accepted",
-    actionTone: "muted",
-  },
-  {
-    id: "#2453",
-    status: "New Order",
-    amount: "₹450",
-    items: "1 items",
-    time: "Purchased 5 hours ago",
-    date: "11 Jan 2026",
-    customer: "Sneha Deshmukh",
-    customerType: "Returning Customer",
-    avatar: "/images/place2.avif",
-    fulfillmentStatus: "pending",
-    action: "Accepted",
-    actionTone: "muted",
-  },
-  {
-    id: "#2452",
-    status: "New Order",
-    amount: "₹2,100",
-    items: "8 items",
-    time: "Purchased Yesterday",
-    date: "10 Jan 2026",
-    customer: "Vikram Singh",
-    customerType: "Returning Customer",
-    avatar: "/images/deal2.avif",
-    fulfillmentStatus: "completed",
-    action: "Accepted",
-    actionTone: "muted",
-  },
-];
+import { getMerchantOrders, getMerchantOrderStats, updateMerchantOrderStatus } from "../../lib/api";
 
 export default function MerchantOrdersPage() {
   const router = useRouter();
@@ -89,11 +17,72 @@ export default function MerchantOrdersPage() {
     router.push("/login");
   };
   const [activeTab, setActiveTab] = useState("all");
+  const [orders, setOrders] = useState([]);
+  const [stats, setStats] = useState({ todayOrders: 0, totalRevenue: 0 });
+  const [pageLoading, setPageLoading] = useState(true);
 
   const filteredOrders = useMemo(() => {
     if (activeTab === "all") return orders;
     return orders.filter((order) => order.fulfillmentStatus === activeTab);
-  }, [activeTab]);
+  }, [activeTab, orders]);
+
+  const formatOrderForUi = (order) => {
+    const date = new Date(order.placedAt || Date.now());
+    const status = String(order.status || "pending").toLowerCase();
+    const isPending = status === "pending";
+    const isCompleted = status === "completed";
+
+    return {
+      _id: order._id,
+      id: `#${order.orderNumber || String(order._id || "").slice(-6)}`,
+      status: isPending ? "New Order" : "Order",
+      amount: `₹${order.amount || 0}`,
+      items: `${order.itemsCount || 1} items`,
+      time: `Purchased ${date.toLocaleTimeString()}`,
+      date: date.toLocaleDateString(),
+      customer: order.customerName || "Customer",
+      customerType: "Customer",
+      avatar: "/images/place2.avif",
+      fulfillmentStatus: isCompleted ? "completed" : isPending ? "pending" : status,
+      action: isPending ? "Accept Order" : "Accepted",
+      actionTone: isPending ? "primary" : "muted",
+    };
+  };
+
+  const loadOrders = async (statusValue = activeTab) => {
+    const response = await getMerchantOrders({ status: statusValue === "all" ? "all" : statusValue, page: 1, limit: 30 });
+    setOrders((response?.data || []).map(formatOrderForUi));
+  };
+
+  useEffect(() => {
+    const loadData = async () => {
+      if (!user || user.accountType !== "merchant") return;
+      try {
+        setPageLoading(true);
+        const [ordersRes, statsRes] = await Promise.all([
+          getMerchantOrders({ status: activeTab === "all" ? "all" : activeTab, page: 1, limit: 30 }),
+          getMerchantOrderStats(),
+        ]);
+        setOrders((ordersRes?.data || []).map(formatOrderForUi));
+        setStats(statsRes?.data || { todayOrders: 0, totalRevenue: 0 });
+      } catch (err) {
+        console.error("Failed to load orders:", err);
+      } finally {
+        setPageLoading(false);
+      }
+    };
+
+    loadData();
+  }, [user, activeTab]);
+
+  const handleOrderAction = async (orderId, status) => {
+    try {
+      await updateMerchantOrderStatus(orderId, status);
+      await loadOrders(activeTab);
+    } catch (err) {
+      console.error("Failed to update order status:", err);
+    }
+  };
 
   useEffect(() => {
     if (!loading && !user) {
@@ -106,7 +95,7 @@ export default function MerchantOrdersPage() {
     }
   }, [loading, user, router]);
 
-  if (loading || !user) {
+  if (loading || !user || pageLoading) {
     return <div className="min-h-screen bg-[#efefef]" />;
   }
 
@@ -137,12 +126,12 @@ export default function MerchantOrdersPage() {
 
               <div className="mt-5 flex items-end gap-6">
                 <div>
-                  <p className="text-[44px] leading-none font-semibold text-[#1d2b21]">46</p>
+                  <p className="text-[44px] leading-none font-semibold text-[#1d2b21]">{stats.todayOrders || 0}</p>
                   <p className="text-[10px] uppercase tracking-[0.12em] text-[#6f8f79] mt-1">Orders ↗</p>
                 </div>
                 <div className="h-10 w-px bg-[#c9e0cf]" />
                 <div>
-                  <p className="text-[32px] leading-none font-semibold text-[#1d2b21]">₹34,000</p>
+                  <p className="text-[32px] leading-none font-semibold text-[#1d2b21]">₹{stats.totalRevenue || 0}</p>
                   <p className="text-[10px] uppercase tracking-[0.12em] text-[#6f8f79] mt-1">Revenue ↗</p>
                 </div>
               </div>
@@ -211,10 +200,16 @@ export default function MerchantOrdersPage() {
                     <div className="flex items-center justify-end gap-3">
                       {order.actionTone === "primary" ? (
                         <>
-                          <button className="h-8 rounded-[8px] border border-[#f0c7c7] bg-white px-5 text-[11px] font-semibold text-[#ef4d4d] inline-flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleOrderAction(order._id, "rejected")}
+                            className="h-8 rounded-[8px] border border-[#f0c7c7] bg-white px-5 text-[11px] font-semibold text-[#ef4d4d] inline-flex items-center gap-1.5"
+                          >
                             × Reject
                           </button>
-                          <button className="h-8 rounded-[8px] bg-[#2f8f55] px-5 text-[11px] font-semibold text-white inline-flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleOrderAction(order._id, "accepted")}
+                            className="h-8 rounded-[8px] bg-[#2f8f55] px-5 text-[11px] font-semibold text-white inline-flex items-center gap-1.5"
+                          >
                             ✓ Accept Order
                           </button>
                         </>

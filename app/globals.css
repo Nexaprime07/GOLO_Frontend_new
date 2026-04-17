@@ -1,9 +1,10 @@
-@import "./styles/theme.css";
-
+@import "leaflet/dist/leaflet.css";
 @import "tailwindcss";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Theme variables will be loaded via CSS cascade */
 
 body {
   background: #f3f4f6;

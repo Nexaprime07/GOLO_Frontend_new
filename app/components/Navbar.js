@@ -208,8 +208,8 @@ function NavbarContent({
 
   return (
     <>
-      <header className="theme-footer shadow-sm sticky top-0 z-[9999] border-b border-gray-200">
-        <div className="w-full px-8 h-16 flex items-center justify-between">
+      <header className="sticky top-0 z-[9999] h-16 bg-[#efb02e] border-b border-[#d7a02a] px-8 shadow-sm">
+        <div className="w-full h-full flex items-center justify-between">
 
         {/* LOGO */}
         <Link
@@ -222,7 +222,7 @@ function NavbarContent({
           >
             G
           </div>
-          <span className="text-xl font-semibold tracking-wide">
+          <span className="text-xl font-semibold tracking-wide text-[#5a4514]">
             GOLO
           </span>
         </Link>
@@ -341,7 +341,7 @@ function NavbarContent({
         {/* RIGHT SIDE */}
         <div className="flex items-center gap-8 min-w-[260px] justify-end">
 
-          <nav className="hidden md:flex gap-6 text-sm font-medium">
+          <nav className="hidden md:flex gap-6 text-sm font-semibold text-[#5a4514]">
             <Link href={homeNavHref} className="hover:opacity-80 transition">
               Home
             </Link>

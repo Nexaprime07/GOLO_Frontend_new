@@ -220,10 +220,10 @@ export default function PromoteBannerPage() {
                 <div className="space-y-4">
                 <div>
                     <label className="block text-[13px] font-semibold text-[#2a2a2a] mb-2">Promotion Calendar</label>
-                    <div className="rounded-[10px] border border-[#e4e4e4] bg-[#fafafa] p-4">
-                      <div className="grid grid-cols-2 gap-4">
+                    <div className="rounded-[10px] border border-[#e4e4e4] bg-[#fafafa] p-4 h-[420px] flex flex-col">
+                      <div className="grid grid-cols-2 gap-4 flex-1 overflow-hidden">
                         {/* Left Column: Calendar */}
-                        <div className="bg-white rounded-[8px] border border-[#e4e4e4] p-4">
+                        <div className="bg-white rounded-[8px] border border-[#e4e4e4] p-4 overflow-y-auto">
                           {/* Month/Year Navigation */}
                           <div className="flex items-center justify-between mb-4">
                             <button
@@ -314,10 +314,10 @@ export default function PromoteBannerPage() {
                         </div>
 
                         {/* Right Column: Selected Dates */}
-                        <div className="space-y-3 flex flex-col">
-                          <div className="flex-1 space-y-2">
+                        <div className="space-y-3 flex flex-col overflow-hidden">
+                          <div className="flex-1 space-y-2 overflow-hidden flex flex-col">
                             <p className="text-[11px] text-[#6c6c6c] font-medium">Selected Dates ({selectedDates.length})</p>
-                            <div className="bg-white rounded-[8px] border border-[#e4e4e4] p-3 space-y-2 max-h-[280px] overflow-y-auto">
+                            <div className="bg-white rounded-[8px] border border-[#e4e4e4] p-3 space-y-2 flex-1 overflow-y-auto">
                               {selectedDates.length > 0 ? (
                                 <div className="space-y-2">
                                   {selectedDates.map((dateStr) => (
