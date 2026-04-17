@@ -5,11 +5,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Eye, Package, Plus, Search, Trash2, User, Wallet } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { useRoleProtection, LoadingScreen } from "../../components/RoleBasedRedirect";
 import { deleteMerchantProduct, getMerchantProducts } from "../../lib/api";
 
 export default function MerchantProductsPage() {
   const router = useRouter();
-  const { user, loading, logout } = useAuth();
+  const { user, logout } = useAuth();
+  const { isLoading, isAuthorized } = useRoleProtection("merchant");
   const [products, setProducts] = useState([]);
   const [stats, setStats] = useState({
     totalProducts: 0,
@@ -24,21 +26,18 @@ export default function MerchantProductsPage() {
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState("");
 
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (!isAuthorized) {
+    return null;
+  }
+
   const handleMerchantLogout = async () => {
     await logout();
     router.push("/login");
   };
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/login?redirect=/merchant/products");
-      return;
-    }
-
-    if (!loading && user && user.accountType !== "merchant") {
-      router.replace("/");
-    }
-  }, [loading, user, router]);
 
   useEffect(() => {
     if (!user || user.accountType !== "merchant") return;
@@ -92,12 +91,6 @@ export default function MerchantProductsPage() {
     const value = Number(stats?.inventoryValue || 0);
     return `Rs ${Math.round(value).toLocaleString("en-IN")}`;
   }, [stats?.inventoryValue]);
-
-  if (loading || !user) {
-    return <div className="min-h-screen bg-[#efefef]" />;
-  }
-
-  if (user.accountType !== "merchant") return null;
 
   return (
     <div className="min-h-screen bg-[#ececec] text-[#1b1b1b]" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>

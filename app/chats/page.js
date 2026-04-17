@@ -6,6 +6,7 @@ import ChatSidebar from "../components/ChatSidebar";
 import ChatWindow from "../components/ChatWindow";
 import Navbar from "../components/Navbar";
 import { useAuth } from "../context/AuthContext";
+import { useRoleProtection, LoadingScreen } from "../components/RoleBasedRedirect";
 import {
   deleteConversation,
   getConversationMessages,
@@ -92,19 +93,21 @@ export default function ChatsPage() {
 function ChatsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { user } = useAuth();
+  const { isLoading, isAuthorized } = useRoleProtection("user");
 
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [loadingConversations, setLoadingConversations] = useState(true);
 
-  // Redirect merchants away from user pages
-  useEffect(() => {
-    if (!authLoading && user && user.accountType === "merchant") {
-      router.replace("/merchant/dashboard");
-    }
-  }, [user, authLoading, router]);
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (!isAuthorized) {
+    return null;
+  }
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [pageError, setPageError] = useState("");

@@ -5,6 +5,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, Edit3, User } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { useRoleProtection, LoadingScreen } from "../../components/RoleBasedRedirect";
+import LocationPicker from "../../components/LocationPicker";
+import StoreLocationMap from "../../components/StoreLocationMap";
+import { updateMerchantStoreLocation, getMerchantStoreLocation } from "../../lib/api";
 
 const topTabs = ["Profile Settings", "Loyalty Rewards", "Help", "Settings", "Logout"];
 
@@ -19,11 +23,44 @@ const loyaltyRows = [
 ];
 
 export default function MerchantProfilePage() {
+  return <MerchantProfilePageContent />;
+}
+
+function MerchantProfilePageContent() {
+  // Check auth/role FIRST
   const router = useRouter();
   const { user, loading, logout } = useAuth();
+  const { isLoading: roleLoading, isAuthorized } = useRoleProtection("merchant");
+
+  // Guard checks - early returns with minimal setup
+  if (roleLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (!isAuthorized) {
+    return null;
+  }
+
+  if (loading || !user) {
+    return <div className="min-h-screen bg-[#ececec]" />;
+  }
+
+  if (user.accountType !== "merchant") {
+    return null;
+  }
+
+  // NOW safe to call rest of hooks since we know auth is valid
+  return <MerchantProfileContent user={user} logout={logout} router={router} />;
+}
+
+function MerchantProfileContent({ user, logout, router }) {
   const [activeTab, setActiveTab] = useState("Profile Settings");
   const [isEditMode, setIsEditMode] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [isSavingLocation, setIsSavingLocation] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
+  const [isLoadingLocation, setIsLoadingLocation] = useState(true);
   const [formData, setFormData] = useState({
     username: "Mahesh Patil",
     phone: "+91 XXXXXXXXXX",
@@ -31,6 +68,36 @@ export default function MerchantProfilePage() {
     shopName: "Fashion Fusion",
     location: "Rajarampuri, Kolhapur (416003)",
   });
+  const [storeLocation, setStoreLocation] = useState({
+    address: "Rajarampuri, Kolhapur (416003)",
+    latitude: 16.8149,
+    longitude: 73.8292,
+  });
+
+  // Load merchant store location from database on mount
+  useEffect(() => {
+    const loadStoreLocation = async () => {
+      try {
+        setIsLoadingLocation(true);
+        const response = await getMerchantStoreLocation();
+        if (response && response.data) {
+          const { address, latitude, longitude } = response.data;
+          setStoreLocation({
+            address: address || "Rajarampuri, Kolhapur (416003)",
+            latitude: latitude || 16.8149,
+            longitude: longitude || 73.8292,
+          });
+        }
+      } catch (error) {
+        console.error("Error loading store location:", error);
+        // Keep default location if API fails
+      } finally {
+        setIsLoadingLocation(false);
+      }
+    };
+
+    loadStoreLocation();
+  }, []);
 
   const handleMerchantLogout = async () => {
     await logout();
@@ -57,26 +124,37 @@ export default function MerchantProfilePage() {
     setIsEditMode(false);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    // Save location to backend
+    if (storeLocation && storeLocation.latitude && storeLocation.longitude) {
+      setIsSavingLocation(true);
+      try {
+        await updateMerchantStoreLocation({
+          address: storeLocation.address,
+          latitude: storeLocation.latitude,
+          longitude: storeLocation.longitude,
+        });
+        setSaveMessage("Location saved successfully!");
+        setTimeout(() => setSaveMessage(""), 3000);
+      } catch (error) {
+        console.error("Error saving location:", error);
+        setSaveMessage("Failed to save location. Please try again.");
+        setTimeout(() => setSaveMessage(""), 3000);
+      } finally {
+        setIsSavingLocation(false);
+      }
+    }
     setIsEditMode(false);
   };
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/login?redirect=/merchant/profile");
-      return;
-    }
-
-    if (!loading && user && user.accountType !== "merchant") {
-      router.replace("/");
-    }
-  }, [loading, user, router]);
-
-  if (loading || !user) {
-    return <div className="min-h-screen bg-[#ececec]" />;
-  }
-
-  if (user.accountType !== "merchant") return null;
+  const handleLocationSelect = (location) => {
+    setStoreLocation({
+      address: location.address || `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`,
+      latitude: location.latitude,
+      longitude: location.longitude,
+    });
+    setShowLocationPicker(false);
+  };
 
   return (
     <div className="min-h-screen bg-[#ececec] text-[#1b1b1b]" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
@@ -114,8 +192,15 @@ export default function MerchantProfilePage() {
                 key={tab}
                 type="button"
                 onClick={() => {
-                  setActiveTab(tab);
-                  if (tab === "Logout") setShowLogoutConfirm(true);
+                  if (tab === "Help") {
+                    router.push("/merchant/help");
+                  } else if (tab === "Settings") {
+                    router.push("/merchant/settings");
+                  } else if (tab === "Logout") {
+                    setShowLogoutConfirm(true);
+                  } else {
+                    setActiveTab(tab);
+                  }
                 }}
                 className={`relative pb-1 transition ${
                   activeTab === tab
@@ -259,11 +344,39 @@ export default function MerchantProfilePage() {
                       </div>
 
                       <div>
-                        <label className="block text-[14px] font-semibold text-[#222] mb-2">Location</label>
-                        {isEditMode ? (
-                          <input value={formData.location} onChange={(e) => handleInputChange("location", e.target.value)} className="h-10 w-full rounded-[4px] bg-[#f3f3f6] px-3 text-[12px] text-[#3a3a3a] outline-none" />
+                        <label className="block text-[14px] font-semibold text-[#222] mb-3">Store Location</label>
+                        <p className="text-[11px] text-[#666] mb-3">Select your store location on the map using search or pinpoint</p>
+                        {isLoadingLocation ? (
+                          <div className="bg-[#f3f3f6] rounded-[4px] p-4 text-[12px] text-[#666] flex items-center gap-2">
+                            <div className="w-4 h-4 border-2 border-[#157a4f] border-t-transparent rounded-full animate-spin"></div>
+                            Loading location...
+                          </div>
+                        ) : isEditMode ? (
+                          <div className="space-y-3">
+                            <StoreLocationMap 
+                              location={storeLocation} 
+                              onMapClick={() => setShowLocationPicker(true)}
+                              isLoading={isSavingLocation}
+                            />
+                            <p className="text-[11px] text-[#157a4f] font-semibold">
+                              📍 Current: {storeLocation.address}
+                            </p>
+                          </div>
                         ) : (
-                          <div className="h-10 rounded-[4px] bg-[#f3f3f6] px-3 flex items-center text-[12px] text-[#3a3a3a]">{formData.location}</div>
+                          <div className="space-y-3">
+                            <StoreLocationMap 
+                              location={storeLocation} 
+                              onMapClick={() => setIsEditMode(true)}
+                              isLoading={false}
+                            />
+                            <div className="bg-[#f0f8f5] rounded-[4px] p-3 border border-[#157a4f]/20">
+                              <p className="text-[11px] text-[#666] font-medium">📍 Current Location:</p>
+                              <p className="text-[12px] font-semibold text-[#157a4f] mt-1">{storeLocation.address}</p>
+                              <p className="text-[10px] text-[#999] mt-1">
+                                Lat: {storeLocation.latitude?.toFixed(6)} | Lng: {storeLocation.longitude?.toFixed(6)}
+                              </p>
+                            </div>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -275,9 +388,19 @@ export default function MerchantProfilePage() {
                     <button type="button" onClick={handleDiscard} className="h-10 px-5 rounded-[8px] bg-[#d8dbe2] text-[#222] text-[13px] font-semibold">
                       Discard Changes
                     </button>
-                    <button type="button" onClick={handleSave} className="h-10 px-7 rounded-[8px] bg-[#efb02e] text-[#1f1f1f] text-[13px] font-semibold">
-                      Save Changes
+                    <button type="button" onClick={handleSave} disabled={isSavingLocation} className="h-10 px-7 rounded-[8px] bg-[#efb02e] text-[#1f1f1f] text-[13px] font-semibold disabled:opacity-70 disabled:cursor-not-allowed">
+                      {isSavingLocation ? "Saving..." : "Save Changes"}
                     </button>
+                  </div>
+                )}
+
+                {saveMessage && (
+                  <div className={`p-3 rounded-[8px] text-[12px] font-semibold ${
+                    saveMessage.includes("success") 
+                      ? "bg-[#dcfce7] text-[#166534]" 
+                      : "bg-[#fee2e2] text-[#b91c1c]"
+                  }`}>
+                    {saveMessage}
                   </div>
                 )}
               </div>
@@ -285,6 +408,17 @@ export default function MerchantProfilePage() {
           )}
         </div>
       </main>
+
+      {/* Location Picker Modal */}
+      <LocationPicker 
+        isOpen={showLocationPicker}
+        onClose={() => setShowLocationPicker(false)}
+        onLocationSelect={handleLocationSelect}
+        initialLocation={storeLocation && storeLocation.latitude ? {
+          lat: storeLocation.latitude,
+          lng: storeLocation.longitude,
+        } : null}
+      />
 
       {showLogoutConfirm && (
         <div className="fixed inset-0 z-[10000] bg-black/40 flex items-center justify-center px-4">

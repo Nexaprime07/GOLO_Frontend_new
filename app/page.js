@@ -37,11 +37,14 @@ export default function Home() {
 
   // Redirect merchants to merchant dashboard
   useEffect(() => {
-    if (!loading && user && user.accountType === "merchant") {
-      router.replace("/merchant/dashboard");
+    if (!loading) {
+      if (user && user.accountType === "merchant") {
+        router.replace("/merchant/dashboard");
+      }
     }
   }, [user, loading, router]);
 
+  // Fetch recent ads
   useEffect(() => {
     async function fetchRecent() {
       setLoadingRecent(true);
@@ -57,6 +60,23 @@ export default function Home() {
     }
     fetchRecent();
   }, []);
+
+  // Show loading screen while checking auth
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-white">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-[#2f9e58] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Prevent merchants from seeing user pages (they will be redirected by useEffect)
+  if (user && user.accountType === "merchant") {
+    return null;
+  }
 
   // Group ads by category
   const adsByCategory = recentAds.reduce((acc, ad) => {

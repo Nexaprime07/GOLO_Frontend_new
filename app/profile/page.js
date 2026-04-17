@@ -19,11 +19,13 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import GolocalProfileSidebar from "../components/GolocalProfileSidebar";
 import { useAuth } from "../context/AuthContext";
+import { useRoleProtection, LoadingScreen } from "../components/RoleBasedRedirect";
 import { getProfile, getMyAds, updateProfile } from "../lib/api";
 
 export default function ProfilePage() {
-  const { user, isAuthenticated, loading: authLoading, refreshProfile } = useAuth();
+  const { user, isAuthenticated, refreshProfile } = useAuth();
   const router = useRouter();
+  const { isLoading, isAuthorized } = useRoleProtection("user");
   const [profile, setProfile] = useState(null);
   const [activeAdsCount, setActiveAdsCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -40,12 +42,6 @@ export default function ProfilePage() {
     categories: ["Art & Culture", "Local Dining", "Sustainable Living"],
   });
   const avatarInputRef = useRef(null);
-
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.push("/login");
-    }
-  }, [authLoading, isAuthenticated, router]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -84,8 +80,8 @@ export default function ProfilePage() {
     };
   }, [showEditModal]);
 
-  if (authLoading || loading) {
-    return (
+  if (isLoading || loading) {
+    return isLoading ? <LoadingScreen /> : (
       <>
         <Navbar />
         <div className="min-h-screen bg-[#F8F6F2] flex items-center justify-center">
@@ -94,6 +90,10 @@ export default function ProfilePage() {
         <Footer />
       </>
     );
+  }
+
+  if (!isAuthorized) {
+    return null;
   }
 
   const displayUser = profile || user;

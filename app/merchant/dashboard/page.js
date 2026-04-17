@@ -1,10 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Plus, ChevronRight, ShoppingBag, Box, Star, User } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { useRoleProtection, LoadingScreen } from "../../components/RoleBasedRedirect";
 
 const orders = [
   { id: "#2456", time: "Placed 12 hours ago", amount: "₹340", qty: "3 items" },
@@ -31,29 +31,21 @@ const latestReviews = [
 
 export default function MerchantDashboardPage() {
   const router = useRouter();
-  const { user, loading, logout } = useAuth();
+  const { user, logout } = useAuth();
+  const { isLoading, isAuthorized } = useRoleProtection("merchant");
 
   const handleMerchantLogout = async () => {
     await logout();
     router.push("/login");
   };
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/login?redirect=/merchant/dashboard");
-      return;
-    }
-
-    if (!loading && user && user.accountType !== "merchant") {
-      router.replace("/");
-    }
-  }, [loading, user, router]);
-
-  if (loading || !user) {
-    return <div className="min-h-screen bg-[#efefef]" />;
+  if (isLoading) {
+    return <LoadingScreen />;
   }
 
-  if (user.accountType !== "merchant") return null;
+  if (!isAuthorized) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-[#ececec] text-[#1b1b1b]" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>

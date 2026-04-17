@@ -769,3 +769,31 @@ export async function getAdminStats() {
 export async function getAdminLogs(page = 1, limit = 50) {
     return apiClient(`/admin/logs?page=${page}&limit=${limit}`);
 }
+
+// ============================================================
+// MERCHANT STORE LOCATION APIs
+// ============================================================
+
+/**
+ * Update merchant store location with coordinates
+ * @param {object} locationData - {address, latitude, longitude}
+ * @returns {Promise} - API response
+ */
+export async function updateMerchantStoreLocation(locationData) {
+    return apiClient('/merchant/store-location', {
+        method: 'PUT',
+        body: JSON.stringify({
+            address: locationData.address,
+            latitude: locationData.latitude,
+            longitude: locationData.longitude,
+        }),
+    });
+}
+
+/**
+ * Get merchant store location
+ * @returns {Promise} - Store location with coordinates
+ */
+export async function getMerchantStoreLocation() {
+    return apiClient('/merchant/store-location');
+}

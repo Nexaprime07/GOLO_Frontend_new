@@ -5,6 +5,7 @@ import { Heart, Share2, MapPin, Phone, MessageCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
+import { useRoleProtection, LoadingScreen } from "../components/RoleBasedRedirect";
 import Navbar from "./../components/Navbar";
 import Footer from "./../components/Footer";
 
@@ -12,14 +13,16 @@ export default function PostAdPage() {
   const [selected, setSelected] = useState(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
+  const { isLoading, isAuthorized } = useRoleProtection("user");
 
-  // Redirect merchants away from user pages
-  useEffect(() => {
-    if (!loading && user && user.accountType === "merchant") {
-      router.replace("/merchant/dashboard");
-    }
-  }, [user, loading, router]);
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (!isAuthorized) {
+    return null;
+  }
 
   const templates = [
     {
