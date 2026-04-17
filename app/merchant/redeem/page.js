@@ -7,6 +7,7 @@ import { useVoucher } from "../../context/VoucherContext";
 import { Html5QrcodeScanner } from "html5-qrcode";
 import { Check, AlertCircle, Zap } from "lucide-react";
 import { verifyVoucherByCode } from "../../lib/api";
+import MerchantNavbar from "../MerchantNavbar";
 
 export default function MerchantQRScannerPage() {
   const router = useRouter();
@@ -64,24 +65,6 @@ export default function MerchantQRScannerPage() {
               verificationCode: response.data.verificationCode
             }));
           }
-        } catch (err) {
-          console.error("Failed to generate verification code:", err);
-        }
-      }
-    };
-
-    generateCode();
-  }, [scanResult, verificationStatus, generateVerificationCodeHandler]);
-
-  // Cleanup scanner on unmount or when switching to manual entry
-  useEffect(() => {
-    return () => {
-      if (scanner && scannerReady) {
-        try {
-          // stop() returns a Promise, need to handle it properly
-          scanner.stop().catch(() => {
-            // Ignore errors during cleanup
-          });
         } catch (err) {
           // Silently ignore cleanup errors
         }
@@ -352,22 +335,7 @@ export default function MerchantQRScannerPage() {
 
   return (
     <div className="min-h-screen bg-[#ececec]">
-      <header className="sticky top-0 z-[9999] h-16 bg-[#efb02e] border-b border-[#d7a02a] px-8 flex items-center justify-between shadow-sm">
-        <button onClick={() => router.push("/merchant/dashboard")} className="flex items-center gap-3 cursor-pointer">
-          <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow font-bold" style={{ color: "#157a4f" }}>
-            G
-          </div>
-          <span className="text-xl font-semibold tracking-wide text-[#157a4f]">GOLO</span>
-        </button>
-
-        <nav className="flex items-center gap-8 text-[12px] font-semibold text-[#5a4514]">
-          <button onClick={() => router.push("/merchant/orders")}>Orders</button>
-          <button onClick={() => router.push("/merchant/offers")}>Offers</button>
-          <button onClick={() => router.push("/merchant/redeem")} className="h-16 text-[#157a4f] border-b-[2px] border-[#157a4f]">
-            Redeem QR
-          </button>
-        </nav>
-      </header>
+      <MerchantNavbar activeKey="redeem" />
 
       <main className="w-full max-w-[1200px] mx-auto px-6 py-8">
         <section className="rounded-[12px] border border-[#d5d5d5] bg-white p-8 shadow-sm">

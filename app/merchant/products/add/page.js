@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Bell, User, ChevronLeft } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
 import { createMerchantProduct } from "../../../lib/api";
+import MerchantNavbar from "../../MerchantNavbar";
 
 export default function AddProductPage() {
   const router = useRouter();
@@ -67,34 +68,7 @@ export default function AddProductPage() {
       setSubmitError(error?.message || "Failed to publish product");
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/login?redirect=/merchant/products/add");
-      return;
-    }
-
-    if (!loading && user && user.accountType !== "merchant") {
-      router.replace("/");
-    }
-  }, [loading, user, router]);
-
-  if (loading || !user) {
-    return <div className="min-h-screen bg-[#efefef]" />;
-  }
-
-  if (user.accountType !== "merchant") return null;
-
-  return (
-    <div className="min-h-screen bg-[#ececec] text-[#1b1b1b]" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
-      {/* Header */}
-      <header className="sticky top-0 z-[9999] h-16 bg-[#efb02e] border-b border-[#d7a02a] px-8 lg:px-10 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-3 min-w-[180px]">
-          <button type="button" onClick={() => router.push("/merchant/dashboard")} className="flex items-center gap-3 cursor-pointer">
-            <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow font-bold" style={{ color: "#157a4f" }}>
-              G
+        <MerchantNavbar activeKey="products" />
             </div>
             <span className="text-xl font-semibold tracking-wide text-[#157a4f]">GOLO</span>
           </button>
