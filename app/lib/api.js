@@ -798,6 +798,18 @@ export async function getMerchantStoreLocation() {
     return apiClient('/merchant/store-location');
 }
 
+/**
+ * Update merchant profile information
+ * @param {Object} profileData - Merchant profile data to update
+ * @returns {Promise} - API response
+ */
+export async function updateMerchantProfile(profileData) {
+    return apiClient('/merchant/profile', {
+        method: 'PUT',
+        body: JSON.stringify(profileData),
+    });
+}
+
 // ============================================================
 // VOUCHER & REDEMPTION APIs
 // ============================================================

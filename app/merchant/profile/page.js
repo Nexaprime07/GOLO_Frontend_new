@@ -9,7 +9,7 @@ import MerchantNavbar from "../MerchantNavbar";
 import { useRoleProtection, LoadingScreen } from "../../components/RoleBasedRedirect";
 import LocationPicker from "../../components/LocationPicker";
 import StoreLocationMap from "../../components/StoreLocationMap";
-import { updateMerchantStoreLocation, getMerchantStoreLocation } from "../../lib/api";
+import { updateMerchantStoreLocation, getMerchantStoreLocation, getMerchantProfile, updateProfile, updateMerchantProfile } from "../../lib/api";
 
 const topTabs = ["Profile Settings", "Loyalty Rewards", "Help", "Settings", "Logout"];
 
@@ -59,21 +59,62 @@ function MerchantProfileContent({ user, logout, router }) {
   const [isEditMode, setIsEditMode] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
-  const [isSavingLocation, setIsSavingLocation] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [saveMessage, setSaveMessage] = useState("");
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
   const [formData, setFormData] = useState({
-    username: "Mahesh Patil",
-    phone: "+91 XXXXXXXXXX",
-    email: "abc@gmail.com",
-    shopName: "Fashion Fusion",
-    location: "Rajarampuri, Kolhapur (416003)",
+    username: "",
+    phone: "",
+    email: "",
+    shopName: "",
+    location: "",
   });
+  const [merchantPhoto, setMerchantPhoto] = useState("/images/deal2.avif");
+  const [shopPhoto, setShopPhoto] = useState("/images/place2.avif");
+  const [merchantPhotoFile, setMerchantPhotoFile] = useState(null);
+  const [shopPhotoFile, setShopPhotoFile] = useState(null);
   const [storeLocation, setStoreLocation] = useState({
-    address: "Rajarampuri, Kolhapur (416003)",
-    latitude: 16.8149,
-    longitude: 73.8292,
+    address: "",
+    latitude: 0,
+    longitude: 0,
   });
+
+  // Load merchant profile data on mount
+  useEffect(() => {
+    const loadMerchantData = async () => {
+      try {
+        setIsLoading(true);
+        const profileResponse = await getMerchantProfile();
+        const merchantData = profileResponse?.data;
+        
+        if (merchantData) {
+          setFormData({
+            username: user?.name || "",
+            phone: user?.profile?.phone || "",
+            email: user?.email || "",
+            shopName: merchantData.storeName || "",
+            location: merchantData.storeLocation || "",
+          });
+          
+          // Load photos
+          if (merchantData.profilePhoto) {
+            setMerchantPhoto(merchantData.profilePhoto);
+          }
+          if (merchantData.shopPhoto) {
+            setShopPhoto(merchantData.shopPhoto);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading merchant profile:", error);
+        setSaveMessage("Error loading profile data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadMerchantData();
+  }, [user]);
 
   // Load merchant store location from database on mount
   useEffect(() => {
@@ -84,9 +125,9 @@ function MerchantProfileContent({ user, logout, router }) {
         if (response && response.data) {
           const { address, latitude, longitude } = response.data;
           setStoreLocation({
-            address: address || "Rajarampuri, Kolhapur (416003)",
-            latitude: latitude || 16.8149,
-            longitude: longitude || 73.8292,
+            address: address || "",
+            latitude: latitude || 0,
+            longitude: longitude || 0,
           });
         }
       } catch (error) {
@@ -114,38 +155,112 @@ function MerchantProfileContent({ user, logout, router }) {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handlePhotoChange = (file, isShopPhoto = false) => {
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setSaveMessage('Please upload a valid image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setSaveMessage('Image size should be less than 5MB');
+      return;
+    }
+
+    // Create preview URL
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const previewUrl = e.target.result;
+      if (isShopPhoto) {
+        setShopPhoto(previewUrl);
+        setShopPhotoFile(file);
+      } else {
+        setMerchantPhoto(previewUrl);
+        setMerchantPhotoFile(file);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handlePhotoClick = (isShopPhoto = false) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => handlePhotoChange(e.target.files[0], isShopPhoto);
+    input.click();
+  };
+
   const handleDiscard = () => {
-    setFormData({
-      username: "Mahesh Patil",
-      phone: "+91 XXXXXXXXXX",
-      email: "abc@gmail.com",
-      shopName: "Fashion Fusion",
-      location: "Rajarampuri, Kolhapur (416003)",
-    });
     setIsEditMode(false);
+    // Discard will reload the data from state
+    setSaveMessage("");
   };
 
   const handleSave = async () => {
-    // Save location to backend
-    if (storeLocation && storeLocation.latitude && storeLocation.longitude) {
-      setIsSavingLocation(true);
-      try {
+    setIsSaving(true);
+    try {
+      // Update user profile (name, email, phone)
+      const profileData = {
+        name: formData.username,
+        email: formData.email,
+        profile: {
+          phone: formData.phone,
+        },
+      };
+
+      await updateProfile(profileData);
+
+      // Update merchant profile (store name, etc.)
+      const merchantData = {
+        storeName: formData.shopName,
+        storeLocation: formData.location,
+      };
+
+      // Convert photos to base64 if changed
+      if (merchantPhotoFile) {
+        const reader = new FileReader();
+        const merchantPhotoBase64 = await new Promise((resolve) => {
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(merchantPhotoFile);
+        });
+        merchantData.profilePhoto = merchantPhotoBase64;
+      }
+
+      if (shopPhotoFile) {
+        const reader = new FileReader();
+        const shopPhotoBase64 = await new Promise((resolve) => {
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(shopPhotoFile);
+        });
+        merchantData.shopPhoto = shopPhotoBase64;
+      }
+
+      await updateMerchantProfile(merchantData);
+      setSaveMessage("Profile updated successfully!");
+
+      // Update store location if it has changed
+      if (storeLocation && storeLocation.latitude && storeLocation.longitude) {
         await updateMerchantStoreLocation({
           address: storeLocation.address,
           latitude: storeLocation.latitude,
           longitude: storeLocation.longitude,
         });
-        setSaveMessage("Location saved successfully!");
-        setTimeout(() => setSaveMessage(""), 3000);
-      } catch (error) {
-        console.error("Error saving location:", error);
-        setSaveMessage("Failed to save location. Please try again.");
-        setTimeout(() => setSaveMessage(""), 3000);
-      } finally {
-        setIsSavingLocation(false);
       }
+
+      setMerchantPhotoFile(null);
+      setShopPhotoFile(null);
+      setTimeout(() => setSaveMessage(""), 3000);
+      setIsEditMode(false);
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      setSaveMessage(error?.data?.message || "Failed to save profile. Please try again.");
+      setTimeout(() => setSaveMessage(""), 3000);
+    } finally {
+      setIsSaving(false);
     }
-    setIsEditMode(false);
   };
 
   const handleLocationSelect = (location) => {
@@ -260,12 +375,19 @@ function MerchantProfileContent({ user, logout, router }) {
                     Merchant Profile
                   </div>
                   <div className="relative px-8 pb-7 pt-0">
-                    <div className="absolute left-1/2 -translate-x-1/2 -top-14 w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-lg bg-white">
-                      <Image src="/images/deal2.avif" alt="Merchant profile" fill className="object-cover" />
+                    <div className="absolute left-1/2 -translate-x-1/2 -top-14 w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-lg bg-white cursor-pointer group" onClick={() => isEditMode && handlePhotoClick(false)}>
+                      <Image src={merchantPhoto} alt="Merchant profile" fill className="object-cover group-hover:brightness-75 transition" />
                     </div>
-                    <div className="absolute left-1/2 translate-x-[28px] top-[24px] w-8 h-8 rounded-full bg-[#bdbdbd] border-2 border-white flex items-center justify-center text-white shadow-sm">
-                      <Camera size={15} />
-                    </div>
+                    {isEditMode && (
+                      <div className="absolute left-1/2 translate-x-[28px] top-[24px] w-8 h-8 rounded-full bg-[#157a4f] border-2 border-white flex items-center justify-center text-white shadow-sm cursor-pointer hover:bg-[#0f5a3a] transition" onClick={() => handlePhotoClick(false)}>
+                        <Camera size={15} />
+                      </div>
+                    )}
+                    {!isEditMode && (
+                      <div className="absolute left-1/2 translate-x-[28px] top-[24px] w-8 h-8 rounded-full bg-[#bdbdbd] border-2 border-white flex items-center justify-center text-white shadow-sm">
+                        <Camera size={15} />
+                      </div>
+                    )}
 
                     <div className="pt-20 space-y-5">
                       <div>
@@ -303,12 +425,19 @@ function MerchantProfileContent({ user, logout, router }) {
                     Shop Details
                   </div>
                   <div className="relative px-8 pb-7 pt-0">
-                    <div className="absolute left-1/2 -translate-x-1/2 -top-14 w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-lg bg-white">
-                      <Image src="/images/place2.avif" alt="Shop" fill className="object-cover" />
+                    <div className="absolute left-1/2 -translate-x-1/2 -top-14 w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-lg bg-white cursor-pointer group" onClick={() => isEditMode && handlePhotoClick(true)}>
+                      <Image src={shopPhoto} alt="Shop" fill className="object-cover group-hover:brightness-75 transition" />
                     </div>
-                    <div className="absolute left-1/2 translate-x-[28px] top-[24px] w-8 h-8 rounded-full bg-[#bdbdbd] border-2 border-white flex items-center justify-center text-white shadow-sm">
-                      <Camera size={15} />
-                    </div>
+                    {isEditMode && (
+                      <div className="absolute left-1/2 translate-x-[28px] top-[24px] w-8 h-8 rounded-full bg-[#157a4f] border-2 border-white flex items-center justify-center text-white shadow-sm cursor-pointer hover:bg-[#0f5a3a] transition" onClick={() => handlePhotoClick(true)}>
+                        <Camera size={15} />
+                      </div>
+                    )}
+                    {!isEditMode && (
+                      <div className="absolute left-1/2 translate-x-[28px] top-[24px] w-8 h-8 rounded-full bg-[#bdbdbd] border-2 border-white flex items-center justify-center text-white shadow-sm">
+                        <Camera size={15} />
+                      </div>
+                    )}
 
                     <div className="pt-20 space-y-5">
                       <div>
@@ -333,7 +462,7 @@ function MerchantProfileContent({ user, logout, router }) {
                             <StoreLocationMap 
                               location={storeLocation} 
                               onMapClick={() => setShowLocationPicker(true)}
-                              isLoading={isSavingLocation}
+                              isLoading={isSaving}
                             />
                             <p className="text-[11px] text-[#157a4f] font-semibold">
                               📍 Current: {storeLocation.address}
@@ -365,8 +494,8 @@ function MerchantProfileContent({ user, logout, router }) {
                     <button type="button" onClick={handleDiscard} className="h-10 px-5 rounded-[8px] bg-[#d8dbe2] text-[#222] text-[13px] font-semibold">
                       Discard Changes
                     </button>
-                    <button type="button" onClick={handleSave} disabled={isSavingLocation} className="h-10 px-7 rounded-[8px] bg-[#efb02e] text-[#1f1f1f] text-[13px] font-semibold disabled:opacity-70 disabled:cursor-not-allowed">
-                      {isSavingLocation ? "Saving..." : "Save Changes"}
+                    <button type="button" onClick={handleSave} disabled={isSaving} className="h-10 px-7 rounded-[8px] bg-[#efb02e] text-[#1f1f1f] text-[13px] font-semibold disabled:opacity-70 disabled:cursor-not-allowed">
+                      {isSaving ? "Saving..." : "Save Changes"}
                     </button>
                   </div>
                 )}
