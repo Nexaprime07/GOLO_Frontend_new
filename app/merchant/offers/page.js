@@ -2,15 +2,29 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search, User } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import MerchantNavbar from "../MerchantNavbar";
 import {
   deleteMyBannerPromotion,
   getMyBannerPromotions,
-  submitBannerPromotionRequest,
   updateMyBannerPromotion,
 } from "../../lib/api";
+
+const OFFER_CATEGORIES = [
+  "Special",
+  "Festival",
+  "Limited Time",
+  "Combo",
+  "Clearance",
+];
+
+function toDateInputValue(dateValue) {
+  if (!dateValue) return "";
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
+}
 
 export default function MerchantOffersPage() {
   const router = useRouter();
@@ -19,6 +33,18 @@ export default function MerchantOffersPage() {
   const [query, setQuery] = useState("");
   const [pageLoading, setPageLoading] = useState(true);
   const [error, setError] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [formSubmitting, setFormSubmitting] = useState(false);
+  const [editingOfferId, setEditingOfferId] = useState(null);
+  const [formError, setFormError] = useState("");
+  const [formData, setFormData] = useState({
+    title: "",
+    category: "Special",
+    imageUrl: "",
+    startDate: "",
+    endDate: "",
+    totalPrice: "0",
+  });
 
   const loadOffers = async () => {
     try {
@@ -61,38 +87,78 @@ export default function MerchantOffersPage() {
   const activeCount = filteredOffers.filter((offer) => offer.status === "active").length;
   const totalRevenue = filteredOffers.reduce((sum, offer) => sum + Number(offer.totalPrice || 0), 0);
 
-  const onCreateOffer = async () => {
-    const title = window.prompt("Offer title");
-    if (!title) return;
-    const category = window.prompt("Offer category", "Special") || "Special";
-    const imageUrl = window.prompt("Image URL", "https://images.unsplash.com/photo-1556740772-1a741367b93e") || "";
-    const dateInput = window.prompt("Dates (YYYY-MM-DD, comma separated)", new Date().toISOString().slice(0, 10));
-    if (!dateInput) return;
-
-    try {
-      setError("");
-      await submitBannerPromotionRequest({
-        bannerTitle: title,
-        bannerCategory: category,
-        imageUrl,
-        selectedDates: dateInput.split(",").map((d) => d.trim()).filter(Boolean),
-        totalPrice: 0,
-      });
-      await loadOffers();
-    } catch (err) {
-      setError(err?.message || "Failed to create offer");
-    }
+  const resetForm = () => {
+    setFormData({
+      title: "",
+      category: "Special",
+      imageUrl: "",
+      startDate: "",
+      endDate: "",
+      totalPrice: "0",
+    });
+    setEditingOfferId(null);
+    setFormError("");
   };
 
-  const onEditOffer = async (offer) => {
-    const bannerTitle = window.prompt("Offer title", offer.bannerTitle || "");
-    if (!bannerTitle) return;
-    const bannerCategory = window.prompt("Offer category", offer.bannerCategory || "Special") || "Special";
+  const openEditForm = (offer) => {
+    setEditingOfferId(offer.requestId);
+    setFormData({
+      title: offer.bannerTitle || "",
+      category: offer.bannerCategory || "Special",
+      imageUrl: offer.imageUrl || "",
+      startDate: toDateInputValue(offer.startDate),
+      endDate: toDateInputValue(offer.endDate),
+      totalPrice: String(offer.totalPrice ?? 0),
+    });
+    setFormError("");
+    setFormOpen(true);
+  };
+
+  const closeForm = () => {
+    setFormOpen(false);
+    resetForm();
+  };
+
+  const onSubmitForm = async (e) => {
+    e.preventDefault();
+
+    const title = formData.title.trim();
+    if (!title) {
+      setFormError("Offer title is required.");
+      return;
+    }
+
+    if (!formData.startDate) {
+      setFormError("Start date is required.");
+      return;
+    }
+
+    const totalPrice = Number(formData.totalPrice || 0);
+    if (Number.isNaN(totalPrice) || totalPrice < 0) {
+      setFormError("Offer value must be 0 or more.");
+      return;
+    }
+
+    setFormSubmitting(true);
     try {
-      await updateMyBannerPromotion(offer.requestId, { bannerTitle, bannerCategory });
+      setError("");
+      if (editingOfferId) {
+        await updateMyBannerPromotion(editingOfferId, {
+          bannerTitle: title,
+          bannerCategory: formData.category,
+          imageUrl: formData.imageUrl.trim(),
+          startDate: formData.startDate,
+          endDate: formData.endDate || formData.startDate,
+          totalPrice,
+        });
+      }
+
       await loadOffers();
+      closeForm();
     } catch (err) {
-      setError(err?.message || "Failed to update offer");
+      setFormError(err?.message || "Failed to update offer");
+    } finally {
+      setFormSubmitting(false);
     }
   };
 
@@ -164,13 +230,107 @@ export default function MerchantOffersPage() {
               </div>
 
               <div className="flex items-center gap-2">
-                <button onClick={onCreateOffer} className="h-9 rounded-[8px] bg-[#2f9e58] px-4 text-[11px] font-semibold text-white inline-flex items-center gap-1.5">
+                <button onClick={() => router.push("/merchant/offers/create")} className="h-9 rounded-[8px] bg-[#2f9e58] px-4 text-[11px] font-semibold text-white inline-flex items-center gap-1.5">
                   <Plus size={12} /> Add New Offer
                 </button>
               </div>
             </div>
 
             {error ? <p className="mt-3 text-[12px] text-[#ef4d4d]">{error}</p> : null}
+
+            {formOpen ? (
+              <div className="mt-4 rounded-[10px] border border-[#e3e3e3] bg-white p-4">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <h2 className="text-[16px] font-semibold text-[#2a2a2a]">Edit Offer</h2>
+                  <button
+                    type="button"
+                    onClick={closeForm}
+                    className="h-8 rounded-[7px] border border-[#e0e0e0] bg-white px-3 text-[11px] font-semibold text-[#5e5e5e]"
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+                <form onSubmit={onSubmitForm} className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-[11px] font-semibold text-[#555]">Offer Title</label>
+                    <input
+                      value={formData.title}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                      className="h-9 w-full rounded-[8px] border border-[#dedede] bg-white px-3 text-[12px] outline-none"
+                      placeholder="Enter offer title"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-[11px] font-semibold text-[#555]">Category</label>
+                    <select
+                      value={formData.category}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, category: e.target.value }))}
+                      className="h-9 w-full rounded-[8px] border border-[#dedede] bg-white px-3 text-[12px] outline-none"
+                    >
+                      {OFFER_CATEGORIES.map((item) => (
+                        <option key={item} value={item}>{item}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="mb-1 block text-[11px] font-semibold text-[#555]">Image URL</label>
+                    <input
+                      value={formData.imageUrl}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, imageUrl: e.target.value }))}
+                      className="h-9 w-full rounded-[8px] border border-[#dedede] bg-white px-3 text-[12px] outline-none"
+                      placeholder="https://example.com/offer-image.jpg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-[11px] font-semibold text-[#555]">Start Date</label>
+                    <input
+                      type="date"
+                      value={formData.startDate}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, startDate: e.target.value }))}
+                      className="h-9 w-full rounded-[8px] border border-[#dedede] bg-white px-3 text-[12px] outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-[11px] font-semibold text-[#555]">End Date</label>
+                    <input
+                      type="date"
+                      value={formData.endDate}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, endDate: e.target.value }))}
+                      className="h-9 w-full rounded-[8px] border border-[#dedede] bg-white px-3 text-[12px] outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-[11px] font-semibold text-[#555]">Offer Value (Rs)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={formData.totalPrice}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, totalPrice: e.target.value }))}
+                      className="h-9 w-full rounded-[8px] border border-[#dedede] bg-white px-3 text-[12px] outline-none"
+                    />
+                  </div>
+
+                  <div className="flex items-end justify-end">
+                    <button
+                      type="submit"
+                      disabled={formSubmitting}
+                      className="h-9 rounded-[8px] bg-[#2f9e58] px-4 text-[11px] font-semibold text-white disabled:opacity-70"
+                    >
+                      {formSubmitting ? "Saving..." : "Save Changes"}
+                    </button>
+                  </div>
+                </form>
+
+                {formError ? <p className="mt-3 text-[12px] text-[#ef4d4d]">{formError}</p> : null}
+              </div>
+            ) : null}
 
             <div className="mt-4 overflow-hidden rounded-[10px] border border-[#ececec] bg-white">
               <table className="w-full text-[12px]">
@@ -205,7 +365,7 @@ export default function MerchantOffersPage() {
                       </td>
                       <td className="px-4 py-3 text-[#2c2c2c]">{new Date(row.endDate).toLocaleDateString()}</td>
                       <td className="px-4 py-3 text-[11px]">
-                        <button onClick={() => onEditOffer(row)} className="text-[#f0aa19] font-semibold">Edit</button>
+                        <button onClick={() => openEditForm(row)} className="text-[#f0aa19] font-semibold">Edit</button>
                         <span className="mx-2 text-[#cfcfcf]">/</span>
                         <button onClick={() => onDeleteOffer(row)} className="text-[#ef4d4d] font-semibold">Delete</button>
                       </td>

@@ -1051,7 +1051,7 @@ export async function updateMerchantProduct(productId, updateData) {
  * @param {object} updateData - Promotion update data
  */
 export async function updateMyBannerPromotion(promotionId, updateData) {
-    return apiClient(`/merchant/banner-promotions/${promotionId}`, {
+    return apiClient(`/banners/promotions/${promotionId}`, {
         method: 'PUT',
         body: JSON.stringify(updateData),
     });
@@ -1062,7 +1062,7 @@ export async function updateMyBannerPromotion(promotionId, updateData) {
  * @param {string} promotionId - Promotion ID
  */
 export async function deleteMyBannerPromotion(promotionId) {
-    return apiClient(`/merchant/banner-promotions/${promotionId}`, {
+    return apiClient(`/banners/promotions/${promotionId}`, {
         method: 'DELETE',
     });
 }
