@@ -921,14 +921,14 @@ export async function getMerchantOffers({ page = 1, limit = 20, status } = {}) {
  * Get merchant dashboard summary
  */
 export async function getMerchantDashboardSummary() {
-    return apiClient('/merchant/dashboard/summary');
+    return apiClient('/merchant-dashboard/summary');
 }
 
 /**
  * Get merchant order statistics
  */
 export async function getMerchantOrderStats() {
-    return apiClient('/merchant/orders/stats');
+    return apiClient('/orders/merchant/stats');
 }
 
 /**
@@ -936,7 +936,7 @@ export async function getMerchantOrderStats() {
  * @param {string} dateRange - Time range for analytics (e.g., '7days', '30days')
  */
 export async function getAnalyticsDeviceBreakdown(dateRange = '7days') {
-    return apiClient(`/analytics/device?dateRange=${dateRange}`);
+    return apiClient(`/analytics/device-breakdown?dateRange=${dateRange}`);
 }
 
 /**
@@ -944,7 +944,7 @@ export async function getAnalyticsDeviceBreakdown(dateRange = '7days') {
  * @param {string} dateRange - Time range for analytics
  */
 export async function getAnalyticsTopRegions(dateRange = '7days') {
-    return apiClient(`/analytics/regions?dateRange=${dateRange}`);
+    return apiClient(`/analytics/top-regions?dateRange=${dateRange}`);
 }
 
 /**
@@ -952,7 +952,7 @@ export async function getAnalyticsTopRegions(dateRange = '7days') {
  * @param {string} dateRange - Time range for analytics
  */
 export async function getAnalyticsTopPages(dateRange = '7days') {
-    return apiClient(`/analytics/pages?dateRange=${dateRange}`);
+    return apiClient(`/analytics/top-pages?dateRange=${dateRange}`);
 }
 
 /**
@@ -972,7 +972,7 @@ export async function getAnalyticsEvents(dateRange = '7days') {
  * @param {object} params - {status, page, limit, search}
  */
 export async function getMerchantOrders({ status = 'all', page = 1, limit = 30, search } = {}) {
-    let url = `/merchant/orders?page=${page}&limit=${limit}`;
+    let url = `/orders/merchant?page=${page}&limit=${limit}`;
     if (status !== 'all') url += `&status=${status}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
     return apiClient(url);
@@ -984,8 +984,8 @@ export async function getMerchantOrders({ status = 'all', page = 1, limit = 30, 
  * @param {string} status - New status
  */
 export async function updateMerchantOrderStatus(orderId, status) {
-    return apiClient(`/merchant/orders/${orderId}/status`, {
-        method: 'PUT',
+    return apiClient(`/orders/${orderId}/status`, {
+        method: 'PATCH',
         body: JSON.stringify({ status }),
     });
 }

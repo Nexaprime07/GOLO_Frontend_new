@@ -68,35 +68,32 @@ export default function AddProductPage() {
       setSubmitError(error?.message || "Failed to publish product");
     } finally {
       setIsSubmitting(false);
-        <MerchantNavbar activeKey="products" />
-            </div>
-            <span className="text-xl font-semibold tracking-wide text-[#157a4f]">GOLO</span>
-          </button>
-        </div>
+    }
+  };
 
-        <div className="ml-auto flex items-center gap-8 text-[12px] font-semibold text-[#5a4514]">
-          <nav className="flex items-center gap-8">
-            <button onClick={() => router.push("/merchant/dashboard")}>Overview</button>
-            <button onClick={() => router.push("/merchant/orders")}>Orders</button>
-            <button onClick={() => router.push("/merchant/products")} className="relative h-16 text-[#157a4f]">
-              Products
-              <span className="absolute left-0 right-0 -bottom-px h-[2px] bg-[#157a4f]" />
-            </button>
-            <button onClick={() => router.push("/merchant/offers")}>Offers</button>
-            <button onClick={() => router.push("/merchant/banners")}>Banners</button>
-            <button onClick={() => router.push("/merchant/analytics")}>Analytics</button>
-          </nav>
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace("/login?redirect=/merchant/products/add");
+      return;
+    }
 
-          <button type="button" onClick={() => router.push("/merchant/profile")} className="w-10 h-10 rounded-full bg-white shadow-md hover:scale-105 transition flex items-center justify-center" aria-label="Profile">
-            <User size={18} style={{ color: "#157a4f" }} />
-          </button>
-        </div>
-      </header>
+    if (!loading && user && user.accountType !== "merchant") {
+      router.replace("/");
+    }
+  }, [loading, user, router]);
 
-      {/* Main Content */}
+  if (loading || !user) {
+    return <div className="min-h-screen bg-[#ececec]" />;
+  }
+
+  if (user.accountType !== "merchant") return null;
+
+  return (
+    <div className="min-h-screen bg-[#ececec] text-[#1b1b1b]" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
+      <MerchantNavbar activeKey="products" />
+
       <main className="w-full px-8 lg:px-10 py-6">
         <div className="mx-auto w-full max-w-[1400px] space-y-5">
-          {/* Back Link */}
           <div className="flex items-center gap-2">
             <button onClick={() => router.push("/merchant/products")} className="flex items-center gap-1.5 text-[13px] text-[#666] hover:text-[#333]">
               <ChevronLeft size={16} />
