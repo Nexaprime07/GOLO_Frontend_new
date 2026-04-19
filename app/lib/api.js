@@ -71,7 +71,23 @@ export async function apiClient(endpoint, options = {}) {
         'Authorization': headers['Authorization'] ? 'Present' : 'Missing',
     });
 
-    const response = await fetch(url, config);
+    let response;
+    try {
+        response = await fetch(url, config);
+    } catch (error) {
+        const networkError = new Error(
+            `Unable to connect to API at ${BASE_URL || '(same-origin)'}. ` +
+            `Please ensure the backend is running and NEXT_PUBLIC_API_URL is correct.`
+        );
+        networkError.status = 0;
+        networkError.data = {
+            message: networkError.message,
+            endpoint,
+            url,
+        };
+        networkError.cause = error;
+        throw networkError;
+    }
 
     // Handle 401 — try to refresh token
     if (response.status === 401 && typeof window !== 'undefined' && !isPublicAuthEndpoint) {
@@ -89,10 +105,15 @@ export async function apiClient(endpoint, options = {}) {
 }
 
 async function handleResponse(response) {
-    const data = await response.json();
+    let data = null;
+    try {
+        data = await response.json();
+    } catch {
+        data = null;
+    }
 
     if (!response.ok) {
-        const error = new Error(data.message || 'API request failed');
+        const error = new Error(data?.message || 'API request failed');
         error.status = response.status;
         error.data = data;
         throw error;
@@ -401,15 +422,139 @@ export async function promoteAd(adId, { promotionPackage, duration }) {
     });
 }
 
+function buildLegacyPromotionPayload(payload = {}) {
+    const {
+        loyaltyRewardEnabled,
+        loyaltyStarsToOffer,
+        loyaltyStarsPerPurchase,
+        loyaltyScorePerStar,
+        promotionExpiryText,
+        termsAndConditions,
+        exampleUsage,
+        selectedProducts,
+        promotionType,
+        ...legacyPayload
+    } = payload;
+
+    return legacyPayload;
+}
+
+function isNonWhitelistedPayloadError(error) {
+    const message = String(error?.data?.message || error?.message || '').toLowerCase();
+    return message.includes('should not exist');
+}
+
+const OFFER_PROMOTION_IDS_KEY = 'golo_offer_promotion_ids';
+
+function getPromotionRowId(row) {
+    return String(row?.requestId || row?._id || '');
+}
+
+function readTrackedOfferPromotionIds() {
+    if (typeof window === 'undefined') return new Set();
+
+    try {
+        const raw = localStorage.getItem(OFFER_PROMOTION_IDS_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(parsed)) return new Set();
+        return new Set(parsed.map((id) => String(id)));
+    } catch {
+        return new Set();
+    }
+}
+
+function writeTrackedOfferPromotionIds(idsSet) {
+    if (typeof window === 'undefined') return;
+
+    try {
+        localStorage.setItem(OFFER_PROMOTION_IDS_KEY, JSON.stringify(Array.from(idsSet)));
+    } catch {
+    }
+}
+
+function rememberOfferPromotionId(id) {
+    if (!id) return;
+    const ids = readTrackedOfferPromotionIds();
+    ids.add(String(id));
+    writeTrackedOfferPromotionIds(ids);
+}
+
+function forgetOfferPromotionId(id) {
+    if (!id) return;
+    const ids = readTrackedOfferPromotionIds();
+    ids.delete(String(id));
+    writeTrackedOfferPromotionIds(ids);
+}
+
+function isOfferRow(row, trackedOfferIds) {
+    if (row?.promotionType) {
+        return String(row.promotionType).toLowerCase() === 'offer';
+    }
+    return trackedOfferIds.has(getPromotionRowId(row));
+}
+
 export async function submitBannerPromotionRequest(payload) {
-    return apiClient('/banners/promotions/request', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-    });
+    try {
+        return await apiClient('/banners/promotions/request', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        });
+    } catch (error) {
+        if (!isNonWhitelistedPayloadError(error)) {
+            throw error;
+        }
+
+        return apiClient('/banners/promotions/request', {
+            method: 'POST',
+            body: JSON.stringify(buildLegacyPromotionPayload(payload)),
+        });
+    }
+}
+
+export async function submitOfferPromotionRequest(payload) {
+    const enrichedPayload = { ...payload, promotionType: 'offer' };
+
+    try {
+        const response = await apiClient('/banners/promotions/request', {
+            method: 'POST',
+            body: JSON.stringify(enrichedPayload),
+        });
+        rememberOfferPromotionId(getPromotionRowId(response?.data));
+        return response;
+    } catch (error) {
+        if (!isNonWhitelistedPayloadError(error)) {
+            throw error;
+        }
+
+        const response = await apiClient('/banners/promotions/request', {
+            method: 'POST',
+            body: JSON.stringify(buildLegacyPromotionPayload(enrichedPayload)),
+        });
+        rememberOfferPromotionId(getPromotionRowId(response?.data));
+        return response;
+    }
 }
 
 export async function getMyBannerPromotions() {
-    return apiClient('/banners/promotions/my');
+    const response = await apiClient('/banners/promotions/my?type=banner');
+    const rows = Array.isArray(response?.data) ? response.data : [];
+    const trackedOfferIds = readTrackedOfferPromotionIds();
+
+    return {
+        ...response,
+        data: rows.filter((row) => !isOfferRow(row, trackedOfferIds)),
+    };
+}
+
+export async function getMyOfferPromotions() {
+    const response = await apiClient('/banners/promotions/my?type=offer');
+    const rows = Array.isArray(response?.data) ? response.data : [];
+    const trackedOfferIds = readTrackedOfferPromotionIds();
+
+    return {
+        ...response,
+        data: rows.filter((row) => isOfferRow(row, trackedOfferIds)),
+    };
 }
 
 export async function payForBannerPromotion(requestId, paymentReference) {
@@ -421,6 +566,163 @@ export async function payForBannerPromotion(requestId, paymentReference) {
 
 export async function getActiveHomepageBanners(limit = 5) {
     return apiClient(`/banners/promotions/active?limit=${limit}`);
+}
+
+const LOCAL_BACKEND_URL = 'http://localhost:3002';
+let nearbyOffersRouteMissingOnPrimary = false;
+const NEARBY_OFFERS_PRIMARY_UNSUPPORTED_KEY = 'golo_nearby_offers_primary_unsupported';
+
+function markNearbyOffersPrimaryUnsupported() {
+    nearbyOffersRouteMissingOnPrimary = true;
+    if (typeof window === 'undefined') return;
+    try {
+        localStorage.setItem(NEARBY_OFFERS_PRIMARY_UNSUPPORTED_KEY, '1');
+    } catch {
+    }
+}
+
+function isNearbyOffersPrimaryUnsupported() {
+    if (nearbyOffersRouteMissingOnPrimary) return true;
+    if (typeof window === 'undefined') return false;
+    try {
+        return localStorage.getItem(NEARBY_OFFERS_PRIMARY_UNSUPPORTED_KEY) === '1';
+    } catch {
+        return false;
+    }
+}
+
+function emptyNearbyOffersResponse(page = 1, limit = 20) {
+    return {
+        success: true,
+        data: [],
+        pagination: {
+            page,
+            limit,
+            total: 0,
+            pages: 0,
+        },
+    };
+}
+
+async function fetchAbsoluteJson(url) {
+    const headers = {
+        'Content-Type': 'application/json',
+    };
+
+    if (typeof window !== 'undefined') {
+        const token = localStorage.getItem('accessToken');
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+    }
+
+    let response;
+    try {
+        response = await fetch(url, {
+            method: 'GET',
+            headers,
+        });
+    } catch (error) {
+        const networkError = new Error(`Unable to connect to ${url}`);
+        networkError.status = 0;
+        networkError.data = { message: networkError.message, url };
+        networkError.cause = error;
+        throw networkError;
+    }
+
+    let data = null;
+    try {
+        data = await response.json();
+    } catch {
+        data = null;
+    }
+
+    if (!response.ok) {
+        const requestError = new Error(data?.message || `Request failed (${response.status})`);
+        requestError.status = response.status;
+        requestError.data = data;
+        throw requestError;
+    }
+
+    return data;
+}
+
+export async function getNearbyOffers({
+    lat,
+    lng,
+    radiusKm = 5,
+    location,
+    q,
+    category,
+    sort,
+    maxPrice,
+    applyPriceFilter = false,
+    page = 1,
+    limit = 20,
+} = {}) {
+    const params = new URLSearchParams();
+    if (typeof lat === 'number' && !Number.isNaN(lat)) params.set('lat', String(lat));
+    if (typeof lng === 'number' && !Number.isNaN(lng)) params.set('lng', String(lng));
+    if (radiusKm) params.set('radiusKm', String(radiusKm));
+    if (location) params.set('location', String(location));
+    if (q) params.set('q', String(q));
+    if (category) params.set('category', String(category));
+    if (sort) params.set('sort', String(sort));
+    if (
+        applyPriceFilter &&
+        typeof maxPrice === 'number' &&
+        !Number.isNaN(maxPrice) &&
+        maxPrice > 0
+    ) {
+        params.set('maxPrice', String(maxPrice));
+    }
+    params.set('page', String(page));
+    params.set('limit', String(limit));
+    const endpoint = `/banners/promotions/offers/nearby?${params.toString()}`;
+    const safePage = Number(page) || 1;
+    const safeLimit = Number(limit) || 20;
+
+    if (isNearbyOffersPrimaryUnsupported()) {
+        try {
+            return await fetchAbsoluteJson(`${LOCAL_BACKEND_URL}${endpoint}`);
+        } catch {
+            return emptyNearbyOffersResponse(safePage, safeLimit);
+        }
+    }
+
+    try {
+        return await apiClient(endpoint);
+    } catch (error) {
+        if (error?.status !== 404) {
+            throw error;
+        }
+
+        markNearbyOffersPrimaryUnsupported();
+        try {
+            return await fetchAbsoluteJson(`${LOCAL_BACKEND_URL}${endpoint}`);
+        } catch {
+            return emptyNearbyOffersResponse(safePage, safeLimit);
+        }
+    }
+}
+
+export async function getNearbyOfferDetails(offerId) {
+    const endpoint = `/banners/promotions/offers/${offerId}`;
+
+    if (isNearbyOffersPrimaryUnsupported()) {
+        return fetchAbsoluteJson(`${LOCAL_BACKEND_URL}${endpoint}`);
+    }
+
+    try {
+        return await apiClient(endpoint);
+    } catch (error) {
+        if (error?.status !== 404) {
+            throw error;
+        }
+
+        markNearbyOffersPrimaryUnsupported();
+        return fetchAbsoluteJson(`${LOCAL_BACKEND_URL}${endpoint}`);
+    }
 }
 
 // ============================================================
@@ -1063,10 +1365,19 @@ export async function updateMerchantProduct(productId, updateData) {
  * @param {object} updateData - Promotion update data
  */
 export async function updateMyBannerPromotion(promotionId, updateData) {
-    return apiClient(`/banners/promotions/${promotionId}`, {
+    return apiClient(`/banners/promotions/${promotionId}?type=banner`, {
         method: 'PUT',
         body: JSON.stringify(updateData),
     });
+}
+
+export async function updateMyOfferPromotion(promotionId, updateData) {
+    const response = await apiClient(`/banners/promotions/${promotionId}?type=offer`, {
+        method: 'PUT',
+        body: JSON.stringify(updateData),
+    });
+    rememberOfferPromotionId(promotionId);
+    return response;
 }
 
 /**
@@ -1074,7 +1385,41 @@ export async function updateMyBannerPromotion(promotionId, updateData) {
  * @param {string} promotionId - Promotion ID
  */
 export async function deleteMyBannerPromotion(promotionId) {
-    return apiClient(`/banners/promotions/${promotionId}`, {
+    return apiClient(`/banners/promotions/${promotionId}?type=banner`, {
+        method: 'DELETE',
+    });
+}
+
+export async function deleteMyOfferPromotion(promotionId) {
+    const response = await apiClient(`/banners/promotions/${promotionId}?type=offer`, {
+        method: 'DELETE',
+    });
+    forgetOfferPromotionId(promotionId);
+    return response;
+}
+
+/**
+ * Save merchant offer template in backend cache (Redis)
+ */
+export async function saveMyOfferTemplate(payload) {
+    return apiClient('/banners/promotions/template/save', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+    });
+}
+
+/**
+ * Get merchant offer template from backend cache (Redis)
+ */
+export async function getMyOfferTemplate() {
+    return apiClient('/banners/promotions/template');
+}
+
+/**
+ * Clear merchant offer template from backend cache (Redis)
+ */
+export async function clearMyOfferTemplate() {
+    return apiClient('/banners/promotions/template', {
         method: 'DELETE',
     });
 }

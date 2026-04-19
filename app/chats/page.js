@@ -93,7 +93,7 @@ export default function ChatsPage() {
 function ChatsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const { isLoading, isAuthorized } = useRoleProtection("user");
 
   const [conversations, setConversations] = useState([]);

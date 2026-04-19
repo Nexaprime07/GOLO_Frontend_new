@@ -36,6 +36,7 @@ export default function MerchantAnalyticsPage() {
   const [topPages, setTopPages] = useState([]);
   const [eventStats, setEventStats] = useState({ registrations: 0, listingsPosted: 0, transactions: 0 });
   const [monthlyTrend, setMonthlyTrend] = useState([120, 220, 260, 280, 310, 390, 420]);
+  const [loadError, setLoadError] = useState("");
   const [ageRows, setAgeRows] = useState([
     { label: "18-24", male: 40, female: 60, total: "3.3%" },
     { label: "25-34", male: 54, female: 46, total: "12.7%" },
@@ -64,7 +65,16 @@ export default function MerchantAnalyticsPage() {
     const loadAnalytics = async () => {
       if (!user || user.accountType !== "merchant") return;
       try {
-        const [deviceRes, regionRes, pagesRes, eventsRes, dashboardRes, orderStatsRes] = await Promise.all([
+        setLoadError("");
+
+        const [
+          deviceResult,
+          regionResult,
+          pagesResult,
+          eventsResult,
+          dashboardResult,
+          orderStatsResult,
+        ] = await Promise.allSettled([
           getAnalyticsDeviceBreakdown(),
           getAnalyticsTopRegions(),
           getAnalyticsTopPages(),
@@ -72,6 +82,13 @@ export default function MerchantAnalyticsPage() {
           getMerchantDashboardSummary(),
           getMerchantOrderStats(),
         ]);
+
+        const deviceRes = deviceResult.status === "fulfilled" ? deviceResult.value : null;
+        const regionRes = regionResult.status === "fulfilled" ? regionResult.value : null;
+        const pagesRes = pagesResult.status === "fulfilled" ? pagesResult.value : null;
+        const eventsRes = eventsResult.status === "fulfilled" ? eventsResult.value : null;
+        const dashboardRes = dashboardResult.status === "fulfilled" ? dashboardResult.value : null;
+        const orderStatsRes = orderStatsResult.status === "fulfilled" ? orderStatsResult.value : null;
 
         if (deviceRes?.data) {
           setDeviceData({
@@ -121,8 +138,12 @@ export default function MerchantAnalyticsPage() {
           });
           setAgeRows(generated);
         }
+
+        if (orderStatsResult.status === "rejected") {
+          setLoadError("Order statistics are temporarily unavailable.");
+        }
       } catch (err) {
-        console.error("Failed to load analytics data:", err);
+        setLoadError("Failed to load analytics data.");
       }
     };
 
@@ -152,6 +173,12 @@ export default function MerchantAnalyticsPage() {
       <main className="w-full px-8 lg:px-10 py-6">
         <div className="mx-auto w-full max-w-[1400px] space-y-4">
           <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-4">
+            {loadError ? (
+              <div className="lg:col-span-2 rounded-[10px] border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] text-amber-900">
+                {loadError}
+              </div>
+            ) : null}
+
             <div className="rounded-[12px] border border-[#dddddd] bg-white p-4">
               <div className="flex items-start justify-between">
                 <div>

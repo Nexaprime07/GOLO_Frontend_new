@@ -27,14 +27,6 @@ export default function MerchantProductsPage() {
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState("");
 
-  if (isLoading) {
-    return <LoadingScreen />;
-  }
-
-  if (!isAuthorized) {
-    return null;
-  }
-
   const handleMerchantLogout = async () => {
     await logout();
     router.push("/login");
@@ -92,6 +84,14 @@ export default function MerchantProductsPage() {
     const value = Number(stats?.inventoryValue || 0);
     return `Rs ${Math.round(value).toLocaleString("en-IN")}`;
   }, [stats?.inventoryValue]);
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (!isAuthorized) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-[#ececec] text-[#1b1b1b]" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>

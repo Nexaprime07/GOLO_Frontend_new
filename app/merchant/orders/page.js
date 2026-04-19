@@ -20,6 +20,7 @@ export default function MerchantOrdersPage() {
   const [orders, setOrders] = useState([]);
   const [stats, setStats] = useState({ todayOrders: 0, totalRevenue: 0 });
   const [pageLoading, setPageLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   const filteredOrders = useMemo(() => {
     if (activeTab === "all") return orders;
@@ -59,6 +60,7 @@ export default function MerchantOrdersPage() {
       if (!user || user.accountType !== "merchant") return;
       try {
         setPageLoading(true);
+        setLoadError("");
         const [ordersRes, statsRes] = await Promise.all([
           getMerchantOrders({ status: activeTab === "all" ? "all" : activeTab, page: 1, limit: 30 }),
           getMerchantOrderStats(),
@@ -66,7 +68,9 @@ export default function MerchantOrdersPage() {
         setOrders((ordersRes?.data || []).map(formatOrderForUi));
         setStats(statsRes?.data || { todayOrders: 0, totalRevenue: 0 });
       } catch (err) {
-        console.error("Failed to load orders:", err);
+        setOrders([]);
+        setStats({ todayOrders: 0, totalRevenue: 0 });
+        setLoadError(err?.status === 404 ? "Orders service is not available yet." : "Failed to load orders.");
       } finally {
         setPageLoading(false);
       }
@@ -80,7 +84,7 @@ export default function MerchantOrdersPage() {
       await updateMerchantOrderStatus(orderId, status);
       await loadOrders(activeTab);
     } catch (err) {
-      console.error("Failed to update order status:", err);
+      setLoadError(err?.status === 404 ? "Order update service is not available yet." : "Failed to update order status.");
     }
   };
 
@@ -139,6 +143,12 @@ export default function MerchantOrdersPage() {
           </section>
 
           <section className="rounded-[12px] border border-[#e5e5e5] bg-[#f9f9f9] px-5 py-4 shadow-[0_1px_0_rgba(0,0,0,0.03)]">
+            {loadError ? (
+              <div className="mb-4 rounded-[10px] border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] text-amber-900">
+                {loadError}
+              </div>
+            ) : null}
+
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="inline-flex rounded-[10px] border border-[#e1e1e1] bg-white p-1 shadow-[0_1px_0_rgba(0,0,0,0.02)]">
                 <button

@@ -86,6 +86,10 @@ export default function MerchantQRScannerPage() {
             }));
           }
         } catch (err) {
+          if (err?.status === 404 && err?.data?.message === "Voucher not found") {
+            return;
+          }
+
           console.error("Failed to generate verification code:", err);
         }
       }

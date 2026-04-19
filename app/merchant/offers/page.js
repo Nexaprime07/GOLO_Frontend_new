@@ -6,9 +6,9 @@ import { Plus, Search } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import MerchantNavbar from "../MerchantNavbar";
 import {
-  deleteMyBannerPromotion,
-  getMyBannerPromotions,
-  updateMyBannerPromotion,
+  deleteMyOfferPromotion,
+  getMyOfferPromotions,
+  updateMyOfferPromotion,
 } from "../../lib/api";
 
 const OFFER_CATEGORIES = [
@@ -18,6 +18,27 @@ const OFFER_CATEGORIES = [
   "Combo",
   "Clearance",
 ];
+
+function buildSelectedDates(startDate, endDate) {
+  if (!startDate) return [];
+
+  const start = new Date(startDate);
+  const end = new Date(endDate || startDate);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return [];
+
+  const dates = [];
+  const cursor = new Date(start);
+  let guard = 0;
+
+  while (cursor <= end && guard < 366) {
+    dates.push(cursor.toISOString().slice(0, 10));
+    cursor.setDate(cursor.getDate() + 1);
+    guard += 1;
+  }
+
+  return dates;
+}
 
 function toDateInputValue(dateValue) {
   if (!dateValue) return "";
@@ -50,7 +71,7 @@ export default function MerchantOffersPage() {
     try {
       setPageLoading(true);
       setError("");
-      const res = await getMyBannerPromotions();
+      const res = await getMyOfferPromotions();
       setOffers(Array.isArray(res?.data) ? res.data : []);
     } catch (err) {
       setError(err?.message || "Failed to load offers");
@@ -133,23 +154,20 @@ export default function MerchantOffersPage() {
       return;
     }
 
-    const totalPrice = Number(formData.totalPrice || 0);
-    if (Number.isNaN(totalPrice) || totalPrice < 0) {
-      setFormError("Offer value must be 0 or more.");
-      return;
-    }
-
     setFormSubmitting(true);
     try {
       setError("");
       if (editingOfferId) {
-        await updateMyBannerPromotion(editingOfferId, {
+        const selectedDates = buildSelectedDates(
+          formData.startDate,
+          formData.endDate || formData.startDate,
+        );
+
+        await updateMyOfferPromotion(editingOfferId, {
           bannerTitle: title,
           bannerCategory: formData.category,
           imageUrl: formData.imageUrl.trim(),
-          startDate: formData.startDate,
-          endDate: formData.endDate || formData.startDate,
-          totalPrice,
+          selectedDates,
         });
       }
 
@@ -165,7 +183,7 @@ export default function MerchantOffersPage() {
   const onDeleteOffer = async (offer) => {
     if (!window.confirm(`Delete offer \"${offer.bannerTitle}\"?`)) return;
     try {
-      await deleteMyBannerPromotion(offer.requestId);
+      await deleteMyOfferPromotion(offer.requestId);
       await loadOffers();
     } catch (err) {
       setError(err?.message || "Failed to delete offer");
