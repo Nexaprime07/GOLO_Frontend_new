@@ -62,8 +62,8 @@ function NavbarContent({
   const homeNavHref = "/choja";
   const primaryNavLabel = useGolocalHomeNav ? "My Deals" : "Post Your Ad";
   const primaryNavHref = useGolocalHomeNav ? "/my-deals" : "/post-ad";
-  const secondaryNavLabel = useGolocalHomeNav ? "Favorites" : "Chats";
-  const secondaryNavHref = useGolocalHomeNav ? "/wishlist" : "/chats";
+  const secondaryNavLabel = useGolocalHomeNav ? "Nearby Deals" : "Chats";
+  const secondaryNavHref = useGolocalHomeNav ? "/nearby-deals" : "/chats";
 
   const locations = [
     { city: "Kolhapur", state: "Maharashtra" },
@@ -341,7 +341,7 @@ function NavbarContent({
         {/* RIGHT SIDE */}
         <div className="flex items-center gap-8 min-w-[260px] justify-end">
 
-          <nav className="hidden md:flex gap-6 text-sm font-semibold text-[#5a4514]">
+          <nav className="hidden md:flex gap-6 text-sm font-semibold text-white">
             <Link href={homeNavHref} className="hover:opacity-80 transition">
               Home
             </Link>
