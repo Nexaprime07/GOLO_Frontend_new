@@ -6,6 +6,7 @@ import { Suspense, useEffect, useState } from "react";
 import { CircleHelp, Download, MapPin, Share2, Star, Ticket, Copy, Check } from "lucide-react";
 import { useVoucher } from "../../../context/VoucherContext";
 import { useAuth } from "../../../context/AuthContext";
+import { getPublicVoucherStatus, submitOfferReview } from "../../../lib/api";
 import Navbar from "../../../components/Navbar";
 import Footer from "../../../components/Footer";
 
@@ -65,11 +66,18 @@ function ClaimedOfferContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
-  const { selectedVoucher, fetchVoucherDetails, downloadQR, shareVoucherHandler, error, loading } = useVoucher();
+  const { selectedVoucher, setSelectedVoucher, fetchVoucherDetails, downloadQR, shareVoucherHandler, loading } = useVoucher();
   const [isSharing, setIsSharing] = useState(false);
   const [shareEmail, setShareEmail] = useState("");
   const [shareMessage, setShareMessage] = useState("");
   const [codeCopied, setCodeCopied] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
+  const [voucherAccessRestricted, setVoucherAccessRestricted] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewFeedback, setReviewFeedback] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [reviewMessage, setReviewMessage] = useState("");
 
   const voucherId = searchParams.get("voucherId");
 
@@ -82,10 +90,85 @@ function ClaimedOfferContent() {
 
   // Fetch voucher details on mount
   useEffect(() => {
-    if (voucherId && user) {
-      fetchVoucherDetails(voucherId).catch(err => console.error("Failed to fetch voucher:", err));
+    if (!voucherId || !user) {
+      return;
     }
-  }, [voucherId, user, fetchVoucherDetails]);
+
+    const selectedVoucherMatches =
+      selectedVoucher?._id === voucherId || selectedVoucher?.voucherId === voucherId;
+
+    if (selectedVoucherMatches) {
+      setVoucherAccessRestricted(false);
+      return;
+    }
+
+    fetchVoucherDetails(voucherId)
+      .then(() => setVoucherAccessRestricted(false))
+      .catch((err) => {
+        const message = err?.message || err?.data?.message || "";
+
+        if (message.includes("You do not have access to this voucher")) {
+          setVoucherAccessRestricted(true);
+          return;
+        }
+
+        console.error("Failed to fetch voucher:", err);
+      });
+  }, [voucherId, user, selectedVoucher?._id, selectedVoucher?.voucherId, fetchVoucherDetails]);
+
+  useEffect(() => {
+    if (!voucherId || selectedVoucher?.status === "redeemed") {
+      return;
+    }
+
+    const syncVoucherStatus = async () => {
+      try {
+        const response = await getPublicVoucherStatus(voucherId);
+        const publicStatus = response?.data?.status;
+
+        if (publicStatus === "redeemed") {
+          const redeemedAt = response?.data?.redeemedAt || null;
+          const resolvedVoucherId = response?.data?._id || voucherId;
+
+          try {
+            const detailResponse = await fetchVoucherDetails(resolvedVoucherId);
+            if (detailResponse?.data?.status === "redeemed") {
+              return;
+            }
+          } catch {
+          }
+
+          setSelectedVoucher((prev) => ({
+            ...(prev || {}),
+            _id: response?.data?._id || prev?._id || voucherId,
+            voucherId: response?.data?.voucherId || prev?.voucherId,
+            status: "redeemed",
+            redeemedAt,
+          }));
+        }
+      } catch {
+      }
+    };
+
+    syncVoucherStatus();
+
+    const intervalId = setInterval(syncVoucherStatus, 4000);
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        syncVoucherStatus();
+      }
+    };
+
+    window.addEventListener("focus", syncVoucherStatus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener("focus", syncVoucherStatus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [voucherId, selectedVoucher?.status, fetchVoucherDetails, setSelectedVoucher]);
 
   const handleDownloadQR = async () => {
     try {
@@ -159,11 +242,170 @@ function ClaimedOfferContent() {
 
     try {
       await navigator.clipboard.writeText(selectedVoucher.verificationCode);
+      setCodeCopied(true);
       setTimeout(() => setCodeCopied(false), 2000);
     } catch (err) {
       console.error("Failed to copy code:", err);
     }
   };
+
+  const handleReviewSubmit = async () => {
+    if (reviewSubmitting || reviewSubmitted) {
+      return;
+    }
+
+    if (!reviewFeedback.trim()) {
+      setReviewMessage("Please share a short feedback note before submitting.");
+      return;
+    }
+
+    const resolvedVoucherId = selectedVoucher?._id || voucherId;
+    if (!resolvedVoucherId) {
+      setReviewMessage("Voucher information is missing. Please refresh and try again.");
+      return;
+    }
+
+    try {
+      setReviewSubmitting(true);
+      setReviewMessage("");
+      await submitOfferReview(resolvedVoucherId, {
+        rating: reviewRating,
+        content: reviewFeedback.trim(),
+      });
+      setReviewSubmitted(true);
+      setReviewMessage("Your rating and feedback have been saved.");
+      setRedirecting(true);
+      router.push("/nearby-deals");
+    } catch (err) {
+      setReviewMessage(err?.data?.message || err?.message || "Failed to submit feedback.");
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
+  if (selectedVoucher?.status === "redeemed") {
+    return (
+      <main className="min-h-screen bg-[#f3f3f3]">
+        <Navbar />
+
+        <div className="mx-auto flex max-w-[820px] px-6 py-20">
+          <section className="w-full rounded-[20px] border border-[#d8dce3] bg-white px-8 py-14 text-center shadow-[0_10px_30px_rgba(16,24,40,0.08)]">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#e9f8ef]">
+              <Check size={36} className="text-[#1e9a5c]" />
+            </div>
+
+            <h1 className="mt-6 text-[34px] font-bold leading-none text-[#1e2228]">
+              Thank you for redeeming
+            </h1>
+            <p className="mt-4 text-[15px] leading-7 text-[#66707b]">
+              Your voucher has been successfully redeemed by the merchant. Please share your feedback and rating to continue.
+            </p>
+
+            <div className="mx-auto mt-8 max-w-[540px] rounded-[18px] border border-[#e3e7ec] bg-[#f9fbfc] px-5 py-5 text-left">
+              <p className="text-[18px] font-bold text-[#1e2228]">Rate this offer</p>
+              <p className="mt-1 text-[13px] leading-6 text-[#66707b]">
+                Your feedback will appear on this offer page to help other users choose better deals.
+              </p>
+
+              <div className="mt-4 flex items-center gap-2">
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => {
+                      if (!reviewSubmitted) {
+                        setReviewRating(value);
+                      }
+                    }}
+                    className="rounded-full p-1 transition hover:scale-105 disabled:cursor-not-allowed"
+                    disabled={reviewSubmitted}
+                    aria-label={`Rate ${value} star${value > 1 ? "s" : ""}`}
+                  >
+                    <Star
+                      size={24}
+                      className={value <= reviewRating ? "text-[#f4ba34]" : "text-[#cfd6df]"}
+                      fill={value <= reviewRating ? "#f4ba34" : "none"}
+                    />
+                  </button>
+                ))}
+                <span className="ml-2 text-[13px] font-semibold text-[#44505c]">
+                  {reviewRating}/5
+                </span>
+              </div>
+
+              <textarea
+                value={reviewFeedback}
+                onChange={(event) => setReviewFeedback(event.target.value)}
+                disabled={reviewSubmitted}
+                rows={4}
+                placeholder="Tell others how your experience was with this offer."
+                className="mt-4 w-full rounded-[14px] border border-[#d8dce3] bg-white px-4 py-3 text-[14px] text-[#1e2228] outline-none transition focus:border-[#1e9a5c] focus:ring-2 focus:ring-[#d7f2e4] disabled:bg-[#f3f5f7]"
+              />
+
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-[12px] text-[#7b8590]">
+                  You will be redirected to nearby deals after you submit your review.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleReviewSubmit}
+                  disabled={reviewSubmitting || reviewSubmitted}
+                  className="inline-flex items-center justify-center rounded-[12px] bg-[#1e9a5c] px-5 py-3 text-[14px] font-semibold text-white transition hover:bg-[#18824e] disabled:bg-[#a7afb8]"
+                >
+                  {reviewSubmitting ? "Submitting..." : reviewSubmitted ? "Review Submitted" : "Submit Review"}
+                </button>
+              </div>
+
+              {reviewMessage ? (
+                <p className={`mt-3 text-[12px] font-medium ${reviewSubmitted ? "text-[#1e9a5c]" : "text-[#b45309]"}`}>
+                  {reviewMessage}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="mx-auto mt-6 w-fit rounded-full bg-[#f4f7f9] px-4 py-2 text-[12px] font-semibold text-[#5b6672]">
+              {redirecting ? "Redirecting to nearby deals..." : "Redemption completed - waiting for your feedback"}
+            </div>
+          </section>
+        </div>
+
+        <Footer />
+      </main>
+    );
+  }
+
+  if (voucherAccessRestricted && !selectedVoucher) {
+    return (
+      <main className="min-h-screen bg-[#f3f3f3]">
+        <Navbar />
+
+        <div className="mx-auto flex max-w-[820px] px-6 py-20">
+          <section className="w-full rounded-[20px] border border-[#d8dce3] bg-white px-8 py-14 text-center shadow-[0_10px_30px_rgba(16,24,40,0.08)]">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#fff4e8]">
+              <Ticket size={36} className="text-[#d07a1d]" />
+            </div>
+
+            <h1 className="mt-6 text-[34px] font-bold leading-none text-[#1e2228]">
+              Voucher not available in this account
+            </h1>
+            <p className="mt-4 text-[15px] leading-7 text-[#66707b]">
+              This voucher belongs to a different logged-in account. If the merchant redeems it, this page will still update automatically when the public status changes.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => router.push("/nearby-deals")}
+              className="mt-8 inline-flex items-center justify-center rounded-[12px] bg-[#1e9a5c] px-5 py-3 text-[14px] font-semibold text-white transition hover:bg-[#18824e]"
+            >
+              Back to Nearby Deals
+            </button>
+          </section>
+        </div>
+
+        <Footer />
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[#f3f3f3]">
@@ -193,8 +435,17 @@ function ClaimedOfferContent() {
             </div>
 
             <div className="px-6 pb-7 pt-6 text-center">
-              <div className="mx-auto flex h-[232px] w-[232px] items-center justify-center">
-                <QrPattern />
+              <div className="mx-auto flex h-[232px] w-[232px] items-center justify-center rounded-[18px] border border-[#d8dce3] bg-white p-4 shadow-[0_6px_18px_rgba(16,24,40,0.05)]">
+                {selectedVoucher?.qrImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={selectedVoucher.qrImage}
+                    alt={`QR code for ${selectedVoucher?.offerTitle || "claimed offer"}`}
+                    className="h-[164px] w-[164px] object-contain"
+                  />
+                ) : (
+                  <QrPattern />
+                )}
               </div>
 
               <p className="mt-1 text-[16px] font-medium text-[#1e2228]">Scan this QR at the store to redeem the offer</p>
@@ -279,7 +530,7 @@ function ClaimedOfferContent() {
               </div>
 
               <button
-                onClick={() => router.push("/nearby-deals/store")}
+                onClick={() => router.push(`/nearby-deals/store?merchantId=${selectedVoucher?.merchantId || ''}`)}
                 className="mt-4 h-10 w-full rounded-[8px] border border-[#e8b038] bg-[#f7ebcf] text-[12px] font-semibold text-[#8f6515] transition-colors hover:bg-[#f3dfb2]"
               >
                 View Store

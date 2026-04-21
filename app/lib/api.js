@@ -31,7 +31,7 @@ export async function submitUserReport(userId, reason, description) {
 // ============================================================
 
 const RAW_API_URL = process.env.NEXT_PUBLIC_API_URL?.trim();
-const BASE_URL = RAW_API_URL && !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(RAW_API_URL)
+const BASE_URL = RAW_API_URL
     ? RAW_API_URL.replace(/\/$/, '')
     : '/api';
 const PUBLIC_AUTH_ENDPOINTS = new Set([
@@ -108,17 +108,31 @@ export async function apiClient(endpoint, options = {}) {
 }
 
 async function handleResponse(response) {
+    const contentType = response.headers.get('content-type') || '';
     let data = null;
+    let rawText = '';
+
     try {
-        data = await response.json();
+        if (contentType.includes('application/json')) {
+            data = await response.json();
+        } else {
+            rawText = await response.text();
+        }
     } catch {
         data = null;
     }
 
     if (!response.ok) {
-        const error = new Error(data?.message || 'API request failed');
+        const fallbackMessage = rawText
+            ? rawText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200)
+            : '';
+        const error = new Error(
+            data?.message ||
+            fallbackMessage ||
+            `API request failed (${response.status})`
+        );
         error.status = response.status;
-        error.data = data;
+        error.data = data || (rawText ? { message: fallbackMessage || rawText } : null);
         throw error;
     }
 
@@ -1075,6 +1089,20 @@ export async function getMerchantStoreLocation() {
     return apiClient('/merchant/store-location');
 }
 
+export async function getPublicMerchantProfile(merchantId) {
+    return apiClient(`/merchant/public/${merchantId}/profile`);
+}
+
+export async function getPublicMerchantStoreLocation(merchantId) {
+    return apiClient(`/merchant/public/${merchantId}/store-location`);
+}
+
+export async function getPublicMerchantProducts(merchantId, { page = 1, limit = 10, search = '' } = {}) {
+    const params = new URLSearchParams({ page, limit });
+    if (search) params.append('search', search);
+    return apiClient(`/merchant/products/public/${merchantId}?${params.toString()}`);
+}
+
 /**
  * Update merchant profile information
  * @param {Object} profileData - Merchant profile data to update
@@ -1117,7 +1145,15 @@ export async function getMyVouchers({ page = 1, limit = 10, status } = {}) {
  * @param {string} voucherId - The voucher ID
  */
 export async function getVoucherById(voucherId) {
-    return apiClient(`/vouchers/${voucherId}`);
+    return apiClient(`/vouchers/${voucherId}`, {
+        cache: 'no-store',
+    });
+}
+
+export async function getPublicVoucherStatus(voucherId) {
+    return apiClient(`/vouchers/public/${voucherId}/status`, {
+        cache: 'no-store',
+    });
 }
 
 /**
@@ -1311,6 +1347,29 @@ export async function updateMerchantReviewStatus(reviewId, status, response = ''
     return apiClient(`/merchant/reviews/${reviewId}/status`, {
         method: 'PUT',
         body: JSON.stringify({ status, response }),
+    });
+}
+
+/**
+ * Get public reviews for an offer
+ * @param {string} offerId - Offer ID
+ * @param {object} params - {page, limit}
+ */
+export async function getOfferReviews(offerId, { page = 1, limit = 10 } = {}) {
+    return apiClient(`/reviews/offers/${offerId}?page=${page}&limit=${limit}`, {
+        cache: 'no-store',
+    });
+}
+
+/**
+ * Submit or update a redeemed-offer review
+ * @param {string} voucherId - Voucher ID or voucher code id
+ * @param {object} payload - {rating, content}
+ */
+export async function submitOfferReview(voucherId, payload) {
+    return apiClient(`/reviews/vouchers/${voucherId}`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
     });
 }
 
