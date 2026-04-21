@@ -115,23 +115,17 @@ export default function FormSidebar({
       // 1) First upload all files to Cloudinary
       const uploadedUrls = [];
       if (uploadedImages && uploadedImages.length > 0) {
+        // Import Cloudinary utility for secure configuration
+        const { uploadToCloudinary } = await import('../services/cloudinaryConfig');
+        
         for (const img of uploadedImages) {
           if (img.file) {
-            const formData = new FormData();
-            formData.append("file", img.file);
-            formData.append("upload_preset", "choja_preset"); // We will create this in the next step
-            formData.append("cloud_name", "dcm1plq42");
-
-            const uploadRes = await fetch(
-              `https://api.cloudinary.com/v1_1/dcm1plq42/image/upload`,
-              {
-                method: "POST",
-                body: formData,
-              }
-            );
-            const uploadData = await uploadRes.json();
-            if (uploadData.secure_url) {
-              uploadedUrls.push(uploadData.secure_url);
+            try {
+              const uploadedData = await uploadToCloudinary(img.file);
+              uploadedUrls.push(uploadedData.url);
+            } catch (error) {
+              console.error('Failed to upload image:', error);
+              // Continue with other images even if one fails
             }
           } else if (typeof img === "string") {
             uploadedUrls.push(img);

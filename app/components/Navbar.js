@@ -62,8 +62,8 @@ function NavbarContent({
   const homeNavHref = "/choja";
   const primaryNavLabel = useGolocalHomeNav ? "My Deals" : "Post Your Ad";
   const primaryNavHref = useGolocalHomeNav ? "/my-deals" : "/post-ad";
-  const secondaryNavLabel = useGolocalHomeNav ? "Favorites" : "Chats";
-  const secondaryNavHref = useGolocalHomeNav ? "/wishlist" : "/chats";
+  const secondaryNavLabel = useGolocalHomeNav ? "Nearby Deals" : "Chats";
+  const secondaryNavHref = useGolocalHomeNav ? "/nearby-deals" : "/chats";
 
   const locations = [
     { city: "Kolhapur", state: "Maharashtra" },
@@ -218,11 +218,11 @@ function NavbarContent({
         >
           <div
             className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow font-bold"
-            style={{ color: "var(--color-primary)" }}
+            style={{ color: "#157A4F" }}
           >
             G
           </div>
-          <span className="text-xl font-semibold tracking-wide text-[#5a4514]">
+          <span className="text-xl font-semibold tracking-wide text-white">
             GOLO
           </span>
         </Link>
@@ -341,7 +341,7 @@ function NavbarContent({
         {/* RIGHT SIDE */}
         <div className="flex items-center gap-8 min-w-[260px] justify-end">
 
-          <nav className="hidden md:flex gap-6 text-sm font-semibold text-[#5a4514]">
+          <nav className="hidden md:flex gap-6 text-sm font-semibold text-white">
             <Link href={homeNavHref} className="hover:opacity-80 transition">
               Home
             </Link>
@@ -363,7 +363,7 @@ function NavbarContent({
                   type="button"
                   onClick={handleNotifBellClick}
                   className="relative w-9 h-9 rounded-full flex items-center justify-center bg-white shadow-md hover:scale-105 transition"
-                  style={{ color: "var(--color-primary)" }}
+                  style={{ color: "#157A4F" }}
                   aria-label="Notifications"
                 >
                   <Bell size={18} />
@@ -430,7 +430,7 @@ function NavbarContent({
               >
                 <div
                   className="w-9 h-9 rounded-full flex items-center justify-center shadow-md hover:scale-105 transition bg-white"
-                  style={{ color: "var(--color-primary)" }}
+                  style={{ color: "#157A4F" }}
                 >
                   {user?.name ? (
                     <span className="text-sm font-bold">
@@ -540,11 +540,11 @@ function NavbarContent({
               type="button"
               onClick={() => router.push(`/login?redirect=${encodeURIComponent(pathname || "/")}`)}
               className="w-9 h-9 rounded-full flex items-center justify-center shadow-md hover:scale-105 transition cursor-pointer bg-white"
-              style={{ color: "var(--color-primary)" }}
+              style={{ color: "#157A4F" }}
             >
               <div
                 className="w-9 h-9 rounded-full flex items-center justify-center shadow-md hover:scale-105 transition cursor-pointer bg-white"
-                style={{ color: "var(--color-primary)" }}
+                style={{ color: "#157A4F" }}
               >
                 <User size={18} />
               </div>

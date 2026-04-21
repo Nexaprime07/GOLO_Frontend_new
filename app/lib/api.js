@@ -901,37 +901,9 @@ export async function uploadChatAttachment(file) {
         throw new Error('No file selected');
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-        throw new Error('Attachment is too large. Maximum size is 10MB.');
-    }
-
-    const mimeType = file.type || 'application/octet-stream';
-    const isImage = mimeType.startsWith('image/');
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', 'choja_preset');
-    formData.append('cloud_name', 'dcm1plq42');
-
-    const resourceType = isImage ? 'image' : 'auto';
-
-    const uploadResponse = await fetch(`https://api.cloudinary.com/v1_1/dcm1plq42/${resourceType}/upload`, {
-        method: 'POST',
-        body: formData,
-    });
-
-    const uploadData = await uploadResponse.json();
-    if (!uploadResponse.ok || !uploadData?.secure_url) {
-        throw new Error(uploadData?.error?.message || 'Attachment upload failed');
-    }
-
-    return {
-        name: file.name,
-        mimeType,
-        size: file.size,
-        type: isImage ? 'image' : 'file',
-        url: uploadData.secure_url,
-    };
+    // Use the secure Cloudinary utility with environment variables
+    const { uploadToCloudinary } = await import('../services/cloudinaryConfig');
+    return uploadToCloudinary(file);
 }
 
 export async function deleteConversation(conversationId) {
