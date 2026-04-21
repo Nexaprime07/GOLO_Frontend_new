@@ -250,8 +250,11 @@ export default function MerchantQRScannerPage() {
       }
     } catch (err) {
       setVerificationStatus("invalid");
-      setScanError(err.data?.message || "Failed to verify voucher");
-      console.error("Scan processing error:", err);
+      const message = err?.data?.message || "Failed to verify voucher";
+      setScanError(message);
+      if (err?.status !== 403) {
+        console.error("Scan processing error:", err);
+      }
     }
   };
 

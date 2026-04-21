@@ -30,7 +30,10 @@ export async function submitUserReport(userId, reason, description) {
 // Centralized API Layer — Choja Frontend → ads-microservice
 // ============================================================
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3002');
+const RAW_API_URL = process.env.NEXT_PUBLIC_API_URL?.trim();
+const BASE_URL = RAW_API_URL && !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(RAW_API_URL)
+    ? RAW_API_URL.replace(/\/$/, '')
+    : '/api';
 const PUBLIC_AUTH_ENDPOINTS = new Set([
     '/users/login',
     '/users/register',
@@ -568,7 +571,7 @@ export async function getActiveHomepageBanners(limit = 5) {
     return apiClient(`/banners/promotions/active?limit=${limit}`);
 }
 
-const LOCAL_BACKEND_URL = 'http://localhost:3002';
+const LOCAL_BACKEND_URL = '/api';
 let nearbyOffersRouteMissingOnPrimary = false;
 const NEARBY_OFFERS_PRIMARY_UNSUPPORTED_KEY = 'golo_nearby_offers_primary_unsupported';
 

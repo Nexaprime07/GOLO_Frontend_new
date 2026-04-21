@@ -4,6 +4,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002';
 
 const nextConfig = {
   reactCompiler: true,
+  distDir: '.next',
   images: {
     remotePatterns: [
       {
