@@ -603,6 +603,11 @@ export async function submitBannerPromotionRequest(payload) {
 
 export async function submitOfferPromotionRequest(payload) {
     const enrichedPayload = { ...payload, promotionType: 'offer' };
+    
+    // Generate idempotency key if not provided (prevents duplicate submissions on retry)
+    if (!enrichedPayload.idempotencyKey) {
+        enrichedPayload.idempotencyKey = crypto.randomUUID?.() || 'key-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    }
 
     try {
         const response = await apiClient('/offers/request', {
