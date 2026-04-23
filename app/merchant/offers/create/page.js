@@ -7,6 +7,7 @@ import { useAuth } from "../../../context/AuthContext";
 import MerchantNavbar from "../../MerchantNavbar";
 import {
   clearMyOfferTemplate,
+  getMerchantStoreLocation,
   getMyOfferTemplate,
   getMerchantProducts,
   saveMyOfferTemplate,
@@ -74,6 +75,7 @@ export default function CreateMerchantOfferPage() {
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [storeLocationReady, setStoreLocationReady] = useState(true);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
@@ -117,15 +119,7 @@ export default function CreateMerchantOfferPage() {
     }
   };
 
-  const readLocalTemplate = () => {
-    try {
-      const savedTemplate = localStorage.getItem(OFFER_TEMPLATE_LOCAL_KEY);
-      if (!savedTemplate) return null;
-      return JSON.parse(savedTemplate);
-    } catch {
-      return null;
-    }
-  };
+  // No localStorage fallback: rely on backend template API for persistence
 
   const loadMerchantProducts = async () => {
     try {
@@ -163,6 +157,24 @@ export default function CreateMerchantOfferPage() {
   };
 
   useEffect(() => {
+    const verifyMerchantLocation = async () => {
+      try {
+        const response = await getMerchantStoreLocation();
+        const latitude = Number(response?.data?.latitude);
+        const longitude = Number(response?.data?.longitude);
+        const hasCoordinates =
+          Number.isFinite(latitude) &&
+          Number.isFinite(longitude) &&
+          latitude >= -90 &&
+          latitude <= 90 &&
+          longitude >= -180 &&
+          longitude <= 180;
+        setStoreLocationReady(hasCoordinates);
+      } catch {
+        setStoreLocationReady(false);
+      }
+    };
+
     if (!loading && !user) {
       router.replace("/login?redirect=/merchant/offers/create");
       return;
@@ -175,6 +187,7 @@ export default function CreateMerchantOfferPage() {
 
     if (!loading && user?.accountType === "merchant") {
       loadMerchantProducts();
+      verifyMerchantLocation();
 
       (async () => {
         let apiDisabled = false;
@@ -183,32 +196,15 @@ export default function CreateMerchantOfferPage() {
         } catch {
         }
 
-        if (apiDisabled) {
-          setTemplateApiAvailable(false);
-          const localTemplate = readLocalTemplate();
-          applyTemplate(localTemplate);
-          return;
-        }
-
         try {
           const templateRes = await getMyOfferTemplate();
           const template = templateRes?.data;
           setTemplateApiAvailable(true);
-          try {
-            localStorage.removeItem(OFFER_TEMPLATE_API_DISABLED_KEY);
-          } catch {
-          }
           applyTemplate(template);
         } catch (err) {
           if (err?.status === 404) {
             setTemplateApiAvailable(false);
-            try {
-              localStorage.setItem(OFFER_TEMPLATE_API_DISABLED_KEY, "1");
-            } catch {
-            }
           }
-          const localTemplate = readLocalTemplate();
-          applyTemplate(localTemplate);
         }
       })();
     }
@@ -384,41 +380,26 @@ export default function CreateMerchantOfferPage() {
       selectedProducts,
     };
 
-    try {
-      localStorage.setItem(OFFER_TEMPLATE_LOCAL_KEY, JSON.stringify(templatePayload));
-    } catch {
-    }
-
     if (!templateApiAvailable) {
-      setSuccessMessage("Template saved successfully.");
-      setError("");
+      setError('Template API unavailable. Please try again later.');
       return;
     }
 
     try {
       await saveMyOfferTemplate(templatePayload);
-      try {
-        localStorage.removeItem(OFFER_TEMPLATE_API_DISABLED_KEY);
-      } catch {
-      }
-      setSuccessMessage("Template saved successfully.");
-      setError("");
+      setSuccessMessage('Template saved successfully.');
+      setError('');
     } catch (err) {
-      if (err?.status === 404) {
-        setTemplateApiAvailable(false);
-        try {
-          localStorage.setItem(OFFER_TEMPLATE_API_DISABLED_KEY, "1");
-        } catch {
-        }
-        setSuccessMessage("Template saved locally. Backend template API not available.");
-        setError("");
-        return;
-      }
-      setError("Failed to save template.");
+      setError('Failed to save template.');
     }
   };
 
   const validateBeforeSubmit = () => {
+    if (!storeLocationReady) {
+      setError("Please set your store location on map in Merchant Profile before publishing offers.");
+      return false;
+    }
+
     const title = formData.title.trim();
     if (!title) {
       setError("Offer title is required.");
@@ -484,8 +465,8 @@ export default function CreateMerchantOfferPage() {
 
     try {
       await submitOfferPromotionRequest({
-        bannerTitle: formData.title.trim(),
-        bannerCategory: formData.category,
+        title: formData.title.trim(),
+        category: formData.category,
         imageUrl: formData.imageUrl.trim(),
         selectedDates,
         totalPrice: totalOfferValue,
@@ -538,6 +519,12 @@ export default function CreateMerchantOfferPage() {
 
       <main className="w-full px-4 md:px-8 lg:px-10 py-6">
         <div className="mx-auto w-full max-w-[1180px] space-y-5">
+          {!storeLocationReady ? (
+            <div className="rounded-[10px] border border-[#f5d2c4] bg-[#fff7f3] px-4 py-3 text-[12px] text-[#a1431d]">
+              Store coordinates are missing. Update your store location from map in Merchant Profile to enable nearby deals for customers.
+            </div>
+          ) : null}
+
           <button
             onClick={() => router.push("/merchant/offers")}
             className="text-[13px] text-[#5a5a5a] inline-flex items-center gap-2"

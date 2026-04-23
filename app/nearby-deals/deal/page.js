@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { Clock3, MapPin, Shield, Star, Ticket, ChevronDown, Share2, Heart } from "lucide-react";
+import { Clock3, MapPin, Shield, Star, Ticket, ChevronDown, Share2, Heart, Info, Gift, Smartphone, Smile, AlertCircle, Check } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useVoucher } from "../../context/VoucherContext";
 import { getNearbyOfferDetails, getNearbyOffers, getOfferReviews } from "../../lib/api";
@@ -286,7 +286,7 @@ function NearbyDealDetailsContent() {
       <div className="mx-auto max-w-[1260px] px-4 lg:px-6 py-4 lg:py-6">
         {/* Breadcrumb */}
         <p className="text-[11px] text-[#7b7b7b] mb-4">
-          Deals <span className="mx-1">›</span> Wellness <span className="mx-1">›</span>
+          Deals <span className="mx-1">›</span> {offer?.category || "All Categories"} <span className="mx-1">›</span>
           <span className="font-semibold text-[#2d2d2d]"> {offer?.title || "Offer"}</span>
         </p>
 
@@ -326,7 +326,7 @@ function NearbyDealDetailsContent() {
               </div>
 
               <p className="text-sm text-[#666] mb-4">
-                Indulge in pure relaxation with essential oils and hot stones.
+                {offer?.description || offer?.promotionExpiryText || "Experience premium services with this exclusive offer from our merchant partners."}
               </p>
 
               <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-[#e8edf2] bg-[#fbfcfd] px-4 py-3">
@@ -365,16 +365,22 @@ function NearbyDealDetailsContent() {
                   )}
                 </div>
 
-                {claimError && (
-                  <p className="text-red-600 text-sm mb-3">⚠️ {claimError}</p>
+                                {claimError && (
+                  <p className="text-red-600 text-sm mb-3 flex items-center gap-1">
+                    <AlertCircle size={16} /> {claimError}
+                  </p>
                 )}
 
                 <button
                   onClick={handleClaimOffer}
                   disabled={claimLoading || isClaimed}
-                  className="w-full h-12 bg-white border-2 border-[#157a4f] text-[#157a4f] rounded-lg font-bold text-lg transition-all hover:bg-[#157a4f] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full h-12 bg-white border-2 border-[#157a4f] text-[#157a4f] rounded-lg font-bold text-lg transition-all hover:bg-[#157a4f] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  {claimLoading ? "Claiming..." : isClaimed ? "✓ Claimed" : "Claim Offer"}
+                  {claimLoading ? "Claiming..." : isClaimed ? (
+                    <>
+                      <Check size={20} /> Claimed
+                    </>
+                  ) : "Claim Offer"}
                 </button>
 
                 <p className="text-xs text-[#666] text-center mt-2 flex items-center justify-center gap-1">
@@ -413,25 +419,46 @@ function NearbyDealDetailsContent() {
           </div>
         </section>
 
-        {/* About & Merchant Section */}
+{/* About & Merchant Section */}
         <div className="grid lg:grid-cols-[2fr_1fr] gap-6 mb-8">
           {/* About Section */}
-          <section className="bg-white rounded-2xl p-6">
+                    <section className="bg-white rounded-2xl p-6 border border-[#e5e7eb]">
             <h2 className="text-2xl font-bold text-[#1f2329] mb-4 flex items-center gap-2">
-              <span className="text-2xl">ℹ️</span> About this offer
+              <Info size={24} className="text-[#4a5fc1]" /> About this offer
             </h2>
             <p className="text-[#5d6670] text-sm leading-relaxed mb-6">
               {offer?.description || offer?.promotionExpiryText || "Experience premium services with this exclusive offer from our merchant partners."}
             </p>
             
+            {/* Products Section - More Prominent */}
             {selectedProducts.length > 0 && (
-              <div>
-                <h3 className="font-bold text-[#1f2329] mb-4 text-lg">Offer on Products</h3>
-                <div className="space-y-3">
+              <div className="mt-6 pt-6 border-t border-[#e5e7eb]">
+                <h3 className="font-bold text-[#1f2329] mb-4 text-lg flex items-center gap-2">
+                  <Gift size={22} className="text-[#157a4f]" /> Products Included in This Offer
+                </h3>
+                <div className="space-y-4">
                   {selectedProducts.map((product, idx) => (
-                    <div key={idx} className="flex gap-4 p-3 rounded-xl border border-[#e5e7eb] bg-[#f9fafb] hover:border-[#157a4f] hover:bg-[#f0f9f6] transition-all">
+                    <div 
+                      key={idx} 
+                      className="flex gap-4 p-4 rounded-xl border-2 border-[#e5e7eb] bg-[#f9fafb] hover:border-[#157a4f] hover:bg-[#f0f9f6] transition-all cursor-pointer"
+                      onClick={() => {
+                        const productParams = new URLSearchParams({
+                          productId: product?.productId || product?.id || `product-${idx}`,
+                          productName: product?.productName || "Product",
+                          description: product?.description || "Premium quality product",
+                          imageUrl: product?.imageUrl || "/images/deal2.avif",
+                          offerPrice: product?.offerPrice || 0,
+                          originalPrice: product?.originalPrice || 0,
+                          stockQuantity: product?.stockQuantity || 0,
+                          category: product?.category || offer?.category || "Product",
+                          offerId: offerId,
+                          merchantId: offer?.merchantId || offer?.merchant?.merchantId || offer?.merchant?._id
+                        });
+                        router.push(`/nearby-deals/product?${productParams.toString()}`);
+                      }}
+                    >
                       {/* Product Image */}
-                      <div className="relative w-24 h-24 flex-shrink-0 overflow-hidden rounded-lg bg-[#f0f0f0] border border-[#d8dce3]">
+                      <div className="relative w-28 h-28 flex-shrink-0 overflow-hidden rounded-lg bg-[#f0f0f0] border border-[#d8dce3]">
                         <Image
                           src={product?.imageUrl || "/images/deal2.avif"}
                           alt={product?.productName || "Product"}
@@ -443,39 +470,42 @@ function NearbyDealDetailsContent() {
                       {/* Product Details */}
                       <div className="flex-1 flex flex-col justify-between">
                         <div>
-                          <p className="font-bold text-[#1f2329] text-sm mb-1">
+                          <p className="font-bold text-[#1f2329] text-base mb-1">
                             {product?.productName || "Product"}
                           </p>
-                          <p className="text-xs text-[#666] mb-2">
+                          <p className="text-sm text-[#666] mb-2">
                             {product?.description || "Premium quality product"}
+                          </p>
+                          <p className="text-xs text-[#4a5fc1] font-medium">
+                            Click to view product details →
                           </p>
                         </div>
 
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg font-bold text-[#157a4f]">
+                          <div className="flex items-center gap-3">
+                            <span className="text-xl font-bold text-[#157a4f]">
                               Rs.{toNumber(product?.offerPrice, 0).toLocaleString("en-IN")}
                             </span>
                             {product?.originalPrice > 0 && (
                               <>
-                                <span className="text-xs text-[#999] line-through">
+                                <span className="text-sm text-[#999] line-through">
                                   Rs.{toNumber(product?.originalPrice, 0).toLocaleString("en-IN")}
                                 </span>
-                                <span className="text-xs font-bold text-[#e7a91d] bg-[#fef5e7] px-1.5 py-0.5 rounded-full">
+                                <span className="text-sm font-bold text-white bg-[#e7a91d] px-2 py-1 rounded-full">
                                   {Math.round(((product?.originalPrice - product?.offerPrice) / product?.originalPrice) * 100)}% OFF
                                 </span>
                               </>
                             )}
                           </div>
-                          {product?.stockQuantity && (
-                            <span className="text-xs font-semibold text-[#4a5fc1] bg-[#f0f4ff] px-2 py-1 rounded-full">
+                          {product?.stockQuantity !== undefined && product?.stockQuantity > 0 && (
+                            <span className="text-xs font-semibold text-[#4a5fc1] bg-[#f0f4ff] px-3 py-1.5 rounded-full">
                               Stock: {product.stockQuantity}
                             </span>
                           )}
                         </div>
                       </div>
                     </div>
-                    ))}
+                  ))}
                 </div>
               </div>
             )}
@@ -495,7 +525,7 @@ function NearbyDealDetailsContent() {
           </section>
 
           {/* Merchant Card */}
-          <section className="bg-white rounded-2xl p-6 h-fit">
+          <section className="bg-white rounded-2xl p-6 h-fit border border-[#e5e7eb]">
             <div className="flex gap-3 mb-4">
               <div className="w-12 h-12 rounded-full overflow-hidden bg-[#f0f0f0] flex-shrink-0">
                 <Image
@@ -526,56 +556,63 @@ function NearbyDealDetailsContent() {
                 <MapPin size={12} /> {offer?.merchant?.address || "Location"}
               </p>
             </div>
-            <button
-              onClick={() => {
-                const merchantStoreId =
-                  offer?.merchant?.merchantId ||
-                  offer?.merchantId ||
-                  offer?.merchant?._id ||
-                  offer?.merchant?.id;
+<button
+               onClick={() => {
+                 const merchantStoreId =
+                   offer?.merchant?.merchantId ||
+                   offer?.merchantId ||
+                   offer?.merchant?._id ||
+                   offer?.merchant?.id;
 
-                if (!merchantStoreId) {
-                  alert("Store details are unavailable for this offer.");
-                  return;
-                }
+                 if (!merchantStoreId) {
+                   alert("Store details are unavailable for this offer.");
+                   return;
+                 }
 
-                router.push(`/nearby-deals/store?merchantId=${merchantStoreId}`);
-              }}
-              className="w-full h-10 bg-[#fef5e7] border border-[#e7a91d] text-[#8f6515] rounded-lg font-semibold text-sm hover:bg-[#fcecd8] transition"
-            >
-              View Store →
-            </button>
+                 router.push(`/nearby-deals/store?merchantId=${merchantStoreId}`);
+               }}
+               className="w-full h-10 bg-[#fef5e7] border border-[#e7a91d] text-[#8f6515] rounded-lg font-semibold text-sm hover:bg-[#fcecd8] transition"
+             >
+               View Store →
+             </button>
+
+             <button
+               onClick={() => router.push('/nearby-deals')}
+               className="w-full h-10 bg-[#fef5e7] border border-[#e7a91d] text-[#8f6515] rounded-lg font-semibold text-sm hover:bg-[#fcecd8] transition mt-2"
+             >
+               Back to Nearby Deals
+             </button>
           </section>
         </div>
 
-        {/* How to Redeem */}
-        <section className="bg-white rounded-2xl p-6 mb-8">
-          <h2 className="text-2xl font-bold text-[#1f2329] mb-6">How to Redeem</h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              { icon: "🎟️", title: "Claim Offer", desc: "Click the claim button to secure your unique voucher code" },
-              { icon: "📱", title: "Show Code", desc: "Present the digital QR code at the merchant location during visit" },
-              { icon: "😊", title: "Enjoy!", desc: "Redeem your discount and enjoy your premium wellness experience" },
-            ].map((step, idx) => (
-              <div key={idx} className="text-center">
-                <div className="text-4xl mb-3">{step.icon}</div>
-                <h3 className="font-bold text-[#1f2329] mb-2">{step.title}</h3>
-                <p className="text-sm text-[#666]">{step.desc}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Terms & Restrictions */}
-        <section className="bg-white rounded-2xl p-6 mb-8">
+                {/* Terms & Restrictions */}
+        <section className="bg-white rounded-2xl p-6 mb-8 border border-[#e5e7eb]">
           <h2 className="text-2xl font-bold text-[#1f2329] mb-4">Terms & Restrictions</h2>
           <div className="space-y-3">
-            {[
-              { title: "Fine Print", content: "Voucher is valid for one person only. Cannot be combined with other offers. Appointment required at least 24 hours in advance. Subject to availability. Valid only at the Manhattan location." },
+            {offer?.termsAndConditions ? (
+              <div className="border border-[#e5e7eb] rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setExpandedTerms(expandedTerms === 0 ? null : 0)}
+                  className="w-full flex items-center justify-between p-4 hover:bg-[#f9fafb] transition"
+                >
+                  <p className="font-bold text-[#1f2329]">Terms & Conditions</p>
+                  <ChevronDown
+                    size={20}
+                    className={`text-[#666] transition-transform ${expandedTerms === 0 ? "rotate-180" : ""}`}
+                  />
+                </button>
+                {expandedTerms === 0 && (
+                  <div className="px-4 pb-4 bg-[#f9fafb]">
+                    <p className="text-sm text-[#5d6670]">{offer.termsAndConditions}</p>
+                  </div>
+                )}
+              </div>
+            ) : [
+              { title: "Fine Print", content: "Voucher is valid for one person only. Cannot be combined with other offers. Appointment required at least 24 hours in advance. Subject to availability." },
               { title: "Cancellation Policy", content: "Free cancellation up to 48 hours before appointment. 50% refund for cancellations between 24-48 hours. No refund for cancellations within 24 hours." },
               { title: "Eligibility", content: "Offer is for new and existing customers. Not applicable to gift cards. Subject to terms and conditions of the merchant." },
             ].map((item, idx) => (
-              <div key={idx} className="border border-[#e5e7eb] rounded-lg overflow-hidden">
+              <div key={item.title} className="border border-[#e5e7eb] rounded-lg overflow-hidden">
                 <button
                   onClick={() => setExpandedTerms(expandedTerms === idx ? null : idx)}
                   className="w-full flex items-center justify-between p-4 hover:bg-[#f9fafb] transition"
@@ -596,8 +633,26 @@ function NearbyDealDetailsContent() {
           </div>
         </section>
 
+        {/* How to Redeem */}
+        <section className="bg-white rounded-2xl p-6 mb-8 border border-[#e5e7eb]">
+          <h2 className="text-2xl font-bold text-[#1f2329] mb-6">How to Redeem</h2>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              { icon: <Ticket size={40} className="text-[#157a4f]" />, title: "Claim Offer", desc: "Click the claim button to secure your unique voucher code" },
+              { icon: <Smartphone size={40} className="text-[#4a5fc1]" />, title: "Show Code", desc: "Present the digital QR code at the merchant location during visit" },
+              { icon: <Smile size={40} className="text-[#e7a91d]" />, title: "Enjoy!", desc: "Redeem your discount and enjoy your premium wellness experience" },
+            ].map((step, idx) => (
+              <div key={idx} className="text-center">
+                <div className="flex justify-center mb-3">{step.icon}</div>
+                <h3 className="font-bold text-[#1f2329] mb-2">{step.title}</h3>
+                <p className="text-sm text-[#666]">{step.desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* Reviews Section */}
-        <section className="bg-white rounded-2xl p-6 mb-8">
+        <section className="bg-white rounded-2xl p-6 mb-8 border border-[#e5e7eb]">
           <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="text-2xl font-bold text-[#1f2329]">What people are saying</h2>
@@ -663,7 +718,7 @@ function NearbyDealDetailsContent() {
         </section>
 
         {/* FAQ Section */}
-        <section className="bg-white rounded-2xl p-6 mb-12">
+        <section className="bg-white rounded-2xl p-6 mb-12 border border-[#e5e7eb]">
           <h2 className="text-2xl font-bold text-[#1f2329] mb-6">Frequently Asked Questions</h2>
           <div className="space-y-3">
             {[

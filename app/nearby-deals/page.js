@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo, useState, useEffect } from "react";
+import { Suspense, useMemo, useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { SlidersHorizontal, Grid2x2, List, ChevronDown } from "lucide-react";
@@ -18,7 +18,7 @@ function toNumber(value, fallback = 0) {
 }
 
 function formatDistance(distanceKm) {
-  if (typeof distanceKm !== "number" || Number.isNaN(distanceKm)) return "N/A";
+  if (typeof distanceKm !== "number" || Number.isNaN(distanceKm)) return "Nearby";
   return `${distanceKm.toFixed(1)} km`;
 }
 
@@ -37,6 +37,12 @@ function getOfferBadgeLabel(row) {
   const discountPercent = toNumber(row?.discountPercent, 0);
   if (discountPercent > 0) {
     return `${discountPercent}% OFF`;
+  }
+
+  const products = row?.selectedProducts || [];
+  const productCount = Array.isArray(products) ? products.length : 0;
+  if (productCount > 0) {
+    return `${productCount} Product${productCount > 1 ? 's' : ''}`;
   }
 
   const category = String(row?.category || "").trim();
@@ -78,6 +84,9 @@ function NearbyDealsPageContent() {
   const [activeView, setActiveView] = useState("grid");
   const [distanceRadius, setDistanceRadius] = useState(5);
   const [priceRange, setPriceRange] = useState(5000);
+  const [userCoordinates, setUserCoordinates] = useState(null);
+  const [locationStatus, setLocationStatus] = useState("detecting");
+  const [locationError, setLocationError] = useState("");
   const [topDiscountOnly, setTopDiscountOnly] = useState(false);
   const [activeNowOnly, setActiveNowOnly] = useState(false);
   const [selectedOfferTypes, setSelectedOfferTypes] = useState({
@@ -89,37 +98,167 @@ function NearbyDealsPageContent() {
   const [rawOffers, setRawOffers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const lastLocationUpdateRef = useRef(0);
 
   const location = useMemo(() => searchParams.get("location") || "", [searchParams]);
   const query = useMemo(() => searchParams.get("q") || "", [searchParams]);
 
   useEffect(() => {
+    if (typeof window === "undefined" || !("geolocation" in navigator)) {
+      setLocationStatus("unavailable");
+      setLocationError("Location services are not available in this browser.");
+      return;
+    }
+
+    let ignoreResult = false;
+    let watchId = null;
+    setLocationStatus("detecting");
+    setLocationError("");
+
+    const handlePositionSuccess = (position) => {
+      if (ignoreResult) return;
+
+      const nextLat = Number(position.coords.latitude);
+      const nextLng = Number(position.coords.longitude);
+      if (Number.isNaN(nextLat) || Number.isNaN(nextLng)) return;
+
+      setUserCoordinates((prev) => {
+        if (!prev) {
+          lastLocationUpdateRef.current = Date.now();
+          return { lat: nextLat, lng: nextLng };
+        }
+
+        // Avoid noisy re-fetches for tiny GPS drifts and rapid watch updates.
+        const latDiff = Math.abs(prev.lat - nextLat);
+        const lngDiff = Math.abs(prev.lng - nextLng);
+        const movedTooLittle = latDiff < 0.0015 && lngDiff < 0.0015; // ~150m threshold
+        const updatedTooSoon = Date.now() - lastLocationUpdateRef.current < 15000;
+        if (movedTooLittle || updatedTooSoon) {
+          return prev;
+        }
+
+        lastLocationUpdateRef.current = Date.now();
+        return { lat: nextLat, lng: nextLng };
+      });
+      setLocationStatus("ready");
+      setLocationError("");
+    };
+
+    const handlePositionError = (geoError) => {
+      if (ignoreResult) return;
+      setUserCoordinates(null);
+
+      if (geoError?.code === geoError.PERMISSION_DENIED) {
+        setLocationStatus("denied");
+        setLocationError("Location permission denied. Enable it to use exact distance filters.");
+        return;
+      }
+
+      if (geoError?.code === geoError.POSITION_UNAVAILABLE) {
+        setLocationStatus("unavailable");
+        setLocationError("Current location is unavailable. Please try again.");
+        return;
+      }
+
+      if (geoError?.code === geoError.TIMEOUT) {
+        setLocationStatus("timeout");
+        setLocationError("Location request timed out. Please try again.");
+        return;
+      }
+
+      setLocationStatus("error");
+      setLocationError("Could not detect your location.");
+    };
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (ignoreResult) return;
+        handlePositionSuccess(position);
+      },
+      handlePositionError,
+      {
+        enableHighAccuracy: false,
+        timeout: 10000,
+        maximumAge: 15000,
+      },
+    );
+
+    watchId = navigator.geolocation.watchPosition(
+      handlePositionSuccess,
+      handlePositionError,
+      {
+        enableHighAccuracy: false,
+        timeout: 15000,
+        maximumAge: 30000,
+      },
+    );
+
+    return () => {
+      ignoreResult = true;
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     const loadNearbyOffers = async () => {
       setLoading(true);
       setError("");
+
+      const resolvedLat =
+        typeof userCoordinates?.lat === "number" && !Number.isNaN(userCoordinates.lat)
+          ? userCoordinates.lat
+          : undefined;
+      const resolvedLng =
+        typeof userCoordinates?.lng === "number" && !Number.isNaN(userCoordinates.lng)
+          ? userCoordinates.lng
+          : undefined;
+
       try {
         const response = await getNearbyOffers({
-          lat: undefined,
-          lng: undefined,
+          lat: resolvedLat,
+          lng: resolvedLng,
           radiusKm: distanceRadius,
           location,
           q: query,
           maxPrice: priceRange < 5000 ? priceRange : undefined,
+          applyPriceFilter: priceRange < 5000,
           page: 1,
           limit: 100,
         });
 
-        setRawOffers(Array.isArray(response?.data) ? response.data : []);
+        const primaryRows = Array.isArray(response?.data) ? response.data : [];
+
+        // Graceful fallback: if strict geofence returns empty, show relevant offers
+        // instead of a blank state (helps when merchant coords are incomplete/inaccurate).
+        if (primaryRows.length === 0 && resolvedLat !== undefined && resolvedLng !== undefined) {
+          const fallbackResponse = await getNearbyOffers({
+            lat: undefined,
+            lng: undefined,
+            radiusKm: distanceRadius,
+            location,
+            q: query,
+            maxPrice: priceRange < 5000 ? priceRange : undefined,
+            applyPriceFilter: priceRange < 5000,
+            page: 1,
+            limit: 100,
+          });
+
+          setRawOffers(Array.isArray(fallbackResponse?.data) ? fallbackResponse.data : []);
+        } else {
+          setRawOffers(primaryRows);
+        }
       } catch (err) {
         setError(err?.message || "Failed to load nearby offers.");
-        setRawOffers([]);
+        // Keep previous offers visible when API temporarily fails.
       } finally {
         setLoading(false);
       }
     };
 
     loadNearbyOffers();
-  }, [distanceRadius, priceRange, location, query]);
+  }, [distanceRadius, priceRange, location, query, userCoordinates?.lat, userCoordinates?.lng]);
 
   const selectedTypeLabels = useMemo(
     () => Object.keys(selectedOfferTypes).filter((key) => selectedOfferTypes[key]),
@@ -310,6 +449,14 @@ function NearbyDealsPageContent() {
                   {query ? ` for \"${query}\"` : ""}
                   {location ? ` in ${location}` : ""}
                 </p>
+                <p className="mt-1 text-[11px] text-gray-500">
+                  {locationStatus === "ready"
+                    ? `Distance filter uses your live location (${distanceRadius} km radius) for offers with coordinates.`
+                    : locationStatus === "detecting"
+                      ? "Detecting your location for accurate nearby results..."
+                      : "Enable location permission to make distance filters fully accurate."}
+                </p>
+                {locationError ? <p className="mt-1 text-[11px] text-amber-600">{locationError}</p> : null}
               </div>
 
               <div className="flex items-center gap-2 pt-2">
@@ -370,18 +517,23 @@ function NearbyDealsPageContent() {
                         alt={deal.title}
                         className="h-full w-full object-cover"
                       />
-                      <span className="absolute left-2 top-2 rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-semibold text-gray-700">
-                        {formatDistance(deal.distanceKm)}
+                      <span className="absolute left-2 top-2 rounded-full bg-gradient-to-r from-[#157A4F] to-[#28A745] px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                        {deal.category || "Special"}
                       </span>
-                      <span className="absolute left-2 top-8 rounded-md bg-[#28A745] px-2 py-0.5 text-[9px] font-bold text-white">
-                        {getOfferBadgeLabel(deal)}
+                      <span className="absolute left-2 top-8 rounded-md bg-white/95 px-2 py-0.5 text-[9px] font-semibold text-gray-700 shadow-sm">
+                        {formatDistance(deal.distanceKm)}
                       </span>
                     </div>
                     <div className="p-3">
                       <h3 className="line-clamp-1 text-sm font-bold text-gray-900">{deal.title}</h3>
                       <p className="mt-1 text-[11px] text-gray-500">{deal.merchant?.name || "Merchant"}</p>
-                      <p className="mt-1 text-[10px] font-semibold text-gray-500">{deal.category || "Special"}</p>
-                      <p className="mt-2 text-[11px] text-gray-500 line-clamp-1">{deal.merchant?.address || "Location unavailable"}</p>
+                      <p className="mt-2 text-[11px] text-gray-500 line-clamp-1 flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        {deal.merchant?.address || "Location not specified"}
+                      </p>
                       <p className="mt-1 text-[10px] text-gray-400">
                         Valid: {formatDate(deal.startsAt)} - {formatDate(deal.endsAt)}
                       </p>

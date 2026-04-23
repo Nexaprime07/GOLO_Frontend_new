@@ -133,33 +133,44 @@ export default function MyDeals() {
                 </div>
               </div>
 
-              <div className="mt-6 grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                            <div className="mt-6 grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {filteredDeals.map((deal) => (
-                  <article key={deal.title || deal._id} className="group rounded-[12px] border border-[#282828] bg-white overflow-hidden shadow-[0_1px_0_rgba(0,0,0,0.03)]">
+                  <article key={deal._id} className="group rounded-[12px] border border-[#282828] bg-white overflow-hidden shadow-[0_1px_0_rgba(0,0,0,0.03)]">
                     <div className="relative h-[132px] bg-[#f3efe5] overflow-hidden">
-                      <Image src={deal.image} alt={deal.title} fill className="object-cover" />
+                      <Image 
+                        src={deal.offer?.imageUrl || deal.image || "/images/deal2.avif"} 
+                        alt={deal.offer?.title || deal.title || "Deal Image"} 
+                        fill 
+                        className="object-cover" 
+                      />
                       <div className="absolute inset-x-0 top-0 flex items-start justify-between px-2 py-2">
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-sm ${deal.status === "Active" ? "bg-[#d3f3dd] text-[#15803d]" : deal.status === "Claimed" ? "bg-[#ffe9c7] text-[#a16207]" : deal.status === "Redeemed" ? "bg-[#dce6ff] text-[#334155]" : "bg-[#f5e2d7] text-[#b45309]"}`}>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-sm ${deal.status === "active" ? "bg-[#d3f3dd] text-[#15803d]" : deal.status === "claimed" ? "bg-[#ffe9c7] text-[#a16207]" : deal.status === "redeemed" ? "bg-[#dce6ff] text-[#334155]" : "bg-[#f5e2d7] text-[#b45309]"}`}>
                           {deal.status}
                         </span>
-                        <span className="rounded-full bg-[#7a4af4] px-2.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">{deal.badge}</span>
+                        {deal.badge && <span className="rounded-full bg-[#7a4af4] px-2.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">{deal.badge}</span>}
                       </div>
                     </div>
 
                     <div className="px-3 pt-2.5 pb-3">
-                      <p className="text-[9px] font-semibold tracking-[0.18em] text-[#4ca5ef] uppercase">{deal.merchant}</p>
-                      <h3 className="mt-1 text-[16px] leading-tight font-semibold text-[#222] min-h-[38px]">{deal.title}</h3>
+                      <p className="text-[9px] font-semibold tracking-[0.18em] text-[#4ca5ef] uppercase">{deal.offer?.merchant?.name || deal.merchant || "Merchant"}</p>
+                      <h3 className="mt-1 text-[16px] leading-tight font-semibold text-[#222] min-h-[38px]">{deal.offer?.title || deal.title || "Untitled Deal"}</h3>
 
                       <div className="mt-4 flex items-center gap-1 text-[11px] text-[#737373]">
                         <CalendarDays size={13} className="text-[#8f8f8f]" />
-                        <span>{deal.expiry}</span>
+                        <span>Expires {deal.offer?.endsAt ? new Date(deal.offer.endsAt).toLocaleDateString() : (deal.expiry || "N/A")}</span>
                       </div>
 
                       <div className="mt-4 flex items-center gap-2">
-                        <button className="h-8 flex-1 rounded-md bg-[#f3b12a] text-[#1f1f1f] text-[12px] font-semibold hover:brightness-95 transition">
-                          {deal.button}
+                        <button 
+                          onClick={() => router.push(`/nearby-deals/deal/claimed-offer?voucherId=${deal._id}`)}
+                          className="h-8 flex-1 rounded-md bg-[#f3b12a] text-[#1f1f1f] text-[12px] font-semibold hover:brightness-95 transition"
+                        >
+                          {deal.status === "active" ? "View Code" : "Details"}
                         </button>
-                        <button className="h-8 w-8 rounded-md border border-[#e0e0e0] text-[#777] flex items-center justify-center hover:border-[#c9c9c9]">
+                        <button 
+                          onClick={() => router.push(`/nearby-deals/deal?offerId=${deal.offer?._id || deal.offerId}`)}
+                          className="h-8 w-8 rounded-md border border-[#e0e0e0] text-[#777] flex items-center justify-center hover:border-[#c9c9c9]"
+                        >
                           <ChevronRight size={14} />
                         </button>
                       </div>

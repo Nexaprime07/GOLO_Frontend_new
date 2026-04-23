@@ -536,7 +536,17 @@ function ClaimedOfferContent() {
                 View Store
               </button>
 
-              <button className="mt-2 h-10 w-full rounded-[8px] border border-[#d6dbe2] bg-white text-[12px] font-semibold text-[#5e6772] transition-colors hover:bg-[#f8f9fb]">
+              <button
+                onClick={() => {
+                  const sellerId = selectedVoucher?.merchantId;
+                  if (sellerId) {
+                    router.push(`/chats?sellerId=${sellerId}`);
+                    return;
+                  }
+                  alert("Merchant contact is unavailable for this voucher.");
+                }}
+                className="mt-2 h-10 w-full rounded-[8px] border border-[#d6dbe2] bg-white text-[12px] font-semibold text-[#5e6772] transition-colors hover:bg-[#f8f9fb]"
+              >
                 Contact Merchant
               </button>
             </aside>
@@ -575,7 +585,10 @@ function ClaimedOfferContent() {
               <p className="mt-2 text-[11px] leading-5 text-[#66707b]">
                 If you encounter any issues at the store, please contact our 24/7 support team.
               </p>
-              <button className="mt-3 inline-flex items-center gap-1 text-[12px] font-semibold text-[#1e9a5c]">
+              <button
+                onClick={() => window.open("mailto:support@golo.local?subject=Need%20help%20with%20voucher%20redemption", "_self")}
+                className="mt-3 inline-flex items-center gap-1 text-[12px] font-semibold text-[#1e9a5c]"
+              >
                 <CircleHelp size={13} /> Visit Help Center
               </button>
             </aside>

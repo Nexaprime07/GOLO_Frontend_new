@@ -114,7 +114,7 @@ export default function MerchantSettingsPage() {
                   } else if (tab === "Logout") {
                     setShowLogoutConfirm(true);
                   } else {
-                    setActiveTab(tab.toLowerCase().replace(" ", "-"));
+                    router.push("/merchant/settings");
                   }
                 }}
                 className={`relative pb-1 transition ${

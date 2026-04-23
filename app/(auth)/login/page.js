@@ -23,6 +23,8 @@ export default function LoginPage() {
   const [loginError, setLoginError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [accountType, setAccountType] = useState("user");
+  const [showPopup, setShowPopup] = useState(false);
+  const [popupMessage, setPopupMessage] = useState("");
   const router = useRouter();
   const { login, isAuthenticated, user } = useAuth();
   const [sessionExpired, setSessionExpired] = useState(false);
@@ -124,15 +126,48 @@ export default function LoginPage() {
 
       router.push("/");
     } catch (error) {
-      setLoginError(
-        error.data?.message || "Login failed. Please check your credentials."
-      );
+      const errorMsg = error.data?.message || "Login failed. Please check your credentials.";
+      setLoginError("");
+      
+      if (errorMsg.includes("merchant") || errorMsg.includes("Merchant")) {
+        setPopupMessage(errorMsg);
+        setShowPopup(true);
+        setTimeout(() => setShowPopup(false), 4000);
+      } else if (errorMsg.includes("user") || errorMsg.includes("User")) {
+        setPopupMessage(errorMsg);
+        setShowPopup(true);
+        setTimeout(() => setShowPopup(false), 4000);
+      } else {
+        setLoginError(errorMsg);
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
+    <>
+      {showPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="relative mx-4 w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl animate-bounce-in">
+            <div className="mb-4 flex items-center justify-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+                <svg className="h-8 w-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+            </div>
+            <h3 className="mb-2 text-center text-lg font-bold text-gray-800">Account Type Mismatch</h3>
+            <p className="mb-4 text-center text-sm text-gray-600">{popupMessage}</p>
+            <button
+              onClick={() => setShowPopup(false)}
+              className="w-full rounded-lg bg-[#157A4F] py-2 text-sm font-semibold text-white transition hover:bg-[#145a3f]"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     <AuthLayout>
       <div className="login-page-wrapper">
         {/* Logo Section */}
@@ -396,5 +431,6 @@ export default function LoginPage() {
         <div className="dot-pattern"></div>
       </div>
     </AuthLayout>
+    </>
   );
 }

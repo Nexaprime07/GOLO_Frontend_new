@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Pencil, User } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
-import { getMerchantProductById } from "../../../lib/api";
+import { getMerchantProductById, updateMerchantProduct } from "../../../lib/api";
 
 export default function MerchantProductDetailsContent() {
   const router = useRouter();
@@ -14,6 +14,7 @@ export default function MerchantProductDetailsContent() {
   const { user, loading, logout } = useAuth();
   const [isEditMode, setIsEditMode] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [fetchError, setFetchError] = useState("");
   const [originalData, setOriginalData] = useState(null);
   const [formData, setFormData] = useState({
@@ -35,9 +36,29 @@ export default function MerchantProductDetailsContent() {
     setIsEditMode(true);
   };
 
-  const handleSaveChanges = () => {
-    // Update endpoint is not implemented yet; keep UX intact for now.
-    setIsEditMode(false);
+  const handleSaveChanges = async () => {
+    if (!productId) return;
+
+    try {
+      setIsSaving(true);
+      setFetchError("");
+
+      await updateMerchantProduct(productId, {
+        name: formData.name,
+        category: formData.category,
+        price: Number(formData.price),
+        stockQuantity: Number(formData.stockQuantity),
+        description: formData.description,
+        image: formData.image,
+      });
+
+      setOriginalData(formData);
+      setIsEditMode(false);
+    } catch (error) {
+      setFetchError(error?.message || "Failed to update product");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDiscardChanges = () => {
@@ -259,9 +280,10 @@ export default function MerchantProductDetailsContent() {
                 </button>
                 <button
                   onClick={handleSaveChanges}
+                  disabled={isSaving}
                   className="h-9 rounded-[8px] bg-[#efb02e] px-6 text-[13px] font-semibold text-[#19462a] hover:bg-[#e8ad2f] transition"
                 >
-                  Save Changes
+                  {isSaving ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             )}

@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../../context/AuthContext";
 import SocialButtons from "../../components/SocialButtons";
+import LocationPicker from "../../components/LocationPicker";
+import StoreLocationMap from "../../components/StoreLocationMap";
 
 const MERCHANT_CATEGORIES = [
   {
@@ -113,6 +115,11 @@ export default function RegisterPage() {
   const [storeSubCategory, setStoreSubCategory] = useState("");
   const [contactNumber, setContactNumber] = useState("");
   const [storeLocation, setStoreLocation] = useState("");
+  const [storeCoordinates, setStoreCoordinates] = useState({
+    latitude: null,
+    longitude: null,
+  });
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [storePassword, setStorePassword] = useState("");
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isSubCategoryOpen, setIsSubCategoryOpen] = useState(false);
@@ -188,8 +195,18 @@ export default function RegisterPage() {
         return;
       }
     } else {
+      const hasValidCoordinates =
+        typeof storeCoordinates.latitude === "number" &&
+        !Number.isNaN(storeCoordinates.latitude) &&
+        typeof storeCoordinates.longitude === "number" &&
+        !Number.isNaN(storeCoordinates.longitude);
+
       if (!storeName.trim() || !storeEmail.trim() || !storeCategory || !storeSubCategory || !storePassword.trim()) {
         setError("Store name, email, category, sub category, and password are required.");
+        return;
+      }
+      if (!storeLocation.trim() || !hasValidCoordinates) {
+        setError("Please select your store location from the map.");
         return;
       }
       if (storePassword.length < 6) {
@@ -228,6 +245,8 @@ export default function RegisterPage() {
           storeSubCategory,
           contactNumber: formatPhone(contactNumber),
           storeLocation,
+          storeLocationLatitude: storeCoordinates.latitude,
+          storeLocationLongitude: storeCoordinates.longitude,
         };
 
       await register(registrationData);
@@ -247,6 +266,21 @@ export default function RegisterPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleMerchantLocationSelect = (location) => {
+    const latitude = Number(location?.latitude);
+    const longitude = Number(location?.longitude);
+    const hasValidCoordinates = Number.isFinite(latitude) && Number.isFinite(longitude);
+
+    if (!hasValidCoordinates) {
+      setError("Could not capture valid coordinates. Please try again.");
+      return;
+    }
+
+    setStoreLocation(location?.address || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+    setStoreCoordinates({ latitude, longitude });
+    setError("");
   };
 
   return (
@@ -625,11 +659,49 @@ export default function RegisterPage() {
                         <MapPin className="input-icon" size={18} />
                         <input
                           type="text"
-                          placeholder="Enter store location"
+                          placeholder="Select store location from map"
                           value={storeLocation}
-                          onChange={(e) => setStoreLocation(e.target.value)}
+                          readOnly
+                        >
+                        </input>
+                      </div>
+                      <div style={{ marginTop: "10px", display: "flex", justifyContent: "flex-end" }}>
+                        <button
+                          type="button"
+                          onClick={() => setShowLocationPicker(true)}
+                          style={{
+                            border: "1px solid #157A4F",
+                            background: "#157A4F",
+                            color: "#fff",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            borderRadius: "6px",
+                            padding: "7px 10px",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          Pick on Map
+                        </button>
+                      </div>
+                      <div style={{ marginTop: "10px" }}>
+                        <StoreLocationMap
+                          location={
+                            typeof storeCoordinates.latitude === "number" &&
+                            typeof storeCoordinates.longitude === "number"
+                              ? {
+                                  latitude: storeCoordinates.latitude,
+                                  longitude: storeCoordinates.longitude,
+                                  address: storeLocation,
+                                }
+                              : null
+                          }
+                          onMapClick={() => setShowLocationPicker(true)}
+                          isLoading={false}
                         />
                       </div>
+                      <p style={{ marginTop: "8px", fontSize: "11px", color: "#6B7280" }}>
+                        This location will be used to show your offers in nearby deals.
+                      </p>
                     </div>
 
                     <div className="input-group">
@@ -681,6 +753,17 @@ export default function RegisterPage() {
 
         <div className="dot-pattern"></div>
       </div>
+      <LocationPicker
+        isOpen={showLocationPicker}
+        onClose={() => setShowLocationPicker(false)}
+        onLocationSelect={handleMerchantLocationSelect}
+        initialLocation={
+          typeof storeCoordinates.latitude === "number" &&
+          typeof storeCoordinates.longitude === "number"
+            ? { lat: storeCoordinates.latitude, lng: storeCoordinates.longitude }
+            : undefined
+        }
+      />
     </AuthLayout>
   );
 }

@@ -92,6 +92,49 @@ export default function MerchantReviewsRatingsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
 
+  const handleExportCsv = () => {
+    const rows = (reviewsData.length ? reviewsData : reviews).map((row) => ({
+      user: row.userName || row.name || "",
+      rating: row.rating || row.stars || 0,
+      status: row.status || "",
+      content: row.content || "",
+      createdAt: row.createdAt || row.date || "",
+    }));
+
+    const header = ["User", "Rating", "Status", "Content", "Created At"];
+    const csvRows = [
+      header.join(","),
+      ...rows.map((item) =>
+        [item.user, item.rating, item.status, item.content, item.createdAt]
+          .map((value) => `"${String(value).replace(/"/g, '""')}"`)
+          .join(","),
+      ),
+    ];
+
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "merchant-reviews.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleBulkApprove = async () => {
+    const pendingRows = (reviewsData || []).filter(
+      (row) => row?._id && String(row.status).toLowerCase() === "pending",
+    );
+    if (!pendingRows.length) return;
+
+    try {
+      await Promise.all(pendingRows.map((row) => updateMerchantReviewStatus(row._id, "approved")));
+      const refreshed = await getMerchantReviews({ status: statusFilter, search: searchTerm, page: 1, limit: 30 });
+      setReviewsData(refreshed?.data || []);
+    } catch (err) {
+      console.error("Failed bulk approve:", err);
+    }
+  };
+
   useEffect(() => {
     if (!loading && !user) {
       router.replace("/login?redirect=/merchant/reviews-ratings");
@@ -195,7 +238,7 @@ export default function MerchantReviewsRatingsPage() {
             <Bell size={14} />
             <MessageSquare size={14} />
             <div className="text-[11px] flex items-center gap-1">EN <Globe size={12} /></div>
-            <button className="h-8 px-3.5 rounded-[5px] bg-[#157A4F] text-white text-[12px] font-semibold inline-flex items-center gap-1.5">
+            <button onClick={() => router.push("/merchant/add-new-listing")} className="h-8 px-3.5 rounded-[5px] bg-[#157A4F] text-white text-[12px] font-semibold inline-flex items-center gap-1.5">
               <Plus size={12} /> Create Listing
             </button>
             <UserCircle2 size={20} className="text-gray-400" />
@@ -234,8 +277,8 @@ export default function MerchantReviewsRatingsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <button className="h-8 px-3 rounded-[6px] border border-[#e5e7eb] bg-white text-[11px]">Last 30 Days</button>
-                  <button className="h-8 px-3 rounded-[6px] border border-[#e5e7eb] bg-white text-[11px]">Export CSV</button>
-                  <button className="h-8 px-3 rounded-[6px] bg-[#157A4F] text-white text-[11px] font-semibold">Bulk Action</button>
+                  <button onClick={handleExportCsv} className="h-8 px-3 rounded-[6px] border border-[#e5e7eb] bg-white text-[11px]">Export CSV</button>
+                  <button onClick={handleBulkApprove} className="h-8 px-3 rounded-[6px] bg-[#157A4F] text-white text-[11px] font-semibold">Bulk Action</button>
                 </div>
               </div>
 
@@ -261,7 +304,15 @@ export default function MerchantReviewsRatingsPage() {
                     <option value="flagged">Flagged</option>
                     <option value="rejected">Rejected</option>
                   </select>
-                  <button className="h-9 px-3 rounded-[8px] border border-transparent text-gray-500 text-[11px]">Clear Filters</button>
+                  <button
+                    onClick={() => {
+                      setStatusFilter("all");
+                      setSearchTerm("");
+                    }}
+                    className="h-9 px-3 rounded-[8px] border border-transparent text-gray-500 text-[11px]"
+                  >
+                    Clear Filters
+                  </button>
                 </div>
               </div>
 
@@ -294,7 +345,7 @@ export default function MerchantReviewsRatingsPage() {
                         </td>
                         <td className="px-4 py-3">
                           <p className="text-[12px] text-[#1f2937] max-w-[420px]">{row.content}</p>
-                          {row.tags.length > 0 && (
+                          {Array.isArray(row.tags) && row.tags.length > 0 && (
                             <div className="flex flex-wrap gap-1.5 mt-1.5">
                               {row.tags.map((tag) => (
                                 <span key={tag} className={`text-[9px] px-1.5 py-[2px] rounded-full ${tag.includes("SPAM") ? "bg-[#fee2e2] text-[#ef4444]" : "bg-[#f3f4f6] text-gray-600"}`}>

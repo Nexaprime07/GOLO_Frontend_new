@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { loginUser, registerUser, logoutUser, getProfile } from "../lib/api";
+import { loginUser, registerUser, logoutUser, getProfile, updateMerchantStoreLocation } from "../lib/api";
 
 const AuthContext = createContext(null);
 
@@ -39,6 +39,18 @@ export function AuthProvider({ children }) {
         localStorage.setItem("refreshToken", refreshToken);
         localStorage.setItem("user", JSON.stringify(userDataWithType));
 
+        if (typeof window !== "undefined" && userDataWithType?.accountType === "merchant") {
+            try {
+                // Ask server to sync any pending merchant location saved during registration
+                await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/users/pending-location/sync`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` },
+                });
+            } catch (syncError) {
+                console.warn("Pending merchant location sync failed:", syncError);
+            }
+        }
+
         setUser(userDataWithType);
         return response;
     }, []);
@@ -52,8 +64,12 @@ export function AuthProvider({ children }) {
         storeName,
         storeEmail,
         gstNumber,
+        storeCategory,
+        storeSubCategory,
         contactNumber,
         storeLocation,
+        storeLocationLatitude,
+        storeLocationLongitude,
     }) => {
         const response = await registerUser({
             name,
@@ -64,8 +80,12 @@ export function AuthProvider({ children }) {
             storeName,
             storeEmail,
             gstNumber,
+            storeCategory,
+            storeSubCategory,
             contactNumber,
             storeLocation,
+            storeLocationLatitude,
+            storeLocationLongitude,
         });
         return response;
     }, []);

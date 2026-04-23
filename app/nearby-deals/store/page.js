@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { MapPin, Phone, Star } from "lucide-react";
+import { MapPin, Phone, Star, ArrowRight, ExternalLink, ShieldCheck, ShoppingBag } from "lucide-react";
 import dynamic from "next/dynamic";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
@@ -377,103 +377,179 @@ function NearbyStoreContent() {
           </aside>
         </section>
 
-        {/* Popular Service / First Offer */}
-        {offers.length > 0 && (
-          <section className="mt-8">
-            <h2 className="text-2xl font-bold text-[#1f2329] mb-4">Popular Service</h2>
-            <div className="grid gap-6 md:grid-cols-1">
-              {offers.slice(0, 1).map((offer, idx) => (
-                <div key={offer?.offerId || offer?._id || `popular-offer-${idx}`} className="bg-white rounded-2xl border border-[#d8dce3] overflow-hidden shadow-sm hover:shadow-md transition cursor-pointer" onClick={() => router.push(`/nearby-deals/deal?offerId=${offer.offerId}`)}>
-                  <div className="grid lg:grid-cols-[1fr_1.2fr] gap-6 p-6">
-                    <div className="relative h-60 rounded-xl overflow-hidden bg-[#f0f0f0]">
-                      <Image
-                        src={offer?.imageUrl || "/images/deal2.avif"}
-                        alt={offer?.title}
-                        fill
-                        className="object-cover"
-                      />
-                      {offer?.selectedProducts?.length > 0 && (
-                        <span className="absolute top-3 left-3 bg-[#e7a91d] text-white px-3 py-1 rounded-full text-xs font-bold">
-                          Limited Time
-                        </span>
-                      )}
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold text-[#1f2329] mb-2">{offer?.title}</h3>
-                      <p className="text-sm text-[#5d6670] mb-4 leading-relaxed">{offer?.description || "Exclusive offer from our store"}</p>
-                      <div className="mb-4">
-                        <span className="text-3xl font-bold text-[#157a4f]">Rs.{offer?.totalPrice?.toLocaleString("en-IN")}</span>
+                {/* Content Sections Container */}
+                <div className="mt-12 space-y-10">
+          
+                  {/* Popular Services Section */}
+                  {offers.length > 0 && (
+                    <section className="bg-white rounded-[32px] border border-[#eef2f6] p-6 lg:p-8 shadow-sm">
+                      <div className="flex items-center gap-2 mb-6">
+                        <div className="w-8 h-8 bg-[#f0f9f6] rounded-lg flex items-center justify-center text-[#157a4f]">
+                          <ShieldCheck size={20} />
+                        </div>
+                        <h2 className="text-xl font-bold text-[#1f2329]">Popular Services</h2>
                       </div>
-                      <button onClick={() => router.push(`/nearby-deals/deal?offerId=${offer.offerId}`)} className="w-full bg-[#157a4f] text-white py-2 rounded-lg font-semibold hover:bg-[#0f6a42] transition">
-                        View Offer
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+              
+                      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        {offers.slice(0, 1).map((offer, idx) => (
+                          <div 
+                            key={offer?.offerId || offer?._id || `popular-offer-${idx}`} 
+                            className="group bg-white rounded-2xl border border-[#f1f5f9] overflow-hidden hover:shadow-lg hover:border-[#157a4f] transition-all duration-300 flex flex-col cursor-pointer"
+                            onClick={() => router.push(`/nearby-deals/deal?offerId=${offer.offerId}`)}
+                          >
+                            <div className="relative h-40 overflow-hidden bg-[#f8fafc]">
+                              <Image
+                                src={offer?.imageUrl || "/images/deal2.avif"}
+                                alt={offer?.title || "Offer"}
+                                fill
+                                className="object-cover group-hover:scale-105 transition-transform duration-500"
+                              />
+                              <div className="absolute top-2 left-2 bg-[#157a4f] text-white px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider">
+                                Popular
+                              </div>
+                            </div>
+                            <div className="p-4 flex flex-col flex-1">
+                              <div className="mb-3">
+                                <p className="text-[9px] font-bold text-[#4a5fc1] uppercase tracking-wider mb-1">{offer?.category || "Service"}</p>
+                                <h3 className="font-bold text-[#1e293b] text-sm line-clamp-1 group-hover:text-[#157a4f] transition-colors">
+                                  {offer?.title}
+                                </h3>
+                              </div>
+                              <div className="mt-auto">
+                                <div className="flex items-baseline justify-between mb-3">
+                                  <span className="text-lg font-black text-[#157a4f]">Rs.{offer?.totalPrice?.toLocaleString("en-IN")}</span>
+                                </div>
+                                <button className="w-full h-9 bg-[#f0f9f6] text-[#157a4f] rounded-lg font-bold text-[11px] hover:bg-[#157a4f] hover:text-white border border-[#157a4f]/5 transition-all">
+                                  View Details
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  )}
 
-        {/* Products Section */}
-        {products.length > 0 && (
-          <section className="mt-12">
-            <h2 className="text-2xl font-bold text-[#1f2329] mb-6">Products</h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {products.map((product, idx) => (
-                <div key={product?._id || product?.productId || product?.id || `${product?.name || 'product'}-${idx}`} className="bg-white rounded-xl border border-[#d8dce3] overflow-hidden hover:shadow-md transition">
-                  <div className="relative h-40 bg-[#f0f0f0]">
-                    <Image
-                      src={product?.image || product?.imageUrl || "/images/place2.avif"}
-                      alt={product?.name}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <p className="font-bold text-[#1f2329] text-sm mb-1 line-clamp-2">{product?.name}</p>
-                    <p className="text-xs text-[#666] mb-3 line-clamp-1">{product?.category || "Product"}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-[#157a4f]">Rs.{product?.price?.toLocaleString("en-IN") || "0"}</span>
-                      {product?.originalPrice && (
-                        <span className="text-xs text-[#999] line-through">Rs.{product.originalPrice}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+                  {/* Products Section */}
+                  {products.length > 0 && (
+                    <section className="bg-white rounded-[32px] border border-[#eef2f6] p-6 lg:p-8 shadow-sm">
+                      <div className="flex items-center gap-2 mb-6">
+                        <div className="w-8 h-8 bg-[#fef5e7] rounded-lg flex items-center justify-center text-[#e7a91d]">
+                          <ShoppingBag size={20} />
+                        </div>
+                        <h2 className="text-xl font-bold text-[#1f2329]">Products</h2>
+                      </div>
 
-        {/* Offers Section */}
-        {offers.length > 1 && (
-          <section className="mt-12 mb-6">
-            <h2 className="text-2xl font-bold text-[#1f2329] mb-6">All Offers</h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {offers.slice(1).map((offer, idx) => (
-                <div key={offer?.offerId || offer?._id || `offer-${idx}`} onClick={() => router.push(`/nearby-deals/deal?offerId=${offer.offerId}`)} className="bg-white rounded-xl border border-[#d8dce3] overflow-hidden hover:shadow-md cursor-pointer transition">
-                  <div className="relative h-48 bg-[#f0f0f0]">
-                    <Image
-                      src={offer?.imageUrl || "/images/deal2.avif"}
-                      alt={offer?.title}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <p className="font-bold text-[#1f2329] text-sm mb-1 line-clamp-2">{offer?.title}</p>
-                    <p className="text-xs text-[#666] mb-3">{offer?.category || "Offer"}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-[#157a4f]">Rs.{offer?.totalPrice?.toLocaleString("en-IN") || "0"}</span>
-                      <span className="text-xs bg-[#e7a91d] text-white px-2 py-1 rounded-full font-bold">DEAL</span>
-                    </div>
-                  </div>
+                      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        {products.map((product, idx) => (
+                          <div 
+                            key={product?._id || product?.productId || product?.id || `${product?.name || 'product'}-${idx}`} 
+                            className="group bg-white rounded-2xl border border-[#f1f5f9] overflow-hidden hover:shadow-lg hover:border-[#157a4f] transition-all duration-300 flex flex-col"
+                          >
+                            <div className="relative h-40 overflow-hidden bg-[#f8fafc]">
+                              <Image
+                                src={product?.image || product?.imageUrl || "/images/place2.avif"}
+                                alt={product?.name || "Product"}
+                                fill
+                                className="object-cover group-hover:scale-105 transition-transform duration-500"
+                              />
+                              {product?.originalPrice > product?.price && (
+                                <div className="absolute top-2 right-2 bg-[#e7a91d] text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                                  -{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
+                                </div>
+                              )}
+                            </div>
+                            <div className="p-4 flex flex-col flex-1">
+                              <div className="mb-3">
+                                <p className="text-[9px] font-bold text-[#4a5fc1] uppercase tracking-wider mb-1">{product?.category || "Item"}</p>
+                                <h3 className="font-bold text-[#1e293b] text-sm line-clamp-1 group-hover:text-[#157a4f] transition-colors">
+                                  {product?.name}
+                                </h3>
+                              </div>
+                      
+                              <div className="mt-auto">
+                                <div className="flex items-baseline justify-between mb-3">
+                                  <span className="text-lg font-black text-[#157a4f]">Rs.{product?.price?.toLocaleString("en-IN") || "0"}</span>
+                                </div>
+                                <button 
+                                  onClick={() => {
+                                    const pid = product?.productId || product?._id || product?.id;
+                                    if (pid) {
+                                      const params = new URLSearchParams({
+                                        productId: pid,
+                                        merchantId: merchantId,
+                                        productName: encodeURIComponent(product?.name || product?.productName || ""),
+                                        price: String(product?.price || product?.offerPrice || "0"),
+                                        originalPrice: String(product?.originalPrice || "0"),
+                                        imageUrl: encodeURIComponent(product?.image || product?.imageUrl || ""),
+                                        category: encodeURIComponent(product?.category || ""),
+                                        description: encodeURIComponent(product?.description || ""),
+                                      });
+                                      router.push(`/nearby-deals/product?${params.toString()}`);
+                                    }
+                                  }}
+                                  className="w-full h-9 bg-[#f0f9f6] text-[#157a4f] rounded-lg font-bold text-[11px] hover:bg-[#157a4f] hover:text-white border border-[#157a4f]/5 transition-all"
+                                >
+                                  View Product
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
+                  {/* All Offers Section */}
+                  {offers.length > 1 && (
+                    <section className="bg-white rounded-[32px] border border-[#eef2f6] p-6 lg:p-8 shadow-sm">
+                      <div className="flex items-center gap-2 mb-6">
+                        <div className="w-8 h-8 bg-[#f0f4ff] rounded-lg flex items-center justify-center text-[#4a5fc1]">
+                          <Star size={20} />
+                        </div>
+                        <h2 className="text-xl font-bold text-[#1f2329]">Exclusive Offers</h2>
+                      </div>
+
+                      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        {offers.slice(1).map((offer, idx) => (
+                          <div 
+                            key={offer?.offerId || offer?._id || `offer-${idx}`} 
+                            onClick={() => router.push(`/nearby-deals/deal?offerId=${offer.offerId}`)} 
+                            className="group bg-white rounded-2xl border border-[#f1f5f9] overflow-hidden hover:shadow-lg hover:border-[#4a5fc1] transition-all duration-300 flex flex-col cursor-pointer"
+                          >
+                            <div className="relative h-40 overflow-hidden">
+                              <Image
+                                src={offer?.imageUrl || "/images/deal2.avif"}
+                                alt={offer?.title || "Offer"}
+                                fill
+                                className="object-cover group-hover:scale-105 transition-transform duration-500"
+                              />
+                              <div className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm text-[#1f2329] px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest shadow-sm">
+                                Offer
+                              </div>
+                            </div>
+                            <div className="p-4 flex flex-col flex-1">
+                              <div className="mb-3">
+                                <span className="text-[9px] font-bold text-[#4a5fc1] uppercase tracking-wider block mb-1">{offer?.category || "Special"}</span>
+                                <h3 className="font-bold text-[#1e293b] text-sm line-clamp-1 group-hover:text-[#4a5fc1] transition-colors">
+                                  {offer?.title}
+                                </h3>
+                              </div>
+                              <div className="mt-auto">
+                                <div className="flex items-baseline justify-between mb-3">
+                                  <span className="text-lg font-black text-[#157a4f]">Rs.{offer?.totalPrice?.toLocaleString("en-IN") || "0"}</span>
+                                </div>
+                                <button className="w-full h-9 bg-[#f0f4ff] text-[#4a5fc1] rounded-lg font-bold text-[11px] hover:bg-[#4a5fc1] hover:text-white transition-all">
+                                  Claim Now
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  )}
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
 
         {/* No Products/Offers */}
         {products.length === 0 && offers.length === 0 && (
