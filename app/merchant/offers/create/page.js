@@ -102,14 +102,6 @@ export default function CreateMerchantOfferPage() {
   const [modalSelectionIds, setModalSelectionIds] = useState([]);
   const [templateApiAvailable, setTemplateApiAvailable] = useState(true);
 
-  // Generate idempotency key once per form instance (for duplicate submission prevention)
-  const idempotencyKey = useMemo(() => {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-      return crypto.randomUUID();
-    }
-    return 'key-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-  }, []);
-
   const applyTemplate = (template) => {
     if (!template) return;
 
@@ -478,7 +470,6 @@ export default function CreateMerchantOfferPage() {
         imageUrl: formData.imageUrl.trim(),
         selectedDates,
         totalPrice: totalOfferValue,
-        idempotencyKey,
         loyaltyRewardEnabled: formData.loyaltyRewardEnabled,
         loyaltyStarsToOffer: Number(formData.loyaltyStarsToOffer || 0),
         loyaltyStarsPerPurchase: Number(formData.loyaltyStarsPerPurchase || 0),
