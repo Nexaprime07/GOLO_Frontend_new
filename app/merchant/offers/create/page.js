@@ -27,13 +27,30 @@ const DEFAULT_EXAMPLE = "Shop for Rs 3,000 and earn 1 star. Collect all stars to
 const OFFER_TEMPLATE_LOCAL_KEY = "golo_offer_template";
 const OFFER_TEMPLATE_API_DISABLED_KEY = "golo_offer_template_api_disabled";
 
+function parseDateInput(value) {
+  if (!value) return null;
+  const [year, month, day] = String(value).split("-").map((part) => Number(part));
+  if (!year || !month || !day) return null;
+  const date = new Date(year, month - 1, day);
+  if (Number.isNaN(date.getTime())) return null;
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function formatDateInput(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function buildSelectedDates(startDate, endDate) {
   if (!startDate) return [];
 
-  const start = new Date(startDate);
-  const end = new Date(endDate || startDate);
+  const start = parseDateInput(startDate);
+  const end = parseDateInput(endDate || startDate);
 
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return [startDate];
+  if (!start || !end) return [startDate];
   if (end < start) return [startDate];
 
   const dates = [];
@@ -41,12 +58,38 @@ function buildSelectedDates(startDate, endDate) {
   let guard = 0;
 
   while (cursor <= end && guard < 366) {
-    dates.push(cursor.toISOString().slice(0, 10));
+    dates.push(formatDateInput(cursor));
     cursor.setDate(cursor.getDate() + 1);
     guard += 1;
   }
 
   return dates;
+}
+
+function getPromotionExpiryLabel(endDateValue, now = new Date()) {
+  const endDate = parseDateInput(endDateValue);
+  if (!endDate) return "Select end date to auto-calculate expiry";
+
+  const endOfDay = new Date(endDate);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  const diffMs = endOfDay.getTime() - now.getTime();
+  if (diffMs <= 0) return "Offer has expired";
+
+  const totalMinutes = Math.floor(diffMs / (1000 * 60));
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+  const minutes = totalMinutes % 60;
+
+  if (days > 0) {
+    return `Offer ends in ${days} day${days > 1 ? "s" : ""}${hours > 0 ? ` ${hours}h` : ""}`;
+  }
+
+  if (hours > 0) {
+    return `Offer ends in ${hours} hour${hours > 1 ? "s" : ""}${minutes > 0 ? ` ${minutes}m` : ""}`;
+  }
+
+  return `Offer ends in ${Math.max(minutes, 1)} minute${minutes === 1 ? "" : "s"}`;
 }
 
 function isValidImageUrl(value) {
@@ -101,6 +144,7 @@ export default function CreateMerchantOfferPage() {
   const [productSearch, setProductSearch] = useState("");
   const [modalSelectionIds, setModalSelectionIds] = useState([]);
   const [templateApiAvailable, setTemplateApiAvailable] = useState(true);
+  const [expiryNow, setExpiryNow] = useState(Date.now());
 
   const applyTemplate = (template) => {
     if (!template) return;
@@ -214,6 +258,26 @@ export default function CreateMerchantOfferPage() {
     () => buildSelectedDates(formData.startDate, formData.endDate || formData.startDate),
     [formData.startDate, formData.endDate],
   );
+
+  const livePromotionExpiryText = useMemo(() => {
+    const endDate = formData.endDate || formData.startDate;
+    return getPromotionExpiryLabel(endDate, new Date(expiryNow));
+  }, [formData.startDate, formData.endDate, expiryNow]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setExpiryNow(Date.now());
+    }, 60000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    setFormData((prev) => {
+      if (prev.promotionExpiryText === livePromotionExpiryText) return prev;
+      return { ...prev, promotionExpiryText: livePromotionExpiryText };
+    });
+  }, [livePromotionExpiryText]);
 
   const filteredInventory = useMemo(() => {
     const needle = productSearch.trim().toLowerCase();
@@ -578,11 +642,10 @@ export default function CreateMerchantOfferPage() {
                     <label className="mb-1 block text-[12px] font-semibold text-[#555]">Promotion Expiry</label>
                     <input
                       value={formData.promotionExpiryText}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, promotionExpiryText: e.target.value }))}
+                      readOnly
                       className="h-10 w-full rounded-[8px] border border-[#dedede] bg-white px-3 text-[13px] outline-none"
-                      placeholder="Offer ends in 30 days"
                     />
-                    <p className="mt-1 text-[11px] text-[#9a9a9a]">Automatically calculated based on campaign end date.</p>
+                    <p className="mt-1 text-[11px] text-[#9a9a9a]">Live countdown auto-calculated from start/end date.</p>
                   </div>
 
                   <div>
