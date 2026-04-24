@@ -3,11 +3,7 @@
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
-<<<<<<< HEAD
-import { Clock3, MapPin, Shield, Star, Ticket, User } from "lucide-react";
-=======
 import { Clock3, MapPin, Shield, Star, Ticket, ChevronDown, Share2, Heart, Info, Gift, Smartphone, Smile, AlertCircle, Check } from "lucide-react";
->>>>>>> fa4855bf1eec82f2df0f9d60a609234614253745
 import { useAuth } from "../../context/AuthContext";
 import { useVoucher } from "../../context/VoucherContext";
 import { getNearbyOfferDetails, getNearbyOffers, getOfferReviews, toggleWishlist, getAdWishlistCount, getWishlistIds } from "../../lib/api";
@@ -414,45 +410,6 @@ function NearbyDealDetailsContent() {
                 </div>
               </div>
 
-<<<<<<< HEAD
-            <section className="mt-8 grid gap-6 lg:grid-cols-[1.75fr_1fr]">
-              <div className="space-y-8">
-                <div>
-                  <h2 className="text-[32px] font-bold text-[#1f2329]">Selected Products</h2>
-                  {selectedProducts.length === 0 ? (
-                    <p className="mt-3 text-[14px] text-[#66707b]">No product details were provided for this offer.</p>
-                  ) : (
-                    <div className="mt-4 space-y-3">
-                      {selectedProducts.map((item, index) => {
-                        const productId = item?.productId || item?.id || item?._id;
-                        return (
-                          <article
-                            key={`${productId || index}`}
-                            onClick={() => productId && router.push(`/product/${productId}/merchant-page`)}
-                            className="rounded-[12px] border border-[#d8dce3] bg-white p-3 flex items-center gap-3 cursor-pointer hover:shadow-lg hover:border-[#157a4f] transition"
-                            title="View product details"
-                          >
-                            <div className="relative h-16 w-16 overflow-hidden rounded-lg border border-[#e5e7eb] bg-[#f3f4f6]">
-                              <Image
-                                src={item?.imageUrl || "/images/deal2.avif"}
-                                alt={item?.productName || "Product"}
-                                fill
-                                className="object-cover"
-                              />
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-[15px] font-semibold text-[#1f2329]">{item?.productName || "Product"}</p>
-                              <p className="text-[12px] text-[#6b7280]">Stock: {toNumber(item?.stockQuantity, 0)}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-[16px] font-bold text-[#157a4f]">Rs.{toNumber(item?.offerPrice, 0).toLocaleString("en-IN")}</p>
-                              <p className="text-[12px] text-[#9ca3af] line-through">Rs.{toNumber(item?.originalPrice, 0).toLocaleString("en-IN")}</p>
-                            </div>
-                          </article>
-                        );
-                      })}
-                    </div>
-=======
               <p className="text-sm text-[#666] mb-4">
                 {offer?.description || offer?.promotionExpiryText || "Experience premium services with this exclusive offer from our merchant partners."}
               </p>
@@ -490,7 +447,6 @@ function NearbyDealDetailsContent() {
                     <span className="bg-[#e7a91d] text-white px-2 py-1 rounded-full text-xs font-bold">
                       SPECIAL
                     </span>
->>>>>>> fa4855bf1eec82f2df0f9d60a609234614253745
                   )}
                 </div>
 
@@ -541,25 +497,6 @@ function NearbyDealDetailsContent() {
                 </div>
               </div>
 
-<<<<<<< HEAD
-              <aside className="lg:sticky lg:top-24 h-fit self-start">
-                <div className="rounded-[12px] border border-[#d8dce3] bg-white p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="h-12 w-12 overflow-hidden rounded-full border border-[#d8dce3] bg-[#f3f4f6]">
-                      {offer?.merchant?.profilePhoto && String(offer.merchant.profilePhoto).trim() ? (
-                        <Image
-                          src={offer.merchant.profilePhoto}
-                          alt={offer?.merchant?.name || "Merchant"}
-                          width={64}
-                          height={64}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="h-full w-full flex items-center justify-center text-[#9ca3af]">
-                          <User size={22} />
-                        </div>
-                      )}
-=======
               <p className="text-xs text-[#666] mt-3 flex items-center gap-1">
                 <Clock3 size={12} /> Digital redemption via QR code
               </p>
@@ -672,7 +609,6 @@ function NearbyDealDetailsContent() {
                           )}
                         </div>
                       </div>
->>>>>>> fa4855bf1eec82f2df0f9d60a609234614253745
                     </div>
                   ))}
                 </div>
