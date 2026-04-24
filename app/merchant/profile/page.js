@@ -385,12 +385,12 @@ function MerchantProfileContent({ user, logout, router }) {
                       )}
                     </div>
                     {isEditMode && (
-                      <div className="absolute left-1/2 translate-x-[28px] top-[24px] w-8 h-8 rounded-full bg-[#157a4f] border-2 border-white flex items-center justify-center text-white shadow-sm cursor-pointer hover:bg-[#0f5a3a] transition" onClick={() => handlePhotoClick(false)}>
+                      <div className="absolute left-1/2 translate-x-1 top-[24px] w-8 h-8 rounded-full bg-[#157a4f] border-2 border-white flex items-center justify-center text-white shadow-sm cursor-pointer hover:bg-[#0f5a3a] transition" onClick={() => handlePhotoClick(false)}>
                         <Camera size={15} />
                       </div>
                     )}
                     {!isEditMode && (
-                      <div className="absolute left-1/2 translate-x-[28px] top-[24px] w-8 h-8 rounded-full bg-[#bdbdbd] border-2 border-white flex items-center justify-center text-white shadow-sm">
+                      <div className="absolute left-1/2 translate-x-1 top-[24px] w-8 h-8 rounded-full bg-[#bdbdbd] border-2 border-white flex items-center justify-center text-white shadow-sm">
                         <Camera size={15} />
                       </div>
                     )}
@@ -398,29 +398,17 @@ function MerchantProfileContent({ user, logout, router }) {
                     <div className="pt-20 space-y-5">
                       <div>
                         <label className="block text-[14px] font-semibold text-[#222] mb-2">Username</label>
-                        {isEditMode ? (
-                          <input value={formData.username} onChange={(e) => handleInputChange("username", e.target.value)} className="h-10 w-full rounded-[4px] bg-[#f3f3f6] px-3 text-[12px] text-[#3a3a3a] outline-none" />
-                        ) : (
-                          <div className="h-10 rounded-[4px] bg-[#f3f3f6] px-3 flex items-center text-[12px] text-[#3a3a3a]">{formData.username}</div>
-                        )}
+                        <input value={formData.username} onChange={(e) => handleInputChange("username", e.target.value)} disabled={!isEditMode} className="h-10 w-full rounded-[4px] bg-white px-3 text-[12px] text-[#3a3a3a] border border-[#d9d9d9] focus:border-[#157a4f] focus:ring-1 focus:ring-[#157a4f] transition disabled:bg-[#f3f3f6] disabled:cursor-not-allowed" />
                       </div>
 
                       <div>
                         <label className="block text-[14px] font-semibold text-[#222] mb-2">Phone Number</label>
-                        {isEditMode ? (
-                          <input value={formData.phone} onChange={(e) => handleInputChange("phone", e.target.value)} className="h-10 w-full rounded-[4px] bg-[#f3f3f6] px-3 text-[12px] text-[#3a3a3a] outline-none" />
-                        ) : (
-                          <div className="h-10 rounded-[4px] bg-[#f3f3f6] px-3 flex items-center text-[12px] text-[#3a3a3a]">{formData.phone}</div>
-                        )}
+                        <input value={formData.phone} onChange={(e) => handleInputChange("phone", e.target.value)} disabled={!isEditMode} className="h-10 w-full rounded-[4px] bg-white px-3 text-[12px] text-[#3a3a3a] border border-[#d9d9d9] focus:border-[#157a4f] focus:ring-1 focus:ring-[#157a4f] transition disabled:bg-[#f3f3f6] disabled:cursor-not-allowed" />
                       </div>
 
                       <div>
                         <label className="block text-[14px] font-semibold text-[#222] mb-2">Email</label>
-                        {isEditMode ? (
-                          <input value={formData.email} onChange={(e) => handleInputChange("email", e.target.value)} className="h-10 w-full rounded-[4px] bg-[#f3f3f6] px-3 text-[12px] text-[#3a3a3a] outline-none" />
-                        ) : (
-                          <div className="h-10 rounded-[4px] bg-[#f3f3f6] px-3 flex items-center text-[12px] text-[#3a3a3a]">{formData.email}</div>
-                        )}
+                        <input value={formData.email} onChange={(e) => handleInputChange("email", e.target.value)} disabled={!isEditMode} className="h-10 w-full rounded-[4px] bg-white px-3 text-[12px] text-[#3a3a3a] border border-[#d9d9d9] focus:border-[#157a4f] focus:ring-1 focus:ring-[#157a4f] transition disabled:bg-[#f3f3f6] disabled:cursor-not-allowed" />
                       </div>
                     </div>
                   </div>
@@ -441,12 +429,12 @@ function MerchantProfileContent({ user, logout, router }) {
                       )}
                     </div>
                     {isEditMode && (
-                      <div className="absolute left-1/2 translate-x-[28px] top-[24px] w-8 h-8 rounded-full bg-[#157a4f] border-2 border-white flex items-center justify-center text-white shadow-sm cursor-pointer hover:bg-[#0f5a3a] transition" onClick={() => handlePhotoClick(true)}>
+                      <div className="absolute left-1/2 translate-x-1 top-[24px] w-8 h-8 rounded-full bg-[#157a4f] border-2 border-white flex items-center justify-center text-white shadow-sm cursor-pointer hover:bg-[#0f5a3a] transition" onClick={() => handlePhotoClick(true)}>
                         <Camera size={15} />
                       </div>
                     )}
                     {!isEditMode && (
-                      <div className="absolute left-1/2 translate-x-[28px] top-[24px] w-8 h-8 rounded-full bg-[#bdbdbd] border-2 border-white flex items-center justify-center text-white shadow-sm">
+                      <div className="absolute left-1/2 translate-x-1 top-[24px] w-8 h-8 rounded-full bg-[#bdbdbd] border-2 border-white flex items-center justify-center text-white shadow-sm">
                         <Camera size={15} />
                       </div>
                     )}
@@ -454,11 +442,7 @@ function MerchantProfileContent({ user, logout, router }) {
                     <div className="pt-20 space-y-5">
                       <div>
                         <label className="block text-[14px] font-semibold text-[#222] mb-2">Shop Name</label>
-                        {isEditMode ? (
-                          <input value={formData.shopName} onChange={(e) => handleInputChange("shopName", e.target.value)} className="h-10 w-full rounded-[4px] bg-[#f3f3f6] px-3 text-[12px] text-[#3a3a3a] outline-none" />
-                        ) : (
-                          <div className="h-10 rounded-[4px] bg-[#f3f3f6] px-3 flex items-center text-[12px] text-[#3a3a3a]">{formData.shopName}</div>
-                        )}
+                        <input value={formData.shopName} onChange={(e) => handleInputChange("shopName", e.target.value)} disabled={!isEditMode} className="h-10 w-full rounded-[4px] bg-white px-3 text-[12px] text-[#3a3a3a] border border-[#d9d9d9] focus:border-[#157a4f] focus:ring-1 focus:ring-[#157a4f] transition disabled:bg-[#f3f3f6] disabled:cursor-not-allowed" />
                       </div>
 
                       <div>
@@ -569,7 +553,7 @@ function MerchantProfileContent({ user, logout, router }) {
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-14 lg:gap-20 text-[10px] text-[#6b520f]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-14 lg:gap-20 text-[10px] text-[#6b520f]">
             <div>
               <p className="font-semibold text-[#1b1b1b] mb-3">Links</p>
               <ul className="space-y-2">

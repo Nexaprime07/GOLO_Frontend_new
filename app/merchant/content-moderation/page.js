@@ -48,11 +48,54 @@ export default function MerchantContentModerationPage() {
   const [error, setError] = useState("");
   const [pageLoading, setPageLoading] = useState(true);
 
+  const handleExportCsv = () => {
+    const header = ["Report ID", "Ad ID", "Title", "Reason", "Status", "Created At"];
+    const csvRows = [
+      header.join(","),
+      ...reports.map((row) =>
+        [
+          row.reportId || "",
+          row.adId || "",
+          row.adTitle || "",
+          row.reason || "",
+          row.status || "",
+          row.createdAt || "",
+        ]
+          .map((value) => `"${String(value).replace(/"/g, '""')}"`)
+          .join(","),
+      ),
+    ];
+
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "merchant-moderation-reports.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleBulkReview = async () => {
+    const pending = reports.filter((row) => row?.reportId && row.status === "pending");
+    if (!pending.length) return;
+
+    try {
+      await Promise.all(
+        pending.map((row) =>
+          updateMerchantModerationReportStatus(row.reportId, "reviewed", "Bulk reviewed by merchant"),
+        ),
+      );
+      await loadReports(filterStatus);
+    } catch (err) {
+      setError(err?.message || "Failed to run bulk review");
+    }
+  };
+
   const loadReports = async (status = filterStatus) => {
     try {
       setPageLoading(true);
       setError("");
-      const res = await getMerchantModerationReports(status);
+      const res = await getMerchantModerationReports({ status });
       setReports(Array.isArray(res?.data) ? res.data : []);
     } catch (err) {
       setError(err?.message || "Failed to load reports");
@@ -157,7 +200,7 @@ export default function MerchantContentModerationPage() {
             <Bell size={14} />
             <MessageSquare size={14} />
             <div className="text-[11px] flex items-center gap-1">EN <Globe size={12} /></div>
-            <button className="h-8 px-3.5 rounded-[5px] bg-[#157A4F] text-white text-[12px] font-semibold inline-flex items-center gap-1.5">
+            <button onClick={() => router.push("/merchant/add-new-listing")} className="h-8 px-3.5 rounded-[5px] bg-[#157A4F] text-white text-[12px] font-semibold inline-flex items-center gap-1.5">
               <Plus size={12} /> Create Listing
             </button>
             <UserCircle2 size={20} className="text-gray-400" />
@@ -171,7 +214,7 @@ export default function MerchantContentModerationPage() {
               <p className="text-[11px] text-gray-500 mt-1">Real time surveillance and enforcement for GOLO marketplace integrity.</p>
             </div>
             <div className="flex gap-2">
-              <button className="h-7 px-3 rounded-[5px] border border-[#e5e7eb] bg-white text-[10px]">Export Audit Logs</button>
+              <button onClick={handleExportCsv} className="h-7 px-3 rounded-[5px] border border-[#e5e7eb] bg-white text-[10px]">Export Audit Logs</button>
               <button className="h-7 px-3 rounded-[5px] bg-[#157A4F] text-white text-[10px]">Create System Alert</button>
             </div>
           </div>
@@ -200,7 +243,15 @@ export default function MerchantContentModerationPage() {
               <FilterPill icon={AlertTriangle} text="Action Taken" onClick={() => { setFilterStatus("action_taken"); loadReports("action_taken"); }} />
             </div>
             <div className="flex gap-2">
-              <button className="h-8 px-3 rounded-[6px] text-[10px] border border-[#e5e7eb]">Clear Filters</button>
+              <button
+                onClick={() => {
+                  setFilterStatus("all");
+                  loadReports("all");
+                }}
+                className="h-8 px-3 rounded-[6px] text-[10px] border border-[#e5e7eb]"
+              >
+                Clear Filters
+              </button>
               <button className="h-8 px-3 rounded-[6px] text-[10px] bg-[#157A4F] text-white inline-flex items-center gap-1"><Sparkles size={10} /> Apply Smart Filters</button>
             </div>
           </section>
@@ -214,7 +265,7 @@ export default function MerchantContentModerationPage() {
                     <p className="text-[11px] text-gray-500 mt-1">Recently flagged items requiring urgent manual intervention</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button className="h-7 px-2.5 rounded-[5px] border border-[#e5e7eb] text-[11px]">Bulk Action</button>
+                    <button onClick={handleBulkReview} className="h-7 px-2.5 rounded-[5px] border border-[#e5e7eb] text-[11px]">Bulk Action</button>
                     <MoreHorizontal size={14} className="text-gray-500" />
                   </div>
                 </div>
@@ -324,7 +375,7 @@ export default function MerchantContentModerationPage() {
                 <input type="range" className="w-full mt-2" />
                 <p className="text-[10px] text-gray-500 mt-2.5">INTERNAL ADMIN NOTE</p>
                 <textarea className="w-full h-20 mt-1.5 rounded border border-[#d6ddd8] p-2.5 text-[10px]" placeholder="Explain enforcement logic for audit trail..." />
-                <button className="w-full h-9 mt-2.5 rounded-[5px] bg-[#157A4F] text-white text-[11px]">Apply Enforcement</button>
+                <button onClick={handleBulkReview} className="w-full h-9 mt-2.5 rounded-[5px] bg-[#157A4F] text-white text-[11px]">Apply Enforcement</button>
               </div>
 
               <div className="bg-white border border-[#e6e8ec] rounded-[10px] p-3">
@@ -373,7 +424,7 @@ export default function MerchantContentModerationPage() {
               <button className="inline-flex items-center gap-1"><Trash2 size={10} /> Delete All</button>
               <button className="inline-flex items-center gap-1"><Ban size={10} /> Suspend Sellers</button>
             </div>
-            <button className="h-7 px-3 rounded-[5px] bg-white text-[10px]">Execute Batch</button>
+            <button onClick={handleBulkReview} className="h-7 px-3 rounded-[5px] bg-white text-[10px]">Execute Batch</button>
           </section>
         </main>
 

@@ -101,7 +101,7 @@ export default function MerchantOffersPage() {
     const needle = query.trim().toLowerCase();
     if (!needle) return offers;
     return offers.filter((offer) =>
-      String(offer?.bannerTitle || "").toLowerCase().includes(needle),
+      String(offer?.title || "").toLowerCase().includes(needle),
     );
   }, [offers, query]);
 
@@ -124,8 +124,8 @@ export default function MerchantOffersPage() {
   const openEditForm = (offer) => {
     setEditingOfferId(offer.requestId);
     setFormData({
-      title: offer.bannerTitle || "",
-      category: offer.bannerCategory || "Special",
+      title: offer.title || "",
+      category: offer.category || "Special",
       imageUrl: offer.imageUrl || "",
       startDate: toDateInputValue(offer.startDate),
       endDate: toDateInputValue(offer.endDate),
@@ -164,8 +164,8 @@ export default function MerchantOffersPage() {
         );
 
         await updateMyOfferPromotion(editingOfferId, {
-          bannerTitle: title,
-          bannerCategory: formData.category,
+          title: title,
+          category: formData.category,
           imageUrl: formData.imageUrl.trim(),
           selectedDates,
         });
@@ -181,7 +181,7 @@ export default function MerchantOffersPage() {
   };
 
   const onDeleteOffer = async (offer) => {
-    if (!window.confirm(`Delete offer \"${offer.bannerTitle}\"?`)) return;
+    if (!window.confirm(`Delete offer \"${offer.title}\"?`)) return;
     try {
       await deleteMyOfferPromotion(offer.requestId);
       await loadOffers();
@@ -372,7 +372,7 @@ export default function MerchantOffersPage() {
                     </tr>
                   ) : filteredOffers.map((row) => (
                     <tr key={row.requestId} className="border-t border-[#f0f0f0]">
-                      <td className="px-4 py-3 font-semibold text-[#2a2a2a]">{row.bannerTitle}</td>
+                      <td className="px-4 py-3 font-semibold text-[#2a2a2a]">{row.title}</td>
                       <td className="px-4 py-3 text-[#2c2c2c]">{new Date(row.createdAt).toLocaleDateString()}</td>
                       <td className="px-4 py-3">
                         {row.status === "active" ? (

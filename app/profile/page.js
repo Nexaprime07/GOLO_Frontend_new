@@ -33,6 +33,7 @@ export default function ProfilePage() {
 
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState("");
+  const [editSuccess, setEditSuccess] = useState("");
   const [avatarPreview, setAvatarPreview] = useState("");
   const [editForm, setEditForm] = useState({
     name: "",
@@ -107,7 +108,7 @@ export default function ProfilePage() {
   const progressPct = Math.min(100, Math.round((points / pointsGoal) * 100));
   const neededPoints = Math.max(0, pointsGoal - points);
   const formattedPhone = displayUser?.profile?.phone || displayUser?.phone || "+91 9876543212";
-  const interests = [
+  const interests = displayUser?.profile?.interests || [
     "Home Services",
     "Real Estate",
     "Beauty & Wellness",
@@ -115,14 +116,21 @@ export default function ProfilePage() {
     "Food & Restaurants",
   ];
   const modalCategories = [
-    "Art & Culture",
-    "Local Dining",
-    "Sustainable Living",
+    "Food & Restaurants",
     "Home Services",
     "Beauty & Wellness",
+    "Healthcare & Medical",
+    "Hotels & Accommodation",
     "Shopping & Retail",
-    "Food & Restaurants",
-    "Travel",
+    "Education & Training",
+    "Real Estate",
+    "Events & Entertainment",
+    "Professional Services",
+    "Automotive Services",
+    "Home Improvement",
+    "Fitness & Sports",
+    "Daily Needs & Utilities",
+    "Local Businesses & Vendors",
   ];
 
   const openEditModal = () => {
@@ -137,9 +145,11 @@ export default function ProfilePage() {
       email: source?.email || "",
       phone: source?.profile?.phone || source?.phone || "+1 (503) 555-0192",
       location: existingLocation,
-      categories: ["Art & Culture", "Local Dining", "Sustainable Living"],
+      categories: source?.profile?.interests || ["Home Services", "Real Estate", "Beauty & Wellness", "Shopping & Retail", "Food & Restaurants"],
     });
     setEditError("");
+    setEditSuccess("");
+    setAvatarPreview("");
     setShowEditModal(true);
   };
 
@@ -165,48 +175,164 @@ export default function ProfilePage() {
   const handleAvatarPick = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const blobUrl = URL.createObjectURL(file);
-    setAvatarPreview(blobUrl);
+
+    // Validate file
+    if (!file.type.startsWith("image/")) {
+      setEditError("Please upload a valid image file");
+      return;
+    }
+
+    // Compress image before converting to base64
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        // Create canvas for compression
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+
+        // Resize if too large (max 600x600)
+        if (width > 600 || height > 600) {
+          const ratio = Math.min(600 / width, 600 / height);
+          width *= ratio;
+          height *= ratio;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Convert to JPEG with compression (0.8 quality)
+        const compressedData = canvas.toDataURL("image/jpeg", 0.8);
+        const compressedSize = Buffer.byteLength(compressedData, "utf8") / 1024 / 1024;
+
+        if (compressedSize > 2) {
+          setEditError(`Image too large even after compression. Current: ${compressedSize.toFixed(2)}MB, Max: 2MB`);
+          return;
+        }
+
+        setAvatarPreview(compressedData);
+        setEditError("");
+      };
+      img.onerror = () => {
+        setEditError("Failed to load image file");
+      };
+      img.src = e.target.result;
+    };
+    reader.onerror = () => {
+      setEditError("Failed to read image file");
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSaveProfileFromModal = async () => {
-    if (!editForm.name.trim() || !editForm.email.trim() || !editForm.phone.trim()) {
-      setEditError("Full name, email and phone number are required.");
+    // Validation
+    if (!editForm.name.trim()) {
+      setEditError("Full name is required");
+      return;
+    }
+    if (!editForm.email.trim()) {
+      setEditError("Email is required");
+      return;
+    }
+    if (!editForm.phone.trim()) {
+      setEditError("Phone number is required");
+      return;
+    }
+    if (editForm.categories.length < 5) {
+      setEditError("Please select at least 5 categories");
       return;
     }
 
     setSavingEdit(true);
     setEditError("");
 
-    const [cityPart, statePart] = String(editForm.location || "").split(",").map((item) => item.trim());
-
     try {
-      const res = await updateProfile({
-        name: editForm.name,
-        email: editForm.email,
+      // Parse location
+      const locationParts = String(editForm.location || "").split(",").map((item) => item.trim());
+      const city = locationParts[0] || editForm.location;
+      const state = locationParts[1] || "IN";
+
+      // Build profile data
+      const profileData = {
+        name: editForm.name.trim(),
+        email: editForm.email.trim(),
         profile: {
-          phone: editForm.phone,
-          city: cityPart || editForm.location,
-          state: statePart || "IN",
+          phone: editForm.phone.trim(),
+          city: city,
+          state: state,
+          interests: editForm.categories,
         },
+      };
+
+      // Add profile photo if it's a data URL (newly uploaded)
+      if (avatarPreview && avatarPreview.startsWith("data:image")) {
+        profileData.profilePhoto = avatarPreview;
+      }
+
+      // Call API
+      console.log("[Profile] Sending update with data:", {
+        name: profileData.name,
+        email: profileData.email,
+        hasPhoto: !!profileData.profilePhoto,
+        photoSize: profileData.profilePhoto ? 
+          (Buffer.byteLength(profileData.profilePhoto, 'utf8') / 1024 / 1024).toFixed(2) + "MB" : 
+          "N/A",
+        categories: profileData.profile.interests.length,
       });
 
+      const res = await updateProfile(profileData);
+
+      console.log("[Profile] Update response:", res);
+
       if (!res?.success) {
-        setEditError(res?.message || "Failed to update profile.");
+        setEditError(res?.message || "Failed to update profile. Please try again.");
         return;
       }
 
-      const refreshed = await getProfile();
-      if (refreshed?.success) {
-        setProfile(refreshed.data);
-      }
-      if (typeof refreshProfile === "function") {
-        await refreshProfile();
+      // IMPORTANT: Wait a moment for database to persist, then refresh
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // Refresh profile data from server with explicit force
+      try {
+        const refreshed = await getProfile();
+        console.log("[Profile] Complete refreshed profile data:", JSON.stringify(refreshed?.data, null, 2));
+        
+        if (refreshed?.success && refreshed?.data) {
+          console.log("[Profile] Setting profile with photo:", !!refreshed.data.profilePhoto);
+          console.log("[Profile] Setting profile with interests:", refreshed.data.profile?.interests);
+          setProfile(refreshed.data);
+          
+          // Force state update to trigger re-render
+          setProfile(prev => ({ ...prev }));
+        }
+      } catch (refreshError) {
+        console.warn("[Profile] Error refreshing profile:", refreshError);
       }
 
+      // Refresh auth context if available
+      try {
+        if (typeof refreshProfile === "function") {
+          await refreshProfile();
+        }
+      } catch (authError) {
+        console.warn("[Profile] Error refreshing auth context:", authError);
+      }
+
+      // Success - close modal
       setShowEditModal(false);
+      setAvatarPreview("");
+      setEditSuccess("Profile updated successfully! ✓");
+      setEditError("");
+      
+      // Auto-close success message after 3 seconds
+      setTimeout(() => setEditSuccess(""), 3000);
     } catch (error) {
-      setEditError(error?.data?.message || error?.message || "Failed to update profile.");
+      console.error("[Profile] Save error:", error);
+      const errorMessage = error?.data?.message || error?.message || "Failed to update profile";
+      setEditError(errorMessage);
     } finally {
       setSavingEdit(false);
     }
@@ -222,14 +348,28 @@ export default function ProfilePage() {
             <GolocalProfileSidebar active="profile" />
 
             <main className="p-5 lg:p-8 space-y-5">
+                {editSuccess && (
+                  <div className="p-4 rounded-lg bg-[#dcfce7] border border-[#86efac] text-[#166534] font-semibold">
+                    {editSuccess}
+                  </div>
+                )}
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                   <div className="flex items-start gap-4">
-                    <div className="w-[84px] h-[84px] rounded-full bg-[#e6b03f] text-white flex items-center justify-center text-4xl font-medium relative shadow-sm">
-                      {initials}
-                      <span className="absolute right-1 bottom-1 w-5 h-5 rounded-full bg-[#157a4f] border-2 border-white flex items-center justify-center text-[10px] text-white">
-                        <User size={10} />
-                      </span>
-                    </div>
+                    {displayUser?.profilePhoto ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={displayUser.profilePhoto}
+                        alt={displayUser?.name || "Profile"}
+                        className="w-[84px] h-[84px] rounded-full shadow-sm object-cover"
+                      />
+                    ) : (
+                      <div className="w-[84px] h-[84px] rounded-full bg-[#e6b03f] text-white flex items-center justify-center text-4xl font-medium relative shadow-sm">
+                        {initials}
+                        <span className="absolute right-1 bottom-1 w-5 h-5 rounded-full bg-[#157a4f] border-2 border-white flex items-center justify-center text-[10px] text-white">
+                          <User size={10} />
+                        </span>
+                      </div>
+                    )}
                     <div>
                       <h1 className="text-[36px] leading-none font-semibold text-[#1d1d1d]">{displayUser?.name || "Kaustubh Khamkar"}</h1>
                       <div className="mt-2 space-y-1 text-sm text-[#4f4f4f]">
@@ -386,10 +526,13 @@ export default function ProfilePage() {
 
             <div className="px-6 py-5 border-t border-[#edf1ef] overflow-y-auto">
               <div className="flex items-center gap-4 pb-5 border-b border-[#ececec]">
-                <div className="w-16 h-16 rounded-full bg-[#edb744] text-white flex items-center justify-center text-3xl font-medium">
+                <div className="w-16 h-16 rounded-full bg-[#edb744] text-white flex items-center justify-center text-3xl font-medium overflow-hidden">
                   {avatarPreview ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={avatarPreview} alt="Profile preview" className="w-full h-full rounded-full object-cover" />
+                    <img src={avatarPreview} alt="Profile preview" className="w-full h-full object-cover" />
+                  ) : displayUser?.profilePhoto ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={displayUser.profilePhoto} alt="Current profile" className="w-full h-full object-cover" />
                   ) : (
                     editForm.name?.charAt(0)?.toUpperCase() || "A"
                   )}
@@ -477,15 +620,19 @@ export default function ProfilePage() {
                       </button>
                     );
                   })}
-                  <button className="rounded-full border border-[#e4dbc5] bg-[#efe6cf] text-[#4d4737] px-4 py-1.5 text-sm font-semibold inline-flex items-center gap-1.5">
-                    <Plus size={14} />
-                    Add Category
-                  </button>
                 </div>
               </div>
 
               {editError && (
-                <p className="mt-4 text-[#d45555] text-sm font-semibold">{editError}</p>
+                <div className="mt-4 p-3 rounded-lg bg-[#fee2e2] border border-[#fecaca] text-[#dc2626] text-sm font-semibold">
+                  {editError}
+                </div>
+              )}
+
+              {editSuccess && (
+                <div className="mt-4 p-3 rounded-lg bg-[#dcfce7] border border-[#86efac] text-[#166534] text-sm font-semibold">
+                  {editSuccess}
+                </div>
               )}
             </div>
 
