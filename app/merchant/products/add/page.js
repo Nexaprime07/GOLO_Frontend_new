@@ -3,10 +3,40 @@
 import Image from "next/image";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, User, ChevronLeft } from "lucide-react";
+import { ChevronLeft, User } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
-import { createMerchantProduct } from "../../../lib/api";
+import { createMerchantProduct, getMerchantProfile } from "../../../lib/api";
 import MerchantNavbar from "../../MerchantNavbar";
+
+function pickStoreName(user, merchantProfile) {
+  return (
+    merchantProfile?.storeName ||
+    user?.storeName ||
+    user?.shopName ||
+    user?.name ||
+    "My Store"
+  );
+}
+
+function pickStoreLocation(user, merchantProfile) {
+  return (
+    merchantProfile?.storeLocation ||
+    user?.storeLocation ||
+    user?.location ||
+    user?.city ||
+    ""
+  );
+}
+
+function pickStoreImage(user, merchantProfile) {
+  return (
+    merchantProfile?.profilePhoto ||
+    merchantProfile?.shopPhoto ||
+    user?.profilePhoto ||
+    user?.shopPhoto ||
+    ""
+  );
+}
 
 export default function AddProductPage() {
   const router = useRouter();
@@ -17,10 +47,11 @@ export default function AddProductPage() {
   const [stockQuantity, setStockQuantity] = useState("");
   const [regularPrice, setRegularPrice] = useState("");
   const [description, setDescription] = useState("");
-  const [brandImage, setBrandImage] = useState("/images/deal2.avif");
   const [productImages, setProductImages] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [merchantProfile, setMerchantProfile] = useState(null);
+  const [merchantProfileError, setMerchantProfileError] = useState("");
 
   const handleMerchantLogout = async () => {
     await logout();
@@ -82,11 +113,37 @@ export default function AddProductPage() {
     }
   }, [loading, user, router]);
 
+  useEffect(() => {
+    if (!user || user.accountType !== "merchant") return;
+
+    let active = true;
+    (async () => {
+      try {
+        setMerchantProfileError("");
+        const res = await getMerchantProfile();
+        if (!active) return;
+        setMerchantProfile(res?.data || null);
+      } catch (error) {
+        if (!active) return;
+        setMerchantProfile(null);
+        setMerchantProfileError(error?.message || "Failed to load merchant profile");
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
   if (loading || !user) {
     return <div className="min-h-screen bg-[#ececec]" />;
   }
 
   if (user.accountType !== "merchant") return null;
+
+  const storeName = pickStoreName(user, merchantProfile);
+  const storeLocation = pickStoreLocation(user, merchantProfile);
+  const brandImage = pickStoreImage(user, merchantProfile);
 
   return (
     <div className="min-h-screen bg-[#ececec] text-[#1b1b1b]" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
@@ -207,17 +264,26 @@ export default function AddProductPage() {
               <div className="rounded-[12px] border border-[#e5e5e5] bg-white p-6">
                 {/* Brand Display */}
                 <div className="rounded-[10px] border border-[#e2e2e2] bg-[#f9f9f9] p-4 mb-5 flex items-center justify-center min-h-[80px]">
-                  {brandImage && (
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="h-12 w-12 rounded-full overflow-hidden border border-[#ececec] bg-white">
-                        <Image src={brandImage} alt="Brand" width={48} height={48} className="h-full w-full object-cover" />
-                      </div>
-                      <div className="text-center">
-                        <p className="text-[13px] font-semibold text-[#333]">Fashion Fusion</p>
-                        <p className="text-[11px] text-[#999]">Rajarangkur, Koshiapur</p>
-                      </div>
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="h-12 w-12 rounded-full overflow-hidden border border-[#ececec] bg-white flex items-center justify-center">
+                      {brandImage && String(brandImage).trim() ? (
+                        <Image src={brandImage} alt="Store" width={48} height={48} className="h-full w-full object-cover" />
+                      ) : (
+                        <User size={22} className="text-[#9ca3af]" />
+                      )}
                     </div>
-                  )}
+                    <div className="text-center">
+                      <p className="text-[13px] font-semibold text-[#333]">{storeName}</p>
+                      {storeLocation ? (
+                        <p className="text-[11px] text-[#999]">{storeLocation}</p>
+                      ) : (
+                        <p className="text-[11px] text-[#999]">Store location not set</p>
+                      )}
+                      {merchantProfileError ? (
+                        <p className="mt-1 text-[10px] text-[#ef4d4d]">{merchantProfileError}</p>
+                      ) : null}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Product Media Section */}
@@ -284,9 +350,6 @@ export default function AddProductPage() {
                   className="h-10 rounded-[8px] border border-[#d5d5d5] bg-white px-5 text-[12px] font-semibold text-[#6f6f6f] hover:bg-[#f9f9f9] transition"
                 >
                   Discard Changes
-                </button>
-                <button className="h-10 rounded-[8px] bg-white border border-[#d5d5d5] px-5 text-[12px] font-semibold text-[#6f6f6f] hover:bg-[#f9f9f9] transition">
-                  Save as Draft
                 </button>
                 <button
                   disabled={isSubmitting}

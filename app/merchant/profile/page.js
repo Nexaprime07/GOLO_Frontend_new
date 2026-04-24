@@ -70,8 +70,8 @@ function MerchantProfileContent({ user, logout, router }) {
     shopName: "",
     location: "",
   });
-  const [merchantPhoto, setMerchantPhoto] = useState("/images/deal2.avif");
-  const [shopPhoto, setShopPhoto] = useState("/images/place2.avif");
+  const [merchantPhoto, setMerchantPhoto] = useState("");
+  const [shopPhoto, setShopPhoto] = useState("");
   const [merchantPhotoFile, setMerchantPhotoFile] = useState(null);
   const [shopPhotoFile, setShopPhotoFile] = useState(null);
   const [storeLocation, setStoreLocation] = useState({
@@ -376,7 +376,13 @@ function MerchantProfileContent({ user, logout, router }) {
                   </div>
                   <div className="relative px-8 pb-7 pt-0">
                     <div className="absolute left-1/2 -translate-x-1/2 -top-14 w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-lg bg-white cursor-pointer group" onClick={() => isEditMode && handlePhotoClick(false)}>
-                      <Image src={merchantPhoto} alt="Merchant profile" fill className="object-cover group-hover:brightness-75 transition" />
+                      {merchantPhoto && String(merchantPhoto).trim() ? (
+                        <Image src={merchantPhoto} alt="Merchant profile" fill className="object-cover group-hover:brightness-75 transition" />
+                      ) : (
+                        <div className="h-full w-full bg-[#f3f4f6] flex items-center justify-center text-[#9ca3af]">
+                          <User size={44} />
+                        </div>
+                      )}
                     </div>
                     {isEditMode && (
                       <div className="absolute left-1/2 translate-x-[28px] top-[24px] w-8 h-8 rounded-full bg-[#157a4f] border-2 border-white flex items-center justify-center text-white shadow-sm cursor-pointer hover:bg-[#0f5a3a] transition" onClick={() => handlePhotoClick(false)}>
@@ -426,7 +432,13 @@ function MerchantProfileContent({ user, logout, router }) {
                   </div>
                   <div className="relative px-8 pb-7 pt-0">
                     <div className="absolute left-1/2 -translate-x-1/2 -top-14 w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-lg bg-white cursor-pointer group" onClick={() => isEditMode && handlePhotoClick(true)}>
-                      <Image src={shopPhoto} alt="Shop" fill className="object-cover group-hover:brightness-75 transition" />
+                      {shopPhoto && String(shopPhoto).trim() ? (
+                        <Image src={shopPhoto} alt="Shop" fill className="object-cover group-hover:brightness-75 transition" />
+                      ) : (
+                        <div className="h-full w-full bg-[#f3f4f6] flex items-center justify-center text-[#9ca3af]">
+                          <User size={44} />
+                        </div>
+                      )}
                     </div>
                     {isEditMode && (
                       <div className="absolute left-1/2 translate-x-[28px] top-[24px] w-8 h-8 rounded-full bg-[#157a4f] border-2 border-white flex items-center justify-center text-white shadow-sm cursor-pointer hover:bg-[#0f5a3a] transition" onClick={() => handlePhotoClick(true)}>

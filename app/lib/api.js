@@ -1218,6 +1218,48 @@ export async function getMerchantOrderStats() {
 }
 
 /**
+ * Get merchant realtime analytics payload for dashboard sections
+ */
+export async function getMerchantRealtimeAnalytics() {
+    return apiClient('/merchant-dashboard/analytics/realtime');
+}
+
+/**
+ * Get merchant trend analytics
+ */
+export async function getMerchantTrendAnalytics() {
+    return apiClient('/merchant-dashboard/analytics/trend');
+}
+
+/**
+ * Get merchant events analytics
+ */
+export async function getMerchantEventsAnalytics() {
+    return apiClient('/merchant-dashboard/analytics/events');
+}
+
+/**
+ * Get merchant top products analytics
+ */
+export async function getMerchantTopProductsAnalytics() {
+    return apiClient('/merchant-dashboard/analytics/top-products');
+}
+
+/**
+ * Get merchant top regions analytics
+ */
+export async function getMerchantTopRegionsAnalytics() {
+    return apiClient('/merchant-dashboard/analytics/top-regions');
+}
+
+/**
+ * Get merchant device analytics
+ */
+export async function getMerchantDeviceAnalytics() {
+    return apiClient('/merchant-dashboard/analytics/device-breakdown');
+}
+
+/**
  * Get analytics device breakdown
  * @param {string} dateRange - Time range for analytics (e.g., '7days', '30days')
  */

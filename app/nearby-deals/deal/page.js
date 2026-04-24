@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { Clock3, MapPin, Shield, Star, Ticket } from "lucide-react";
+import { Clock3, MapPin, Shield, Star, Ticket, User } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useVoucher } from "../../context/VoucherContext";
 import { getNearbyOfferDetails } from "../../lib/api";
@@ -267,29 +267,34 @@ function NearbyDealDetailsContent() {
                     <p className="mt-3 text-[14px] text-[#66707b]">No product details were provided for this offer.</p>
                   ) : (
                     <div className="mt-4 space-y-3">
-                      {selectedProducts.map((item, index) => (
-                        <article
-                          key={`${item?.productId || index}`}
-                          className="rounded-[12px] border border-[#d8dce3] bg-white p-3 flex items-center gap-3"
-                        >
-                          <div className="relative h-16 w-16 overflow-hidden rounded-lg border border-[#e5e7eb] bg-[#f3f4f6]">
-                            <Image
-                              src={item?.imageUrl || "/images/deal2.avif"}
-                              alt={item?.productName || "Product"}
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-[15px] font-semibold text-[#1f2329]">{item?.productName || "Product"}</p>
-                            <p className="text-[12px] text-[#6b7280]">Stock: {toNumber(item?.stockQuantity, 0)}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-[16px] font-bold text-[#157a4f]">Rs.{toNumber(item?.offerPrice, 0).toLocaleString("en-IN")}</p>
-                            <p className="text-[12px] text-[#9ca3af] line-through">Rs.{toNumber(item?.originalPrice, 0).toLocaleString("en-IN")}</p>
-                          </div>
-                        </article>
-                      ))}
+                      {selectedProducts.map((item, index) => {
+                        const productId = item?.productId || item?.id || item?._id;
+                        return (
+                          <article
+                            key={`${productId || index}`}
+                            onClick={() => productId && router.push(`/product/${productId}/merchant-page`)}
+                            className="rounded-[12px] border border-[#d8dce3] bg-white p-3 flex items-center gap-3 cursor-pointer hover:shadow-lg hover:border-[#157a4f] transition"
+                            title="View product details"
+                          >
+                            <div className="relative h-16 w-16 overflow-hidden rounded-lg border border-[#e5e7eb] bg-[#f3f4f6]">
+                              <Image
+                                src={item?.imageUrl || "/images/deal2.avif"}
+                                alt={item?.productName || "Product"}
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-[15px] font-semibold text-[#1f2329]">{item?.productName || "Product"}</p>
+                              <p className="text-[12px] text-[#6b7280]">Stock: {toNumber(item?.stockQuantity, 0)}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[16px] font-bold text-[#157a4f]">Rs.{toNumber(item?.offerPrice, 0).toLocaleString("en-IN")}</p>
+                              <p className="text-[12px] text-[#9ca3af] line-through">Rs.{toNumber(item?.originalPrice, 0).toLocaleString("en-IN")}</p>
+                            </div>
+                          </article>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -323,13 +328,19 @@ function NearbyDealDetailsContent() {
                 <div className="rounded-[12px] border border-[#d8dce3] bg-white p-4">
                   <div className="flex items-start gap-3">
                     <div className="h-12 w-12 overflow-hidden rounded-full border border-[#d8dce3] bg-[#f3f4f6]">
-                      <Image
-                        src={offer?.merchant?.profilePhoto || "/images/place2.avif"}
-                        alt={offer?.merchant?.name || "Merchant"}
-                        width={64}
-                        height={64}
-                        className="h-full w-full object-cover"
-                      />
+                      {offer?.merchant?.profilePhoto && String(offer.merchant.profilePhoto).trim() ? (
+                        <Image
+                          src={offer.merchant.profilePhoto}
+                          alt={offer?.merchant?.name || "Merchant"}
+                          width={64}
+                          height={64}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center text-[#9ca3af]">
+                          <User size={22} />
+                        </div>
+                      )}
                     </div>
                     <div>
                       <p className="text-[15px] font-bold text-[#1f2329]">{offer?.merchant?.name || "Merchant"}</p>

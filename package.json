@@ -4,9 +4,10 @@
   "private": true,
   "packageManager": "npm@10.8.2",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
     "start": "next start",
+    "clean": "node -e \"const fs=require('fs'); for (const d of ['.next','.turbo']) { try { fs.rmSync(d,{recursive:true,force:true}); } catch {} }\"",
     "lint": "eslint"
   },
   "dependencies": {

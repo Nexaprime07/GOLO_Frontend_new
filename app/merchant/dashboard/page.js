@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Download, Plus, ChevronRight, ShoppingBag, Box, Star, User } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import MerchantNavbar from "../MerchantNavbar";
-import { getMerchantDashboardSummary } from "../../lib/api";
+import { getMerchantDashboardSummary, getMerchantProfile } from "../../lib/api";
 
 const orders = [
   { id: "#2456", time: "Placed 12 hours ago", amount: "₹340", qty: "3 items" },
@@ -35,6 +35,7 @@ export default function MerchantDashboardPage() {
   const router = useRouter();
   const { user, loading, logout, getUserAccountType } = useAuth();
   const [summary, setSummary] = useState(null);
+  const [merchantProfile, setMerchantProfile] = useState(null);
 
   const handleMerchantLogout = async () => {
     await logout();
@@ -69,12 +70,39 @@ export default function MerchantDashboardPage() {
     loadSummary();
   }, [user, getUserAccountType]);
 
+  useEffect(() => {
+    if (!user || (user?.accountType || getUserAccountType()) !== "merchant") return;
+
+    let active = true;
+    (async () => {
+      try {
+        const res = await getMerchantProfile();
+        if (!active) return;
+        setMerchantProfile(res?.data || null);
+      } catch (err) {
+        if (!active) return;
+        setMerchantProfile(null);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [user, getUserAccountType]);
+
   if (loading || !user) {
     return <div className="min-h-screen bg-[#efefef]" />;
   }
 
   const accountType = user?.accountType || getUserAccountType();
   if (accountType !== "merchant") return null;
+
+  const storeAvatar =
+    merchantProfile?.profilePhoto ||
+    merchantProfile?.shopPhoto ||
+    user?.profilePhoto ||
+    user?.shopPhoto ||
+    "";
 
   return (
     <div className="min-h-screen bg-[#ececec] text-[#1b1b1b]" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
@@ -86,7 +114,13 @@ export default function MerchantDashboardPage() {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="flex items-start gap-4">
                 <div className="h-14 w-14 rounded-full overflow-hidden border border-[#dadada]">
-                  <Image src="/images/deal2.avif" alt="Moon Cafe" width={56} height={56} className="h-full w-full object-cover" />
+                  {storeAvatar && String(storeAvatar).trim() ? (
+                    <Image src={storeAvatar} alt="Store" width={56} height={56} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center bg-[#f3f4f6] text-[#9ca3af]">
+                      <User size={22} />
+                    </div>
+                  )}
                 </div>
                 <div>
                   <p className="text-[9px] text-[#737373]">Open Now • Last updated 2 mins ago</p>

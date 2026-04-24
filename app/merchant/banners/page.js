@@ -3,10 +3,10 @@
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Megaphone, Plus, Search, User } from "lucide-react";
+import { Download, Edit3, Megaphone, Plus, Search, User, X } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import MerchantNavbar from "../MerchantNavbar";
-import { getMyBannerPromotions, payForBannerPromotion } from "../../lib/api";
+import { getMyBannerPromotions, payForBannerPromotion, updateMyBannerPromotion } from "../../lib/api";
 
 function formatDate(dateStr) {
   if (!dateStr) return "-";
@@ -32,8 +32,18 @@ export default function MerchantBannersPage() {
   const [rows, setRows] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [listLoading, setListLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [actionMessage, setActionMessage] = useState("");
   const [actionError, setActionError] = useState("");
+  const [editRow, setEditRow] = useState(null);
+  const [editForm, setEditForm] = useState({
+    bannerTitle: "",
+    bannerCategory: "",
+    imageUrl: "",
+    startDate: "",
+    endDate: "",
+  });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   const loadRequests = async () => {
     setListLoading(true);
@@ -58,6 +68,199 @@ export default function MerchantBannersPage() {
       setActionMessage("Payment completed successfully.");
     } catch (error) {
       setActionError(error?.data?.message || "Failed to process payment.");
+    }
+  };
+
+  const escapeCsvField = (value) => {
+    const str = String(value ?? "");
+    if (/[",\r\n]/.test(str)) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
+  const downloadCsv = (filename, csvText) => {
+    const blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportBannersToCsv = async () => {
+    try {
+      setIsExporting(true);
+
+      const header = [
+        "requestId",
+        "bannerTitle",
+        "bannerCategory",
+        "status",
+        "paymentStatus",
+        "createdAt",
+        "startDate",
+        "endDate",
+        "totalPrice",
+        "dailyRate",
+        "platformFee",
+        "imageUrl",
+      ];
+
+      const exportRows = filteredRows;
+      const lines = [
+        header.join(","),
+        ...exportRows.map((row) => {
+          const values = [
+            row?.requestId || row?._id || row?.id,
+            row?.bannerTitle,
+            row?.bannerCategory,
+            row?.status,
+            row?.paymentStatus,
+            row?.createdAt,
+            row?.startDate,
+            row?.endDate,
+            row?.totalPrice,
+            row?.dailyRate,
+            row?.platformFee,
+            row?.imageUrl,
+          ].map(escapeCsvField);
+          return values.join(",");
+        }),
+      ];
+
+      const today = new Date().toISOString().split("T")[0];
+      const safeSearch = String(searchTerm || "").trim().replace(/[^\w-]+/g, "_").slice(0, 40);
+      const filename = safeSearch ? `banners_${safeSearch}_${today}.csv` : `banners_${today}.csv`;
+      downloadCsv(filename, lines.join("\r\n"));
+    } catch (error) {
+      window.alert(error?.message || "Failed to export CSV");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const normalizeInputDate = (value) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const computeRangeDates = (startDate, endDate) => {
+    if (!startDate || !endDate) return [];
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return [];
+    if (end < start) return [];
+
+    const days = [];
+    const cursor = new Date(start);
+    while (cursor <= end) {
+      const year = cursor.getFullYear();
+      const month = String(cursor.getMonth() + 1).padStart(2, "0");
+      const day = String(cursor.getDate()).padStart(2, "0");
+      days.push(`${year}-${month}-${day}`);
+      cursor.setDate(cursor.getDate() + 1);
+      if (days.length > 370) break;
+    }
+    return days;
+  };
+
+  const openEdit = (row) => {
+    const start = normalizeInputDate(row?.startDate) || (Array.isArray(row?.selectedDates) ? row.selectedDates[0] : "");
+    const end = normalizeInputDate(row?.endDate) || (Array.isArray(row?.selectedDates) ? row.selectedDates[row.selectedDates.length - 1] : "");
+
+    setEditRow(row);
+    setEditForm({
+      bannerTitle: row?.bannerTitle || "",
+      bannerCategory: row?.bannerCategory || "",
+      imageUrl: row?.imageUrl || "",
+      startDate: start,
+      endDate: end,
+    });
+    setActionMessage("");
+    setActionError("");
+  };
+
+  const closeEdit = () => {
+    setEditRow(null);
+    setEditForm({ bannerTitle: "", bannerCategory: "", imageUrl: "", startDate: "", endDate: "" });
+    setIsSavingEdit(false);
+  };
+
+  const saveEdit = async () => {
+    if (!editRow) return;
+
+    setActionMessage("");
+    setActionError("");
+
+    const bannerTitle = String(editForm.bannerTitle || "").trim();
+    const bannerCategory = String(editForm.bannerCategory || "").trim();
+    if (!bannerTitle) {
+      setActionError("Banner title is required.");
+      return;
+    }
+    if (!bannerCategory) {
+      setActionError("Banner category is required.");
+      return;
+    }
+
+    const selectedDates = computeRangeDates(editForm.startDate, editForm.endDate);
+    if (selectedDates.length === 0) {
+      setActionError("Please select a valid start and end date.");
+      return;
+    }
+
+    const promotionId = editRow?.requestId || editRow?._id || editRow?.id;
+    if (!promotionId) {
+      setActionError("Unable to edit this banner (missing id).");
+      return;
+    }
+
+    setIsSavingEdit(true);
+    try {
+      const updateData = {
+        bannerTitle,
+        bannerCategory,
+        imageUrl: editForm.imageUrl,
+        selectedDates,
+      };
+
+      const res = await updateMyBannerPromotion(promotionId, updateData);
+      const updated = res?.data || updateData;
+
+      setRows((prev) =>
+        prev.map((item) => {
+          const itemId = item?.requestId || item?._id || item?.id;
+          if (String(itemId) !== String(promotionId)) return item;
+
+          const nextDates = Array.isArray(updated?.selectedDates) ? updated.selectedDates : selectedDates;
+          return {
+            ...item,
+            ...updated,
+            bannerTitle: updated?.bannerTitle ?? bannerTitle,
+            bannerCategory: updated?.bannerCategory ?? bannerCategory,
+            imageUrl: updated?.imageUrl ?? editForm.imageUrl,
+            selectedDates: nextDates,
+            startDate: updated?.startDate ?? nextDates[0],
+            endDate: updated?.endDate ?? nextDates[nextDates.length - 1],
+          };
+        }),
+      );
+
+      setActionMessage("Banner updated successfully.");
+      closeEdit();
+    } catch (error) {
+      setActionError(error?.data?.message || "Failed to update banner.");
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -144,7 +347,11 @@ export default function MerchantBannersPage() {
               </div>
 
               <div className="flex items-center gap-2">
-                <button className="h-9 rounded-[8px] border border-[#e2e2e2] bg-white px-4 text-[11px] text-[#666] inline-flex items-center gap-1.5" onClick={loadRequests}>
+                <button
+                  disabled={isExporting}
+                  className="h-9 rounded-[8px] border border-[#e2e2e2] bg-white px-4 text-[11px] text-[#666] inline-flex items-center gap-1.5 disabled:opacity-60"
+                  onClick={exportBannersToCsv}
+                >
                   <Download size={12} /> Export CSV
                 </button>
                 <button onClick={() => router.push("/merchant/banners/promote")} className="h-9 rounded-[8px] bg-[#2f9e58] px-4 text-[11px] font-semibold text-white inline-flex items-center gap-1.5">
@@ -172,11 +379,11 @@ export default function MerchantBannersPage() {
                 <tbody>
                   {listLoading ? (
                     <tr>
-                      <td colSpan={9} className="px-4 py-6 text-center text-[#666]">Loading banners...</td>
+                      <td colSpan={8} className="px-4 py-6 text-center text-[#666]">Loading banners...</td>
                     </tr>
                   ) : filteredRows.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="px-4 py-6 text-center text-[#666]">No banner requests found.</td>
+                      <td colSpan={8} className="px-4 py-6 text-center text-[#666]">No banner requests found.</td>
                     </tr>
                   ) : filteredRows.map((row) => (
                     <tr key={row.requestId} className="border-t border-[#f0f0f0]">
@@ -205,16 +412,24 @@ export default function MerchantBannersPage() {
                       </td>
                       <td className="px-4 py-3 text-[11px] font-semibold text-[#1f1f1f]">Rs. {row.totalPrice || 0}</td>
                       <td className="px-4 py-3">
-                        {row.status === "approved" && row.paymentStatus !== "paid" ? (
+                        <div className="flex items-center gap-2">
                           <button
-                            onClick={() => handlePayNow(row.requestId)}
-                            className="h-7 rounded-[6px] bg-[#157a4f] px-3 text-[10px] font-semibold text-white"
+                            type="button"
+                            onClick={() => openEdit(row)}
+                            disabled={row?.paymentStatus === "paid" || row?.status === "active" || row?.status === "expired"}
+                            className="h-7 rounded-[6px] border border-[#e2e2e2] bg-white px-2.5 text-[10px] font-semibold text-[#444] inline-flex items-center gap-1 disabled:opacity-60"
                           >
-                            Pay Now
+                            <Edit3 size={12} /> Edit
                           </button>
-                        ) : (
-                          <span className="text-[10px] text-[#888]">-</span>
-                        )}
+                          {row.status === "approved" && row.paymentStatus !== "paid" ? (
+                            <button
+                              onClick={() => handlePayNow(row.requestId)}
+                              className="h-7 rounded-[6px] bg-[#157a4f] px-3 text-[10px] font-semibold text-white"
+                            >
+                              Pay Now
+                            </button>
+                          ) : null}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -223,6 +438,114 @@ export default function MerchantBannersPage() {
 
               <div className="bg-[#d6d9df] px-6 py-4 text-[12px] text-[#565656]">Showing {filteredRows.length} of {rows.length} banners</div>
             </div>
+
+            {editRow ? (
+              <div className="fixed inset-0 z-[9999] bg-black/40 flex items-center justify-center px-4">
+                <div className="w-full max-w-[640px] rounded-[14px] bg-white border border-[#e7e7e7] shadow-xl overflow-hidden">
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-[#efefef]">
+                    <p className="text-[16px] font-semibold text-[#1f1f1f]">Edit Banner</p>
+                    <button type="button" onClick={closeEdit} className="h-8 w-8 rounded-full border border-[#e5e5e5] bg-white inline-flex items-center justify-center">
+                      <X size={16} className="text-[#666]" />
+                    </button>
+                  </div>
+
+                  <div className="px-5 py-4 space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[12px] font-semibold text-[#333] mb-2">Banner Title</label>
+                        <input
+                          value={editForm.bannerTitle}
+                          onChange={(e) => setEditForm((p) => ({ ...p, bannerTitle: e.target.value }))}
+                          className="h-10 w-full rounded-[8px] border border-[#dddddd] bg-white px-3 text-[12px] outline-none focus:border-[#2f9e58]"
+                          placeholder="Banner title"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[12px] font-semibold text-[#333] mb-2">Category</label>
+                        <input
+                          value={editForm.bannerCategory}
+                          onChange={(e) => setEditForm((p) => ({ ...p, bannerCategory: e.target.value }))}
+                          className="h-10 w-full rounded-[8px] border border-[#dddddd] bg-white px-3 text-[12px] outline-none focus:border-[#2f9e58]"
+                          placeholder="Category"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[12px] font-semibold text-[#333] mb-2">Start Date</label>
+                        <input
+                          type="date"
+                          value={editForm.startDate}
+                          onChange={(e) => setEditForm((p) => ({ ...p, startDate: e.target.value }))}
+                          className="h-10 w-full rounded-[8px] border border-[#dddddd] bg-white px-3 text-[12px] outline-none focus:border-[#2f9e58]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[12px] font-semibold text-[#333] mb-2">End Date</label>
+                        <input
+                          type="date"
+                          value={editForm.endDate}
+                          onChange={(e) => setEditForm((p) => ({ ...p, endDate: e.target.value }))}
+                          className="h-10 w-full rounded-[8px] border border-[#dddddd] bg-white px-3 text-[12px] outline-none focus:border-[#2f9e58]"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[12px] font-semibold text-[#333] mb-2">Banner Image</label>
+                      <div className="flex items-center gap-3">
+                        <label className="h-10 px-4 rounded-[8px] border border-[#dddddd] bg-white text-[12px] font-semibold text-[#444] inline-flex items-center cursor-pointer hover:bg-[#fafafa]">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                if (typeof reader.result === "string") {
+                                  setEditForm((p) => ({ ...p, imageUrl: reader.result }));
+                                }
+                              };
+                              reader.readAsDataURL(file);
+                            }}
+                          />
+                          Upload
+                        </label>
+                        <div className="h-10 w-10 rounded-full overflow-hidden border border-[#ececec] bg-[#f3f4f6] flex items-center justify-center">
+                          {editForm.imageUrl && String(editForm.imageUrl).trim() ? (
+                            <Image src={editForm.imageUrl} alt="Banner" width={40} height={40} className="h-full w-full object-cover" />
+                          ) : (
+                            <User size={18} className="text-[#9ca3af]" />
+                          )}
+                        </div>
+                        <p className="text-[11px] text-[#777]">Range days: {computeRangeDates(editForm.startDate, editForm.endDate).length || 0}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="px-5 py-4 border-t border-[#efefef] flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={closeEdit}
+                      className="h-9 rounded-[8px] border border-[#e2e2e2] bg-white px-4 text-[12px] font-semibold text-[#444]"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isSavingEdit}
+                      onClick={saveEdit}
+                      className="h-9 rounded-[8px] bg-[#2f9e58] disabled:bg-[#9fcfad] px-4 text-[12px] font-semibold text-white"
+                    >
+                      {isSavingEdit ? "Saving..." : "Save Changes"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </section>
         </div>
       </main>

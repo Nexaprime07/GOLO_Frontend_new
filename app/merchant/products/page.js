@@ -25,7 +25,91 @@ export default function MerchantProductsPage() {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [isFetching, setIsFetching] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [fetchError, setFetchError] = useState("");
+
+  const escapeCsvField = (value) => {
+    const str = String(value ?? "");
+    if (/[",\r\n]/.test(str)) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
+  const downloadCsv = (filename, csvText) => {
+    const blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportProductsToCsv = async () => {
+    try {
+      setIsExporting(true);
+      setFetchError("");
+
+      const limit = 100;
+      let pageToFetch = 1;
+      let pages = 1;
+      const allRows = [];
+
+      do {
+        const res = await getMerchantProducts({ page: pageToFetch, limit, search });
+        const batch = Array.isArray(res?.data?.products) ? res.data.products : [];
+        allRows.push(...batch);
+        pages = Number(res?.pagination?.pages || 1);
+        pageToFetch += 1;
+
+        if (allRows.length > 5000) break;
+      } while (pageToFetch <= pages);
+
+      const header = [
+        "id",
+        "name",
+        "category",
+        "price",
+        "stockQuantity",
+        "status",
+        "image",
+        "description",
+        "createdAt",
+        "updatedAt",
+      ];
+
+      const lines = [
+        header.join(","),
+        ...allRows.map((row) => {
+          const values = [
+            row?.id,
+            row?.name,
+            row?.category,
+            row?.price,
+            row?.stockQuantity,
+            row?.status,
+            row?.image,
+            row?.description,
+            row?.createdAt,
+            row?.updatedAt,
+          ].map(escapeCsvField);
+          return values.join(",");
+        }),
+      ];
+
+      const today = new Date().toISOString().split("T")[0];
+      const safeSearch = String(search || "").trim().replace(/[^\w-]+/g, "_").slice(0, 40);
+      const filename = safeSearch ? `products_${safeSearch}_${today}.csv` : `products_${today}.csv`;
+      downloadCsv(filename, lines.join("\r\n"));
+    } catch (error) {
+      window.alert(error?.message || "Failed to export CSV");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const handleMerchantLogout = async () => {
     await logout();
@@ -147,8 +231,10 @@ export default function MerchantProductsPage() {
                   onChange={(e) => setSearchInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
+                      const trimmed = searchInput.trim();
                       setPage(1);
-                      setSearch(searchInput.trim());
+                      setSearchInput(trimmed);
+                      setSearch(trimmed);
                     }
                   }}
                   className="h-9 w-full rounded-[8px] border border-[#e2e2e2] bg-white pl-8 pr-3 text-[12px] outline-none"
@@ -157,13 +243,19 @@ export default function MerchantProductsPage() {
               </div>
 
               <div className="flex items-center gap-2">
-                <button className="h-9 rounded-[8px] border border-[#e2e2e2] bg-white px-4 text-[11px] text-[#666] inline-flex items-center gap-1.5">
+                <button
+                  disabled={isExporting}
+                  onClick={exportProductsToCsv}
+                  className="h-9 rounded-[8px] border border-[#e2e2e2] bg-white px-4 text-[11px] text-[#666] inline-flex items-center gap-1.5 disabled:opacity-60"
+                >
                   <Download size={12} /> Export CSV
                 </button>
                 <button
                   onClick={() => {
+                    const trimmed = searchInput.trim();
                     setPage(1);
-                    setSearch(searchInput.trim());
+                    setSearchInput(trimmed);
+                    setSearch(trimmed);
                   }}
                   className="h-9 rounded-[8px] border border-[#e2e2e2] bg-white px-4 text-[11px] text-[#666]"
                 >
