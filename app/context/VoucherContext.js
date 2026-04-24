@@ -52,7 +52,9 @@ export function VoucherProvider({ children }) {
         setError(null);
         try {
             const response = await getMyVouchers({ page, limit, status });
-            setMyVouchers(response.data?.vouchers || []);
+            // Backend returns { success: true, data: [...] } - data is the array directly
+            const vouchers = Array.isArray(response.data) ? response.data : (response.data?.vouchers || []);
+            setMyVouchers(vouchers);
             return response;
         } catch (err) {
             setError(err.data?.message || "Failed to fetch vouchers");

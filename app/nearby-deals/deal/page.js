@@ -6,7 +6,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { Clock3, MapPin, Shield, Star, Ticket, ChevronDown, Share2, Heart, Info, Gift, Smartphone, Smile, AlertCircle, Check } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useVoucher } from "../../context/VoucherContext";
-import { getNearbyOfferDetails, getNearbyOffers, getOfferReviews } from "../../lib/api";
+import { getNearbyOfferDetails, getNearbyOffers, getOfferReviews, toggleWishlist, getAdWishlistCount, getWishlistIds } from "../../lib/api";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 
@@ -97,6 +97,53 @@ function NearbyDealDetailsContent() {
     breakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
   });
   const [loadingReviews, setLoadingReviews] = useState(true);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likesCount, setLikesCount] = useState(0);
+  const [likeLoading, setLikeLoading] = useState(false);
+
+  // Handle like/unlike
+  const handleToggleLike = async () => {
+    if (!user) {
+      router.push(`/login?redirect=/nearby-deals/deal?offerId=${offerId}`);
+      return;
+    }
+
+    setLikeLoading(true);
+    try {
+      console.log("Toggling wishlist for offerId:", offerId);
+      const res = await toggleWishlist(offerId);
+      console.log("Wishlist toggle response:", res);
+      const newLikedState = res?.data?.isLiked ?? !isLiked;
+      setIsLiked(newLikedState);
+      setLikesCount(prev => newLikedState ? prev + 1 : Math.max(0, prev - 1));
+    } catch (err) {
+      console.error("Failed to toggle like:", err);
+    } finally {
+      setLikeLoading(false);
+    }
+  };
+
+  // Handle share
+  const handleShare = async () => {
+    const shareData = {
+      title: offer?.title || "Check out this offer!",
+      text: `Grab this deal: ${offer?.title || "Special Offer"}`,
+      url: window.location.href,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        alert("Link copied to clipboard!");
+      }
+    } catch (err) {
+      if (err.name !== "AbortError") {
+        console.error("Share failed:", err);
+      }
+    }
+  };
 
   useEffect(() => {
     if (!offer?.endsAt) {
@@ -111,6 +158,28 @@ function NearbyDealDetailsContent() {
   }, [offer?.endsAt]);
 
   const offerId = searchParams.get("offerId") || "";
+
+  // Check if offer is in wishlist and get likes count
+  useEffect(() => {
+    if (!offerId || !user) return;
+
+    const loadWishlistInfo = async () => {
+      try {
+        // Get wishlist IDs to check if this offer is liked
+        const idsRes = await getWishlistIds();
+        const ids = idsRes?.data || [];
+        setIsLiked(ids.includes(offerId));
+
+        // Get likes count for this offer
+        const countRes = await getAdWishlistCount(offerId);
+        setLikesCount(countRes?.data?.count || 0);
+      } catch (err) {
+        console.error("Failed to load wishlist info:", err);
+      }
+    };
+
+    loadWishlistInfo();
+  }, [offerId, user]);
 
   const readCachedOffer = (id) => {
     if (!id || typeof window === "undefined") return null;
@@ -316,12 +385,28 @@ function NearbyDealDetailsContent() {
                   {offer?.title || "Untitled Offer"}
                 </h1>
                 <div className="flex gap-2">
-                  <button className="p-2 rounded-full hover:bg-[#f0f0f0]">
+                  <button 
+                    onClick={handleShare}
+                    className="p-2 rounded-full hover:bg-[#f0f0f0]" 
+                    aria-label="Share this offer"
+                  >
                     <Share2 size={20} className="text-[#666]" />
                   </button>
-                  <button className="p-2 rounded-full hover:bg-[#f0f0f0]">
-                    <Heart size={20} className="text-[#666]" />
+                  <button 
+                    onClick={handleToggleLike}
+                    disabled={likeLoading}
+                    className={`p-2 rounded-full hover:bg-[#f0f0f0] ${isLiked ? "bg-red-50" : ""}`}
+                    aria-label={isLiked ? "Remove from favorites" : "Add to favorites"}
+                  >
+                    <Heart 
+                      size={20} 
+                      className={isLiked ? "text-red-500 fill-red-500" : "text-[#666]"} 
+                      fill={isLiked ? "currentColor" : "none"}
+                    />
                   </button>
+                  {likesCount > 0 && (
+                    <span className="self-center text-sm text-[#666]">{likesCount}</span>
+                  )}
                 </div>
               </div>
 
@@ -442,17 +527,37 @@ function NearbyDealDetailsContent() {
                       key={idx} 
                       className="flex gap-4 p-4 rounded-xl border-2 border-[#e5e7eb] bg-[#f9fafb] hover:border-[#157a4f] hover:bg-[#f0f9f6] transition-all cursor-pointer"
                       onClick={() => {
+                        const selectedProductId = String(product?.productId || product?.id || `product-${idx}`);
+                        const merchantStoreId = String(
+                          offer?.merchantId || offer?.merchant?.merchantId || offer?.merchant?._id || offer?.merchant?.id || ''
+                        );
+
+                        // Keep URL compact and store richer fallback data in session cache.
+                        if (typeof window !== 'undefined') {
+                          try {
+                            const cacheKey = `golo_nearby_offer_product_${offerId || 'na'}_${selectedProductId}`;
+                            sessionStorage.setItem(
+                              cacheKey,
+                              JSON.stringify({
+                                productId: selectedProductId,
+                                offerId,
+                                merchantId: merchantStoreId,
+                                productName: product?.productName || product?.name || 'Product',
+                                description: product?.description || 'Premium quality product',
+                                imageUrl: product?.imageUrl || '/images/deal2.avif',
+                                offerPrice: product?.offerPrice || 0,
+                                originalPrice: product?.originalPrice || 0,
+                                stockQuantity: product?.stockQuantity || 0,
+                                category: product?.category || offer?.category || 'Product',
+                              }),
+                            );
+                          } catch {}
+                        }
+
                         const productParams = new URLSearchParams({
-                          productId: product?.productId || product?.id || `product-${idx}`,
-                          productName: product?.productName || "Product",
-                          description: product?.description || "Premium quality product",
-                          imageUrl: product?.imageUrl || "/images/deal2.avif",
-                          offerPrice: product?.offerPrice || 0,
-                          originalPrice: product?.originalPrice || 0,
-                          stockQuantity: product?.stockQuantity || 0,
-                          category: product?.category || offer?.category || "Product",
-                          offerId: offerId,
-                          merchantId: offer?.merchantId || offer?.merchant?.merchantId || offer?.merchant?._id
+                          productId: selectedProductId,
+                          offerId: offerId || '',
+                          merchantId: merchantStoreId,
                         });
                         router.push(`/nearby-deals/product?${productParams.toString()}`);
                       }}

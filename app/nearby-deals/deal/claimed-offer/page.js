@@ -88,7 +88,7 @@ function ClaimedOfferContent() {
     }
   }, [user, router]);
 
-  // Fetch voucher details on mount
+  // Fetch voucher details on mount - always fetch on reload since context is cleared
   useEffect(() => {
     if (!voucherId || !user) {
       return;
@@ -97,11 +97,14 @@ function ClaimedOfferContent() {
     const selectedVoucherMatches =
       selectedVoucher?._id === voucherId || selectedVoucher?.voucherId === voucherId;
 
+    // If we already have the voucher in context, use it
     if (selectedVoucherMatches) {
       setVoucherAccessRestricted(false);
       return;
     }
 
+    // Otherwise fetch from API (handles page reload)
+    // Note: fetchVoucherDetails already handles loading state internally
     fetchVoucherDetails(voucherId)
       .then(() => setVoucherAccessRestricted(false))
       .catch((err) => {
@@ -114,7 +117,7 @@ function ClaimedOfferContent() {
 
         console.error("Failed to fetch voucher:", err);
       });
-  }, [voucherId, user, selectedVoucher?._id, selectedVoucher?.voucherId, fetchVoucherDetails]);
+  }, [voucherId, user]);
 
   useEffect(() => {
     if (!voucherId || selectedVoucher?.status === "redeemed") {

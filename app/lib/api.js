@@ -1463,6 +1463,18 @@ export async function updateMerchantProduct(productId, updateData) {
 }
 
 // ============================================================
+// MERCHANT ANALYTICS APIS
+// ============================================================
+
+/**
+ * Get merchant's liked products (offers sorted by wishlist count)
+ * @param {number} limit - Number of results to return
+ */
+export async function getMerchantLikedProducts(limit = 10) {
+    return apiClient(`/offers/merchant/liked-products?limit=${limit}`);
+}
+
+// ============================================================
 // BANNER PROMOTION APIs
 // ============================================================
 

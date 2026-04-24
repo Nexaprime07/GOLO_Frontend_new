@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
 import { useVoucher } from "../context/VoucherContext";
@@ -10,14 +10,33 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { CalendarDays, ChevronRight, Search, Tag, ShieldCheck, CircleHelp, ArrowUpDown, ExternalLink } from "lucide-react";
 
-const stats = [
-  { label: "Active Savings", value: "4", icon: Tag },
-  { label: "Claimed Codes", value: "2", icon: CalendarDays },
-  { label: "Total Redeemed", value: "12", icon: ShieldCheck },
-  { label: "Expired", value: "1", icon: ExternalLink },
-];
-
 const tabs = ["All Deals", "Active", "Claimed", "Redeemed", "Expired"];
+
+// Dynamic stats calculation
+function useDealStats(myVouchers) {
+  return useMemo(() => {
+    if (!myVouchers || myVouchers.length === 0) {
+      return [
+        { label: "Active Savings", value: "0", icon: Tag },
+        { label: "Claimed Codes", value: "0", icon: CalendarDays },
+        { label: "Total Redeemed", value: "0", icon: ShieldCheck },
+        { label: "Expired", value: "0", icon: ExternalLink },
+      ];
+    }
+
+    const active = myVouchers.filter(v => v.status === "active" || v.status === "claimed").length;
+    const claimed = myVouchers.filter(v => v.status === "claimed").length;
+    const redeemed = myVouchers.filter(v => v.status === "redeemed").length;
+    const expired = myVouchers.filter(v => v.status === "expired").length;
+
+    return [
+      { label: "Active Savings", value: String(active), icon: Tag },
+      { label: "Claimed Codes", value: String(claimed), icon: CalendarDays },
+      { label: "Total Redeemed", value: String(redeemed), icon: ShieldCheck },
+      { label: "Expired", value: String(expired), icon: ExternalLink },
+    ];
+  }, [myVouchers]);
+}
 
 const quickTips = [
   "Always present your QR code to the merchant staff before ordering.",
@@ -33,11 +52,12 @@ export default function MyDeals() {
   const { myVouchers, fetchMyVouchers, loading: voucherLoading } = useVoucher();
   const [activeTab, setActiveTab] = useState("All Deals");
   const [filteredDeals, setFilteredDeals] = useState([]);
+  const stats = useDealStats(myVouchers);
 
   // Fetch vouchers on mount
   useEffect(() => {
     if (user) {
-      fetchMyVouchers({ page: 1, limit: 6 });
+      fetchMyVouchers({ page: 1, limit: 100 });
     }
   }, [user, fetchMyVouchers]);
 
@@ -50,7 +70,8 @@ export default function MyDeals() {
 
     let filtered = myVouchers;
     if (activeTab === "Active") {
-      filtered = myVouchers.filter(v => v.status === "active");
+      // Active means not redeemed or expired - can still be used
+      filtered = myVouchers.filter(v => v.status === "active" || v.status === "claimed");
     } else if (activeTab === "Claimed") {
       filtered = myVouchers.filter(v => v.status === "claimed");
     } else if (activeTab === "Redeemed") {
@@ -136,45 +157,48 @@ export default function MyDeals() {
                             <div className="mt-6 grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {filteredDeals.map((deal) => (
                   <article key={deal._id} className="group rounded-[12px] border border-[#282828] bg-white overflow-hidden shadow-[0_1px_0_rgba(0,0,0,0.03)]">
-                    <div className="relative h-[132px] bg-[#f3efe5] overflow-hidden">
-                      <Image 
-                        src={deal.offer?.imageUrl || deal.image || "/images/deal2.avif"} 
-                        alt={deal.offer?.title || deal.title || "Deal Image"} 
-                        fill 
-                        className="object-cover" 
-                      />
-                      <div className="absolute inset-x-0 top-0 flex items-start justify-between px-2 py-2">
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-sm ${deal.status === "active" ? "bg-[#d3f3dd] text-[#15803d]" : deal.status === "claimed" ? "bg-[#ffe9c7] text-[#a16207]" : deal.status === "redeemed" ? "bg-[#dce6ff] text-[#334155]" : "bg-[#f5e2d7] text-[#b45309]"}`}>
-                          {deal.status}
-                        </span>
-                        {deal.badge && <span className="rounded-full bg-[#7a4af4] px-2.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">{deal.badge}</span>}
-                      </div>
-                    </div>
-
-                    <div className="px-3 pt-2.5 pb-3">
-                      <p className="text-[9px] font-semibold tracking-[0.18em] text-[#4ca5ef] uppercase">{deal.offer?.merchant?.name || deal.merchant || "Merchant"}</p>
-                      <h3 className="mt-1 text-[16px] leading-tight font-semibold text-[#222] min-h-[38px]">{deal.offer?.title || deal.title || "Untitled Deal"}</h3>
-
-                      <div className="mt-4 flex items-center gap-1 text-[11px] text-[#737373]">
-                        <CalendarDays size={13} className="text-[#8f8f8f]" />
-                        <span>Expires {deal.offer?.endsAt ? new Date(deal.offer.endsAt).toLocaleDateString() : (deal.expiry || "N/A")}</span>
+                        <div className="relative h-[132px] bg-[#f3efe5] overflow-hidden">
+                        <Image 
+                          src={deal.offerImage || deal.image || "/images/deal2.avif"} 
+                          alt={deal.offerTitle || "Deal Image"} 
+                          fill 
+                          className="object-cover" 
+                        />
+                        <div className="absolute inset-x-0 top-0 flex items-start justify-between px-2 py-2">
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-sm ${deal.status === "active" || deal.status === "claimed" ? "bg-[#d3f3dd] text-[#15803d]" : deal.status === "redeemed" ? "bg-[#dce6ff] text-[#334155]" : "bg-[#f5e2d7] text-[#b45309]"}`}>
+                            {deal.status}
+                          </span>
+                          {deal.badge && <span className="rounded-full bg-[#7a4af4] px-2.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">{deal.badge}</span>}
+                        </div>
                       </div>
 
-                      <div className="mt-4 flex items-center gap-2">
-                        <button 
-                          onClick={() => router.push(`/nearby-deals/deal/claimed-offer?voucherId=${deal._id}`)}
-                          className="h-8 flex-1 rounded-md bg-[#f3b12a] text-[#1f1f1f] text-[12px] font-semibold hover:brightness-95 transition"
-                        >
-                          {deal.status === "active" ? "View Code" : "Details"}
-                        </button>
-                        <button 
-                          onClick={() => router.push(`/nearby-deals/deal?offerId=${deal.offer?._id || deal.offerId}`)}
-                          className="h-8 w-8 rounded-md border border-[#e0e0e0] text-[#777] flex items-center justify-center hover:border-[#c9c9c9]"
-                        >
-                          <ChevronRight size={14} />
-                        </button>
+                      <div className="px-3 pt-2.5 pb-3">
+                        <p className="text-[9px] font-semibold tracking-[0.18em] text-[#4ca5ef] uppercase">{deal.merchantName || "Merchant"}</p>
+                        <h3 className="mt-1 text-[16px] leading-tight font-semibold text-[#222] min-h-[38px]">{deal.offerTitle || "Untitled Deal"}</h3>
+
+                        <div className="mt-4 flex items-center gap-1 text-[11px] text-[#737373]">
+                          <CalendarDays size={13} className="text-[#8f8f8f]" />
+                          <span>Expires {deal.expiresAt ? new Date(deal.expiresAt).toLocaleDateString() : (deal.expiry || "N/A")}</span>
+                        </div>
+
+                        <div className="mt-4 flex items-center gap-2">
+                          {(deal.status === "active" || deal.status === "claimed") && (
+                            <button 
+                              onClick={() => router.push(`/nearby-deals/deal/claimed-offer?voucherId=${deal._id}`)}
+                              className="h-8 flex-1 rounded-md bg-[#f3b12a] text-[#1f1f1f] text-[12px] font-semibold hover:brightness-95 transition"
+                            >
+                              View Code
+                            </button>
+                          )}
+                          <button 
+                            onClick={() => router.push(`/nearby-deals/deal?offerId=${deal.offerId}`)}
+                            className="h-8 w-8 rounded-md border border-[#e0e0e0] text-[#777] flex items-center justify-center hover:border-[#c9c9c9]"
+                            aria-label="View deal details"
+                          >
+                            <ChevronRight size={14} />
+                          </button>
+                        </div>
                       </div>
-                    </div>
                   </article>
                 ))}
               </div>

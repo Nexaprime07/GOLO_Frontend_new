@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { Save, Bell, CreditCard, Store, Lock, User } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useRoleProtection, LoadingScreen } from "../../components/RoleBasedRedirect";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getMerchantProfile } from "../../lib/api";
 
 const topTabs = ["Profile Settings", "Loyalty Rewards", "Help", "Settings", "Logout"];
 
@@ -14,17 +15,52 @@ export default function MerchantSettingsPage() {
   const { isLoading: roleLoading, isAuthorized } = useRoleProtection("merchant");
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(null);
+  const [pageLoading, setPageLoading] = useState(true);
 
   const [settings, setSettings] = useState({
-    storeName: user?.shopName || "My Store",
-    storeEmail: user?.email || "merchant@example.com",
-    storePhone: user?.phone || "+91 98765 43210",
+    storeName: "",
+    storeEmail: "",
+    storePhone: "",
     orderNotifications: true,
-    emailNotifications: true,
-    reviewNotifications: true,
     gstNumber: "",
     billingAddress: "",
   });
+
+  // Fetch merchant profile and auto-fill form
+  useEffect(() => {
+    const fetchMerchantProfile = async () => {
+      try {
+        setPageLoading(true);
+        const response = await getMerchantProfile();
+        const profile = response?.data || {};
+
+        setSettings({
+          storeName: profile.storeName || user?.name || "My Store",
+          storeEmail: profile.storeEmail || user?.email || "merchant@example.com",
+          storePhone: profile.contactNumber || user?.phone || "+91 98765 43210",
+          orderNotifications: true,
+          gstNumber: profile.gstNumber || "",
+          billingAddress: profile.billingAddress || "",
+        });
+      } catch (err) {
+        // Use fallback values
+        setSettings({
+          storeName: user?.name || "My Store",
+          storeEmail: user?.email || "merchant@example.com",
+          storePhone: user?.phone || "+91 98765 43210",
+          orderNotifications: true,
+          gstNumber: "",
+          billingAddress: "",
+        });
+      } finally {
+        setPageLoading(false);
+      }
+    };
+
+    if (user && user.accountType === "merchant") {
+      fetchMerchantProfile();
+    }
+  }, [user]);
 
   const handleMerchantLogout = async () => {
     await logout();
@@ -43,9 +79,19 @@ export default function MerchantSettingsPage() {
     }));
   };
 
-  const handleSave = () => {
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(null), 2000);
+  const handleSave = async () => {
+    try {
+      const response = await updateProfile({
+        shopName: settings.storeName,
+        phone: settings.storePhone,
+      });
+      if (response?.success) {
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(null), 2000);
+      }
+    } catch (err) {
+      console.error("Failed to save settings:", err);
+    }
   };
 
   if (roleLoading) {
@@ -195,9 +241,7 @@ export default function MerchantSettingsPage() {
               </div>
               <div className="space-y-3">
                 {[
-                  { key: "orderNotifications", label: "Order Alerts", desc: "New order notifications" },
-                  { key: "emailNotifications", label: "Email Updates", desc: "Activity summaries" },
-                  { key: "reviewNotifications", label: "Review Alerts", desc: "Customer reviews & ratings" },
+                  { key: "orderNotifications", label: "Order Alerts", desc: "Get notified when a customer claims your offer" },
                 ].map((notif) => (
                   <div key={notif.key} className="flex items-center justify-between p-3 bg-[#f9f9f9] rounded-[6px]">
                     <div>
@@ -211,39 +255,10 @@ export default function MerchantSettingsPage() {
                         onChange={(e) => handleChange(notif.key, e.target.checked)}
                         className="sr-only peer"
                       />
-                      <div className="w-9 h-5 bg-[#d5d5d5] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[#d5d5d5] after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#157a4f]"></div>
+                      <div className="w-9 h-5 bg-[#d5d5d5] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:border-[#d5d5d5] after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#157a4f]"></div>
                     </label>
                   </div>
                 ))}
-              </div>
-            </div>
-
-            {/* Tax & Billing Section */}
-            <div className="bg-white rounded-[8px] border border-[#d5d5d5] p-6">
-              <div className="flex items-center gap-3 mb-5">
-                <CreditCard size={18} style={{ color: "#157a4f" }} />
-                <h2 className="text-[16px] font-bold text-[#1f1f1f]">Tax & Billing</h2>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-[11px] font-semibold text-[#1f1f1f] mb-2">GST Registration Number</label>
-                  <input
-                    type="text"
-                    placeholder="Enter GST number (optional)"
-                    className="w-full px-3 py-2 border border-[#d5d5d5] rounded-[6px] bg-white text-[12px] focus:outline-none focus:border-[#157a4f]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-[#1f1f1f] mb-2">Billing Address</label>
-                  <textarea
-                    placeholder="Enter your complete billing address"
-                    rows="3"
-                    className="w-full px-3 py-2 border border-[#d5d5d5] rounded-[6px] bg-white text-[12px] focus:outline-none focus:border-[#157a4f] resize-none"
-                  />
-                </div>
-                <div className="bg-[#f0f9f6] border border-[#157a4f] rounded-[6px] p-3">
-                  <p className="text-[11px] text-[#157a4f] font-semibold">ℹ Payment settlements are handled externally between customer and merchant through your selected payment gateway.</p>
-                </div>
               </div>
             </div>
 

@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 import { useVoucher } from "../../context/VoucherContext";
 import { Html5Qrcode } from "html5-qrcode";
 import { Check, AlertCircle, Zap } from "lucide-react";
-import { verifyVoucherByCode } from "../../lib/api";
+import { verifyVoucherByCode, getMerchantRedemptionHistory } from "../../lib/api";
 import MerchantNavbar from "../MerchantNavbar";
 
 export default function MerchantQRScannerPage() {
@@ -22,6 +22,8 @@ export default function MerchantQRScannerPage() {
   const [manualQRCode, setManualQRCode] = useState("");
   const [isManualEntry, setIsManualEntry] = useState(false);
   const [cameraStatus, setCameraStatus] = useState("inactive"); // 'inactive', 'initializing', 'active', 'error', 'permission-denied'
+  const [todaysRedemptions, setTodaysRedemptions] = useState([]);
+  const [loadingRedemptions, setLoadingRedemptions] = useState(true);
 
   const stopScanner = async () => {
     const scannerInstance = qrScannerRef.current;
@@ -104,6 +106,38 @@ export default function MerchantQRScannerPage() {
       stopScanner();
     };
   }, []);
+
+  // Fetch today's redemptions
+  const fetchTodaysRedemptions = useCallback(async () => {
+    setLoadingRedemptions(true);
+    try {
+      const response = await getMerchantRedemptionHistory({ page: 1, limit: 100 });
+      const allRedemptions = response.data || [];
+
+      // Filter for today's redemptions
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const todays = allRedemptions.filter(v => {
+        if (!v.redeemedAt) return false;
+        const redeemedDate = new Date(v.redeemedAt);
+        return redeemedDate >= today;
+      });
+
+      setTodaysRedemptions(todays);
+    } catch (err) {
+      console.error("Failed to fetch today's redemptions:", err);
+    } finally {
+      setLoadingRedemptions(false);
+    }
+  }, []);
+
+  // Load today's redemptions on mount
+  useEffect(() => {
+    if (user && user.accountType === "merchant") {
+      fetchTodaysRedemptions();
+    }
+  }, [user, fetchTodaysRedemptions]);
 
   // Initialize scanner when qr-reader div is in DOM and not inactive
   useEffect(() => {
@@ -282,10 +316,13 @@ export default function MerchantQRScannerPage() {
         ...(scanResult.qrCode && { qrCode: scanResult.qrCode }),
         ...(scanResult.verificationCode && { verificationCode: scanResult.verificationCode }),
       };
-      
+
       await redeemVoucherHandler(scanResult.voucherId, verificationData);
       setVerificationStatus("redeemed");
-      
+
+      // Refresh today's redemptions
+      await fetchTodaysRedemptions();
+
       // Clear after 3 seconds
       setTimeout(() => {
         setScanResult(null);
@@ -521,35 +558,48 @@ export default function MerchantQRScannerPage() {
           <h2 className="text-[24px] font-semibold text-[#1e1e1e]">Today's Redemptions</h2>
           <p className="mt-2 text-[12px] text-[#6f6f6f]">QR codes scanned and redeemed today</p>
 
-          <div className="mt-6 rounded-[8px] border border-[#d5d5d5] overflow-hidden">
-            <table className="w-full text-[12px]">
-              <thead className="bg-[#f9f9f9] border-b border-[#d5d5d5]">
-                <tr>
-                  <th className="text-left px-4 py-3 font-bold">Customer</th>
-                  <th className="text-left px-4 py-3 font-bold">Offer</th>
-                  <th className="text-left px-4 py-3 font-bold">Discount</th>
-                  <th className="text-left px-4 py-3 font-bold">Time</th>
-                  <th className="text-left px-4 py-3 font-bold">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-t border-[#d5d5d5]">
-                  <td className="px-4 py-3">John Doe</td>
-                  <td className="px-4 py-3">30% Off Massage</td>
-                  <td className="px-4 py-3">₹500</td>
-                  <td className="px-4 py-3">10:30 AM</td>
-                  <td className="px-4 py-3"><span className="bg-[#d3f3dd] text-[#15803d] px-2 py-0.5 rounded text-[10px] font-semibold">Redeemed</span></td>
-                </tr>
-                <tr className="border-t border-[#d5d5d5]">
-                  <td className="px-4 py-3">Sarah Smith</td>
-                  <td className="px-4 py-3">Buy 1 Get 1</td>
-                  <td className="px-4 py-3">₹300</td>
-                  <td className="px-4 py-3">11:15 AM</td>
-                  <td className="px-4 py-3"><span className="bg-[#d3f3dd] text-[#15803d] px-2 py-0.5 rounded text-[10px] font-semibold">Redeemed</span></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          {loadingRedemptions ? (
+            <div className="mt-6 text-center py-8 text-[#999] text-[12px]">Loading redemptions...</div>
+          ) : todaysRedemptions.length === 0 ? (
+            <div className="mt-6 text-center py-8 text-[#999] text-[12px]">No redemptions today</div>
+          ) : (
+            <div className="mt-6 rounded-[8px] border border-[#d5d5d5] overflow-hidden">
+              <table className="w-full text-[12px]">
+                <thead className="bg-[#f9f9f9] border-b border-[#d5d5d5]">
+                  <tr>
+                    <th className="text-left px-4 py-3 font-bold">Customer</th>
+                    <th className="text-left px-4 py-3 font-bold">Offer</th>
+                    <th className="text-left px-4 py-3 font-bold">Discount</th>
+                    <th className="text-left px-4 py-3 font-bold">Time</th>
+                    <th className="text-left px-4 py-3 font-bold">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {todaysRedemptions.map((voucher, index) => (
+                    <tr key={voucher._id || index} className="border-t border-[#d5d5d5]">
+                      <td className="px-4 py-3">{voucher.userName || "N/A"}</td>
+                      <td className="px-4 py-3">{voucher.offerTitle || "N/A"}</td>
+                      <td className="px-4 py-3">{voucher.discount || "N/A"}</td>
+                      <td className="px-4 py-3">
+                        {voucher.redeemedAt
+                          ? new Date(voucher.redeemedAt).toLocaleTimeString('en-US', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: true,
+                            })
+                          : "N/A"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="bg-[#d3f3dd] text-[#15803d] px-2 py-0.5 rounded text-[10px] font-semibold">
+                          Redeemed
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       </main>
     </div>

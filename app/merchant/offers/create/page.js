@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Search, Upload, X, Circle, CircleCheck } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
