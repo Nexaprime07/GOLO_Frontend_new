@@ -198,6 +198,17 @@ export default function MerchantOffersPage() {
 
   return (
     <div className="min-h-screen bg-[#ececec] text-[#1b1b1b]" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
+      <style>{`
+        @keyframes shimmer-sweep {
+          0% { background-position: -400px 0; }
+          100% { background-position: 400px 0; }
+        }
+        .shimmer-offers {
+          background: linear-gradient(90deg, #e8e8e8 25%, #f4f4f4 50%, #e8e8e8 75%);
+          background-size: 800px 100%;
+          animation: shimmer-sweep 1.4s ease-in-out infinite;
+        }
+      `}</style>
       <MerchantNavbar activeKey="offers" />
 
       <main className="w-full px-8 lg:px-10 py-6">
@@ -363,9 +374,17 @@ export default function MerchantOffersPage() {
                 </thead>
                 <tbody>
                   {pageLoading ? (
-                    <tr>
-                      <td className="px-4 py-8 text-center text-[#666]" colSpan={5}>Loading offers...</td>
-                    </tr>
+                    <>
+                      {[...Array(5)].map((_, i) => (
+                        <tr key={i} className="border-t border-[#f0f0f0]">
+                          <td className="px-4 py-3"><div className="h-4 w-28 rounded shimmer-offers" /></td>
+                          <td className="px-4 py-3"><div className="h-4 w-20 rounded shimmer-offers" /></td>
+                          <td className="px-4 py-3"><div className="h-5 w-14 rounded-full shimmer-offers" /></td>
+                          <td className="px-4 py-3"><div className="h-4 w-20 rounded shimmer-offers" /></td>
+                          <td className="px-4 py-3"><div className="h-4 w-24 rounded shimmer-offers" /></td>
+                        </tr>
+                      ))}
+                    </>
                   ) : filteredOffers.length === 0 ? (
                     <tr>
                       <td className="px-4 py-8 text-center text-[#666]" colSpan={5}>No offers found</td>

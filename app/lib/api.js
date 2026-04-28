@@ -354,6 +354,13 @@ export async function toggleWishlist(adId) {
     });
 }
 
+export async function likeProductWithOffer(offerId, product) {
+    return apiClient('/users/likes/product', {
+        method: 'POST',
+        body: JSON.stringify({ offerId, product }),
+    });
+}
+
 export async function getWishlistIds() {
     return apiClient('/users/wishlist/ids');
 }
@@ -804,7 +811,7 @@ export async function getNearbyOfferDetails(offerId) {
     }
 
     try {
-        return await apiClient(endpoint);
+        return await apiClient(endpoint, { cache: 'no-store' });
     } catch (error) {
         if (error?.status !== 404) {
             throw error;
@@ -1509,11 +1516,19 @@ export async function updateMerchantProduct(productId, updateData) {
 // ============================================================
 
 /**
- * Get merchant's liked products (offers sorted by wishlist count)
+ * Get merchant analytics for liked offers and liked products.
  * @param {number} limit - Number of results to return
  */
 export async function getMerchantLikedProducts(limit = 10) {
-    return apiClient(`/offers/merchant/liked-products?limit=${limit}`);
+    try {
+        return await apiClient(`/offers/merchant/liked-products?limit=${limit}`);
+    } catch (error) {
+        // Backward-compatible fallback for deployments where offers route is not yet present
+        if (error?.status === 404) {
+            return apiClient(`/users/merchant/liked-products?limit=${limit}`);
+        }
+        throw error;
+    }
 }
 
 // ============================================================

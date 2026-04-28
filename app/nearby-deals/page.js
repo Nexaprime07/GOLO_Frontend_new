@@ -498,9 +498,7 @@ function NearbyDealsPageContent() {
 
             <div className={activeView === "list" ? "space-y-4" : "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"}>
               {loading ? (
-                <div className="col-span-full rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
-                  Loading nearby offers...
-                </div>
+                <NearbyDealsSkeleton view={activeView} />
               ) : filteredDeals.length === 0 ? (
                 <div className="col-span-full rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
                   No offers found for the selected filters.
@@ -557,6 +555,34 @@ function NearbyDealsPageContent() {
 
       <Footer />
     </main>
+  );
+}
+
+function NearbyDealsSkeleton({ view = "grid" }) {
+  return (
+    <>
+      {Array.from({ length: view === "list" ? 5 : 8 }).map((_, idx) => (
+        <article
+          key={idx}
+          className="group overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
+        >
+          <div className="relative h-36 w-full overflow-hidden bg-gray-100">
+            <div className="h-full w-full animate-pulse bg-[#e6ebf1]" />
+            <span className="absolute left-2 top-2 h-5 w-20 animate-pulse rounded-full bg-[#d9dee5]" />
+            <span className="absolute left-2 top-8 h-4 w-16 animate-pulse rounded-md bg-[#e2e6ec]" />
+          </div>
+          <div className="p-3">
+            <div className="h-4 w-3/4 animate-pulse rounded bg-[#e5e7eb]" />
+            <div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-[#edf0f4]" />
+            <div className="mt-2 h-3 w-full animate-pulse rounded bg-[#edf0f4]" />
+            <div className="mt-2 h-3 w-5/6 animate-pulse rounded bg-[#edf0f4]" />
+            <div className="mt-2 h-3 w-2/3 animate-pulse rounded bg-[#edf0f4]" />
+            <div className="mt-2 h-6 w-1/3 animate-pulse rounded bg-[#e5e7eb]" />
+            <div className="mt-3 h-[34px] w-full animate-pulse rounded-lg bg-[#e5e7eb]" />
+          </div>
+        </article>
+      ))}
+    </>
   );
 }
 

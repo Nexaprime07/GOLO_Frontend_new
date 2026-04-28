@@ -8,27 +8,40 @@ import AuthRequiredModal from "./AuthRequiredModal";
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from "../lib/api";
 
 function NavbarContent({
-  searchQuery: externalSearchQuery = "",
-  setSearchQuery: setExternalSearchQuery = () => { },
+  searchQuery: externalSearchQuery,
+  setSearchQuery: setExternalSearchQuery,
 }) {
   const searchParams = useSearchParams();
-  const [searchQuery, setSearchQuery] = useState(externalSearchQuery || searchParams.get("q") || "");
-  const [location, setLocation] = useState(searchParams.get("location") || "");
+  const isControlled = externalSearchQuery !== undefined;
+  const [searchQuery, setSearchQuery] = useState(() => {
+    if (isControlled) return externalSearchQuery;
+    return searchParams.get("q") || "";
+  });
+  const [location, setLocation] = useState(() => searchParams.get("location") || "");
 
-  // Sync with external prop if it changes
+  // Controlled: sync external prop to internal state
   useEffect(() => {
-    if (externalSearchQuery !== undefined) {
+    if (isControlled) {
       setSearchQuery(externalSearchQuery);
     }
-  }, [externalSearchQuery]);
+  }, [externalSearchQuery, isControlled]);
 
+  // Uncontrolled: sync from URL when query changes
+  useEffect(() => {
+    if (!isControlled) {
+      const q = searchParams.get("q") || "";
+      setSearchQuery(q);
+    }
+  }, [searchParams, isControlled]);
+
+  // Location always syncs from URL
   useEffect(() => {
     setLocation(searchParams.get("location") || "");
   }, [searchParams]);
 
   const handleSearchChange = (val) => {
     setSearchQuery(val);
-    setExternalSearchQuery(val);
+    if (setExternalSearchQuery) setExternalSearchQuery(val);
   };
 
   const handleLocationChange = (val) => {

@@ -6,7 +6,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { Clock3, MapPin, Shield, Star, Ticket, ChevronDown, Share2, Heart, Info, Gift, Smartphone, Smile, AlertCircle, Check } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useVoucher } from "../../context/VoucherContext";
-import { getNearbyOfferDetails, getNearbyOffers, getOfferReviews, toggleWishlist, getAdWishlistCount, getWishlistIds } from "../../lib/api";
+import { getNearbyOfferDetails, getNearbyOffers, getOfferReviews, getWishlistIds, toggleWishlist } from "../../lib/api";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 
@@ -98,52 +98,8 @@ function NearbyDealDetailsContent() {
   });
   const [loadingReviews, setLoadingReviews] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(0);
-  const [likeLoading, setLikeLoading] = useState(false);
-
-  // Handle like/unlike
-  const handleToggleLike = async () => {
-    if (!user) {
-      router.push(`/login?redirect=/nearby-deals/deal?offerId=${offerId}`);
-      return;
-    }
-
-    setLikeLoading(true);
-    try {
-      console.log("Toggling wishlist for offerId:", offerId);
-      const res = await toggleWishlist(offerId);
-      console.log("Wishlist toggle response:", res);
-      const newLikedState = res?.data?.isLiked ?? !isLiked;
-      setIsLiked(newLikedState);
-      setLikesCount(prev => newLikedState ? prev + 1 : Math.max(0, prev - 1));
-    } catch (err) {
-      console.error("Failed to toggle like:", err);
-    } finally {
-      setLikeLoading(false);
-    }
-  };
-
-  // Handle share
-  const handleShare = async () => {
-    const shareData = {
-      title: offer?.title || "Check out this offer!",
-      text: `Grab this deal: ${offer?.title || "Special Offer"}`,
-      url: window.location.href,
-    };
-
-    try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-      } else {
-        await navigator.clipboard.writeText(window.location.href);
-        alert("Link copied to clipboard!");
-      }
-    } catch (err) {
-      if (err.name !== "AbortError") {
-        console.error("Share failed:", err);
-      }
-    }
-  };
+  const [isLikeLoading, setIsLikeLoading] = useState(false);
+  const [shareMessage, setShareMessage] = useState("");
 
   useEffect(() => {
     if (!offer?.endsAt) {
@@ -159,28 +115,6 @@ function NearbyDealDetailsContent() {
 
   const offerId = searchParams.get("offerId") || "";
 
-  // Check if offer is in wishlist and get likes count
-  useEffect(() => {
-    if (!offerId || !user) return;
-
-    const loadWishlistInfo = async () => {
-      try {
-        // Get wishlist IDs to check if this offer is liked
-        const idsRes = await getWishlistIds();
-        const ids = idsRes?.data || [];
-        setIsLiked(ids.includes(offerId));
-
-        // Get likes count for this offer
-        const countRes = await getAdWishlistCount(offerId);
-        setLikesCount(countRes?.data?.count || 0);
-      } catch (err) {
-        console.error("Failed to load wishlist info:", err);
-      }
-    };
-
-    loadWishlistInfo();
-  }, [offerId, user]);
-
   const readCachedOffer = (id) => {
     if (!id || typeof window === "undefined") return null;
     try {
@@ -195,10 +129,10 @@ function NearbyDealDetailsContent() {
   };
 
   useEffect(() => {
-    const loadOffer = async () => {
+    const loadOffer = async (showLoader = true) => {
       if (!offerId) {
         setLoadError("Offer ID is missing.");
-        setLoadingOffer(false);
+        if (showLoader) setLoadingOffer(false);
         return;
       }
 
@@ -208,7 +142,7 @@ function NearbyDealDetailsContent() {
       }
 
       try {
-        setLoadingOffer(true);
+        if (showLoader) setLoadingOffer(true);
         setLoadError("");
         const response = await getNearbyOfferDetails(offerId);
         if (response?.data) {
@@ -220,12 +154,45 @@ function NearbyDealDetailsContent() {
           setOffer(null);
         }
       } finally {
-        setLoadingOffer(false);
+        if (showLoader) setLoadingOffer(false);
       }
     };
 
-    loadOffer();
+    loadOffer(true);
+
+    const refreshTimer = setInterval(() => {
+      loadOffer(false);
+    }, 15000);
+
+    const handleFocus = () => {
+      loadOffer(false);
+    };
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      clearInterval(refreshTimer);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, [offerId]);
+
+  useEffect(() => {
+    const loadLikeState = async () => {
+      if (!offerId || !user) {
+        setIsLiked(false);
+        return;
+      }
+
+      try {
+        const response = await getWishlistIds();
+        const ids = response?.data || [];
+        setIsLiked(Array.isArray(ids) ? ids.includes(offerId) : false);
+      } catch {
+        setIsLiked(false);
+      }
+    };
+
+    loadLikeState();
+  }, [offerId, user]);
 
   useEffect(() => {
     const loadOfferReviews = async () => {
@@ -320,19 +287,53 @@ function NearbyDealDetailsContent() {
     }
   };
 
-  if (loadingOffer) {
-    return (
-      <main className="min-h-screen bg-[#F3F3F3]">
-        <Navbar />
-        <div className="mx-auto max-w-[1260px] px-6 py-20">
-          <div className="rounded-xl border border-[#d8dce3] bg-white p-6 text-center text-sm text-[#6b7280]">
-            Loading offer details...
-          </div>
-        </div>
-        <Footer />
-      </main>
-    );
-  }
+  const handleToggleLike = async () => {
+    if (!offerId) return;
+    if (!user) {
+      router.push(`/login?redirect=/nearby-deals/deal?offerId=${offerId}`);
+      return;
+    }
+
+    try {
+      setIsLikeLoading(true);
+      const response = await toggleWishlist(offerId);
+      const added = Boolean(response?.data?.added);
+      setIsLiked(added);
+    } catch (err) {
+      setClaimError(err?.data?.message || err?.message || "Failed to update like.");
+    } finally {
+      setIsLikeLoading(false);
+    }
+  };
+
+  const handleShareOffer = async () => {
+    const shareUrl =
+      typeof window !== "undefined"
+        ? window.location.href
+        : `${process.env.NEXT_PUBLIC_WEB_URL || ""}/nearby-deals/deal?offerId=${offerId}`;
+
+    const sharePayload = {
+      title: offer?.title || "GOLO Offer",
+      text: offer?.description || "Check out this offer on GOLO",
+      url: shareUrl,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(sharePayload);
+        setShareMessage("Offer shared successfully.");
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+        setShareMessage("Offer link copied to clipboard.");
+      } else {
+        setShareMessage("Sharing is not supported in this browser.");
+      }
+    } catch {
+      setShareMessage("Sharing cancelled.");
+    }
+  };
+
+  if (loadingOffer) return <DealDetailsSkeleton />;
 
   if (loadError || !offer) {
     return (
@@ -385,34 +386,30 @@ function NearbyDealDetailsContent() {
                   {offer?.title || "Untitled Offer"}
                 </h1>
                 <div className="flex gap-2">
-                  <button 
-                    onClick={handleShare}
-                    className="p-2 rounded-full hover:bg-[#f0f0f0]" 
-                    aria-label="Share this offer"
-                  >
+                  <button onClick={handleShareOffer} className="p-2 rounded-full hover:bg-[#f0f0f0]" aria-label="Share offer">
                     <Share2 size={20} className="text-[#666]" />
                   </button>
-                  <button 
+                  <button
                     onClick={handleToggleLike}
-                    disabled={likeLoading}
-                    className={`p-2 rounded-full hover:bg-[#f0f0f0] ${isLiked ? "bg-red-50" : ""}`}
-                    aria-label={isLiked ? "Remove from favorites" : "Add to favorites"}
+                    disabled={isLikeLoading}
+                    className="p-2 rounded-full hover:bg-[#f0f0f0] disabled:opacity-60"
+                    aria-label="Like offer"
                   >
-                    <Heart 
-                      size={20} 
-                      className={isLiked ? "text-red-500 fill-red-500" : "text-[#666]"} 
-                      fill={isLiked ? "currentColor" : "none"}
-                    />
+                    <Heart size={20} className={isLiked ? "text-[#ef4444]" : "text-[#666]"} fill={isLiked ? "#ef4444" : "none"} />
                   </button>
-                  {likesCount > 0 && (
-                    <span className="self-center text-sm text-[#666]">{likesCount}</span>
-                  )}
                 </div>
               </div>
+              {shareMessage ? <p className="mb-2 text-xs text-[#4b5563]">{shareMessage}</p> : null}
 
               <p className="text-sm text-[#666] mb-4">
-                {offer?.description || offer?.promotionExpiryText || "Experience premium services with this exclusive offer from our merchant partners."}
+                {offer?.description || "Experience premium services with this exclusive offer from our merchant partners."}
               </p>
+              {/* Dynamic expiry banner when exact countdown isn't shown */}
+              {!timeRemaining && offer?.promotionExpiryText && (
+                <p className="text-xs text-[#e7a91d] font-semibold mb-4 flex items-center gap-1">
+                  <Clock3 size={12} /> {offer.promotionExpiryText}
+                </p>
+              )}
 
               <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-[#e8edf2] bg-[#fbfcfd] px-4 py-3">
                 <div className="flex items-center gap-2">
@@ -512,7 +509,7 @@ function NearbyDealDetailsContent() {
               <Info size={24} className="text-[#4a5fc1]" /> About this offer
             </h2>
             <p className="text-[#5d6670] text-sm leading-relaxed mb-6">
-              {offer?.description || offer?.promotionExpiryText || "Experience premium services with this exclusive offer from our merchant partners."}
+              {offer?.description || "Experience premium services with this exclusive offer from our merchant partners."}
             </p>
             
             {/* Products Section - More Prominent */}
@@ -777,8 +774,10 @@ function NearbyDealDetailsContent() {
           </div>
           <div className="space-y-4">
             {loadingReviews ? (
-              <div className="rounded-xl border border-[#e5e7eb] bg-[#fafafa] px-4 py-5 text-sm text-[#66707b]">
-                Loading reviews...
+              <div className="space-y-3">
+                <div className="h-4 w-48 animate-pulse rounded bg-[#e5e7eb]" />
+                <div className="h-4 w-full animate-pulse rounded bg-[#edf0f4]" />
+                <div className="h-4 w-5/6 animate-pulse rounded bg-[#edf0f4]" />
               </div>
             ) : offerReviews.length ? (
               offerReviews.map((review) => (
@@ -898,6 +897,110 @@ function NearbyDealDetailsContent() {
         )}
       </div>
 
+      <Footer />
+    </main>
+  );
+}
+
+function DealDetailsSkeleton() {
+  return (
+    <main className="min-h-screen bg-[#f5f5f5]">
+      <style>{`
+        @keyframes shimmer-deal {
+          0% { background-position: -600px 0; }
+          100% { background-position: 600px 0; }
+        }
+        .sk-deal {
+          background: linear-gradient(90deg, #e2e5ea 25%, #eef0f4 50%, #e2e5ea 75%);
+          background-size: 1200px 100%;
+          animation: shimmer-deal 1.5s ease-in-out infinite;
+          border-radius: 6px;
+        }
+      `}</style>
+      <Navbar />
+      <div className="mx-auto max-w-[1260px] px-4 lg:px-6 py-6">
+        {/* Breadcrumb */}
+        <div className="h-3 w-56 sk-deal mb-5 rounded-full" />
+
+        {/* Hero Section */}
+        <section className="bg-white rounded-2xl overflow-hidden shadow-sm mb-8 p-4 lg:p-6">
+          <div className="grid lg:grid-cols-[1.5fr_1fr] gap-6">
+            {/* Image skeleton */}
+            <div className="h-[300px] lg:h-[400px] sk-deal rounded-xl" />
+
+            {/* Details skeleton */}
+            <div className="space-y-4 flex flex-col">
+              <div className="h-8 w-4/5 sk-deal" />
+              <div className="h-4 w-full sk-deal" />
+              <div className="h-4 w-5/6 sk-deal" />
+
+              {/* Rating bar */}
+              <div className="h-12 rounded-xl sk-deal" />
+
+              {/* Price box */}
+              <div className="rounded-xl p-4 bg-[#fef5e7] space-y-3">
+                <div className="h-12 w-36 sk-deal rounded" />
+                <div className="h-12 rounded-lg sk-deal" />
+                <div className="h-3 w-48 sk-deal mx-auto rounded-full" />
+              </div>
+
+              {/* Validity grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="h-16 sk-deal rounded-lg" />
+                <div className="h-16 sk-deal rounded-lg" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* About & Merchant */}
+        <div className="grid lg:grid-cols-[2fr_1fr] gap-6 mb-8">
+          <section className="bg-white rounded-2xl p-6 border border-[#e5e7eb] space-y-4">
+            <div className="h-7 w-48 sk-deal" />
+            <div className="h-4 w-full sk-deal" />
+            <div className="h-4 w-11/12 sk-deal" />
+            <div className="h-4 w-3/4 sk-deal" />
+            {/* Product cards skeleton */}
+            <div className="mt-4 pt-4 border-t border-[#e5e7eb] space-y-3">
+              <div className="h-5 w-56 sk-deal" />
+              {[...Array(2)].map((_, i) => (
+                <div key={i} className="flex gap-4 p-4 rounded-xl border border-[#e5e7eb]">
+                  <div className="w-28 h-28 flex-shrink-0 sk-deal rounded-lg" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-5 w-3/5 sk-deal" />
+                    <div className="h-3 w-full sk-deal" />
+                    <div className="h-3 w-4/5 sk-deal" />
+                    <div className="h-6 w-28 sk-deal mt-2 rounded-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Merchant card skeleton */}
+          <section className="bg-white rounded-2xl p-6 h-fit border border-[#e5e7eb] space-y-4">
+            <div className="flex gap-3">
+              <div className="w-12 h-12 rounded-full sk-deal flex-shrink-0" />
+              <div className="space-y-2 flex-1">
+                <div className="h-4 w-32 sk-deal" />
+                <div className="h-3 w-24 sk-deal" />
+              </div>
+            </div>
+            <div className="h-14 sk-deal rounded-lg" />
+            <div className="h-14 sk-deal rounded-lg" />
+            <div className="h-10 sk-deal rounded-lg" />
+            <div className="h-10 sk-deal rounded-lg" />
+          </section>
+        </div>
+
+        {/* Terms skeleton */}
+        <section className="bg-white rounded-2xl p-6 border border-[#e5e7eb] space-y-3">
+          <div className="h-7 w-48 sk-deal" />
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-12 sk-deal rounded-lg" />
+          ))}
+        </section>
+      </div>
       <Footer />
     </main>
   );
