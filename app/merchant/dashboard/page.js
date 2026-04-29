@@ -123,7 +123,7 @@ export default function MerchantDashboardPage() {
                 </div>
                 <div>
                   <p className="text-[9px] text-[#737373]">Open Now • Last updated 2 mins ago</p>
-                  <h1 className="text-[44px] leading-none font-bold text-[#1f1f1f] mt-1">Moon Cafe</h1>
+                  <h1 className="text-[44px] leading-none font-bold text-[#1f1f1f] mt-1">{merchantProfile?.shopName || merchantProfile?.storeName || "My Store"}</h1>
                   <div className="mt-2 flex items-center gap-6 text-[14px] text-[#424242]">
                     <span className="inline-flex items-center gap-1"><ShoppingBag size={14} className="text-[#157a4f]" /> <span className="font-bold text-[30px] leading-none">{summary?.stats?.totalOrders || 0}</span> Total Orders</span>
                     <span className="inline-flex items-center gap-1"><Star size={14} className="text-[#e9aa1d]" /> <span className="font-bold text-[30px] leading-none">{summary?.stats?.averageRating || 0}</span> Store Rating</span>
@@ -164,7 +164,13 @@ export default function MerchantDashboardPage() {
                     </g>
                   ))}
 
-                  <polyline fill="none" stroke="#219653" strokeWidth="2.2" points="38,130 150,20 262,95 374,320 486,110 598,92 710,136" />
+                  {/* Dynamic data points based on weekly views */}
+                  <polyline 
+                    fill="none" 
+                    stroke="#219653" 
+                    strokeWidth="2.2" 
+                    points={`38,${330 - (summary?.stats?.weeklyViews || 100) * 0.5} 150,${330 - (summary?.stats?.dailyViews?.tue || 80) * 0.5} 262,${330 - (summary?.stats?.dailyViews?.wed || 120) * 0.5} 374,${330 - (summary?.stats?.dailyViews?.thu || 60) * 0.5} 486,${330 - (summary?.stats?.dailyViews?.fri || 150) * 0.5} 598,${330 - (summary?.stats?.dailyViews?.sat || 90) * 0.5} 710,${330 - (summary?.stats?.dailyViews?.sun || 110) * 0.5}`}
+                  />
 
                   {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d, idx) => (
                     <text key={d} x={38 + idx * 112} y="352" fontSize="10" fill="#8a8a8a">{d}</text>

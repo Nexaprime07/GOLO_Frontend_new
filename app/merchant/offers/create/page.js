@@ -85,7 +85,7 @@ export default function CreateMerchantOfferPage() {
     imageUrl: "",
     startDate: "",
     endDate: "",
-    promotionExpiryText: "Offer ends in 30 days",
+    promotionExpiryText: "",
     loyaltyRewardEnabled: true,
     loyaltyPointsPerPurchase: "1",
     termsAndConditions: DEFAULT_TERMS,
@@ -208,6 +208,21 @@ export default function CreateMerchantOfferPage() {
     }
   }, [loading, user, router]);
 
+  useEffect(() => {
+    if (formData.startDate && formData.endDate) {
+      const start = new Date(formData.startDate);
+      const end = new Date(formData.endDate);
+      const diffMs = end.getTime() - start.getTime();
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      if (diffDays > 0) {
+        setFormData((prev) => ({
+          ...prev,
+          promotionExpiryText: `Offer ends in ${diffDays} day${diffDays === 1 ? "" : "s"}`,
+        }));
+      }
+    }
+  }, [formData.startDate, formData.endDate]);
+
   const selectedDatesPreview = useMemo(
     () => buildSelectedDates(formData.startDate, formData.endDate || formData.startDate),
     [formData.startDate, formData.endDate],
@@ -329,7 +344,7 @@ export default function CreateMerchantOfferPage() {
       imageUrl: "",
       startDate: "",
       endDate: "",
-      promotionExpiryText: "Offer ends in 30 days",
+      promotionExpiryText: "",
       loyaltyRewardEnabled: true,
       loyaltyPointsPerPurchase: "1",
       termsAndConditions: DEFAULT_TERMS,
@@ -466,9 +481,9 @@ export default function CreateMerchantOfferPage() {
         imageUrl: formData.imageUrl.trim(),
         selectedDates,
         totalPrice: totalOfferValue,
+        promotionExpiryText: formData.promotionExpiryText,
         loyaltyRewardEnabled: formData.loyaltyRewardEnabled,
         loyaltyPointsPerPurchase: Number(formData.loyaltyPointsPerPurchase || 1),
-        promotionExpiryText: formData.promotionExpiryText,
         termsAndConditions: formData.termsAndConditions,
         exampleUsage: formData.exampleUsage,
         selectedProducts: selectedProducts.map((item) => ({
@@ -604,6 +619,36 @@ export default function CreateMerchantOfferPage() {
               </div>
 
               <div className="rounded-[12px] border border-[#ececec] bg-[#fbfbfb] p-4">
+                <h2 className="text-[18px] font-semibold text-[#202020]">Offer Banner</h2>
+
+                <div className="mt-3 space-y-3">
+                  <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-[8px] border border-[#d5d5d5] bg-[#f7f7f7] px-4 text-[12px] font-semibold text-[#333] hover:bg-[#efefef]">
+                    <Upload size={14} />
+                    {uploadingImage ? "Uploading..." : "Upload from device"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploadingImage}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        uploadOfferImage(file);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+
+                  <div className="rounded-[10px] border-2 border-dashed border-[#d8c4bb] bg-[#fff] min-h-[140px] p-4 flex items-center justify-center">
+                    {formData.imageUrl ? (
+                      <img src={formData.imageUrl} alt="Offer banner preview" className="max-h-[180px] w-full object-contain rounded-[8px]" />
+                    ) : (
+                      <p className="text-[14px] text-[#666]">Click to add Offer Banner of your Offer</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-[12px] border border-[#ececec] bg-[#fbfbfb] p-4">
                 <div className="flex items-center justify-between border-b border-[#efefef] pb-4">
                   <div>
                     <h2 className="text-[18px] font-semibold text-[#202020]">Loyalty Reward</h2>
@@ -638,36 +683,6 @@ export default function CreateMerchantOfferPage() {
                       className="h-10 w-full rounded-[8px] border border-[#dedede] bg-white px-3 text-[13px] outline-none disabled:bg-[#f1f1f1]"
                     />
                     <p className="mt-1 text-[11px] text-[#9a9a9a]">Allowed range: 1 to 50 points per redemption.</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-[12px] border border-[#ececec] bg-[#fbfbfb] p-4">
-                <h2 className="text-[18px] font-semibold text-[#202020]">Offer Banner</h2>
-
-                <div className="mt-3 space-y-3">
-                  <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-[8px] border border-[#d5d5d5] bg-[#f7f7f7] px-4 text-[12px] font-semibold text-[#333] hover:bg-[#efefef]">
-                    <Upload size={14} />
-                    {uploadingImage ? "Uploading..." : "Upload from device"}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      disabled={uploadingImage}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        uploadOfferImage(file);
-                        e.target.value = "";
-                      }}
-                    />
-                  </label>
-
-                  <div className="rounded-[10px] border-2 border-dashed border-[#d8c4bb] bg-[#fff] min-h-[140px] p-4 flex items-center justify-center">
-                    {formData.imageUrl ? (
-                      <img src={formData.imageUrl} alt="Offer banner preview" className="max-h-[180px] w-full object-contain rounded-[8px]" />
-                    ) : (
-                      <p className="text-[14px] text-[#666]">Click to add Offer Banner of your Offer</p>
-                    )}
                   </div>
                 </div>
               </div>
@@ -997,6 +1012,21 @@ export default function CreateMerchantOfferPage() {
                       {formData.loyaltyRewardEnabled
                         ? `Customers will earn ${formData.loyaltyPointsPerPurchase || 1} point(s) per redemption for this offer.`
                         : "Loyalty reward is disabled for this offer."}
+                    </p>
+                    <div className="space-y-2 text-[12px]">
+                      <div className="flex justify-between"><span className="text-[#6b7280]">Category</span><span className="font-semibold text-[#111827]">{formData.category}</span></div>
+                      <div className="flex justify-between"><span className="text-[#6b7280]">Valid Days</span><span className="font-semibold text-[#111827]">{selectedDatesPreview.length}</span></div>
+                      <div className="flex justify-between"><span className="text-[#6b7280]">Loyalty Reward</span><span className="font-semibold text-[#111827]">{formData.loyaltyRewardEnabled ? "Yes" : "No"}</span></div>
+                      <div className="flex justify-between"><span className="text-[#6b7280]">Points Per Redemption</span><span className="font-semibold text-[#111827]">{formData.loyaltyPointsPerPurchase || 1}</span></div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-[14px] border border-[#f0e7d4] bg-[#fffbe8] p-5">
+                    <h5 className="text-[16px] font-semibold text-[#111827] mb-2">Loyalty Reward</h5>
+                    <p className="text-[13px] text-[#4b5563] mb-2">
+                      {formData.loyaltyRewardEnabled
+                        ? `Customers will earn ${formData.loyaltyPointsPerPurchase || 1} point(s) per redemption for this offer.`
+                        : "Loyalty rewards are not enabled for this offer."}
                     </p>
                     <div className="space-y-2 text-[12px]">
                       <div className="flex justify-between"><span className="text-[#6b7280]">Enabled</span><span className="font-semibold text-[#111827]">{formData.loyaltyRewardEnabled ? "Yes" : "No"}</span></div>

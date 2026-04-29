@@ -120,7 +120,6 @@ function NearbyDealDetailsContent() {
     breakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
   });
   const [loadingReviews, setLoadingReviews] = useState(true);
-  const [loadingReviews, setLoadingReviews] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
   const [likeLoading, setLikeLoading] = useState(false);
@@ -438,8 +437,6 @@ function NearbyDealDetailsContent() {
                   {offer?.title || "Untitled Offer"}
                 </h1>
                 <div className="flex gap-2">
-                </h1>
-                <div className="flex gap-2">
                   <button
                     onClick={handleShare}
                     className="p-2 rounded-full hover:bg-[#f0f0f0]"
@@ -590,10 +587,6 @@ function NearbyDealDetailsContent() {
                   </p>
                 </div>
               </div>
-                 {formatDate(offer?.endsAt)}
-                   </p>
-                 </div>
-               </div>
 
                <p className="text-xs text-[#666] mt-3 flex items-center gap-1">
                  <Clock3 size={12} /> Digital redemption via QR code

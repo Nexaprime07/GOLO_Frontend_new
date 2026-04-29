@@ -77,27 +77,36 @@ function MerchantProfileContent({ user, logout, router }) {
   const [loyaltyPage, setLoyaltyPage] = useState(1);
   const LOYALTY_PAGE_SIZE = 15;
 
+  const loadLoyaltyLeaderboard = () => {
+    setLoyaltyLoading(true);
+    getMerchantLoyaltyLeaderboard()
+      .then((res) => {
+        // Debug: Print the full API response
+        console.log('[LOYALTY DEBUG] API response:', res);
+        // Accept both res.data (array) and res.data.data (array)
+        let rows = [];
+        if (Array.isArray(res?.data)) {
+          rows = res.data;
+        } else if (Array.isArray(res?.data?.data)) {
+          rows = res.data.data;
+        }
+        setLoyaltyRows(rows);
+      })
+      .catch((err) => {
+        console.error('[LOYALTY DEBUG] API error:', err);
+        setLoyaltyRows([])
+      })
+      .finally(() => setLoyaltyLoading(false));
+  };
+
   useEffect(() => {
     if (activeTab === "Loyalty Rewards") {
-      setLoyaltyLoading(true);
-      getMerchantLoyaltyLeaderboard()
-        .then((res) => {
-          // Debug: Print the full API response
-          console.log('[LOYALTY DEBUG] API response:', res);
-          // Accept both res.data (array) and res.data.data (array)
-          let rows = [];
-          if (Array.isArray(res?.data)) {
-            rows = res.data;
-          } else if (Array.isArray(res?.data?.data)) {
-            rows = res.data.data;
-          }
-          setLoyaltyRows(rows.slice(0, 10));
-        })
-        .catch((err) => {
-          console.error('[LOYALTY DEBUG] API error:', err);
-          setLoyaltyRows([])
-        })
-        .finally(() => setLoyaltyLoading(false));
+      loadLoyaltyLeaderboard();
+      // Set up auto-refresh every 30 seconds
+      const interval = setInterval(() => {
+        loadLoyaltyLeaderboard();
+      }, 30000);
+      return () => clearInterval(interval);
     }
   }, [activeTab]);
 
@@ -342,7 +351,7 @@ function MerchantProfileContent({ user, logout, router }) {
                 </div>
                 <div className="h-[56px] rounded-[8px] border border-[#b8bdc6] bg-white px-4 flex items-center justify-between">
                   <p className="text-[13px] font-semibold text-[#323232]">Reward Points</p>
-                  <p className="text-[30px] leading-none font-semibold text-[#1f1f1f]">{loyaltyRows.reduce((acc, row) => acc + (row.points || 0), 0)}</p>
+                  <p className="text-[30px] leading-none font-semibold text-[#1f1f1f]">{loyaltyRows.reduce((acc, row) => acc + (row.totalPoints || 0), 0)}</p>
                 </div>
               </div>
 
@@ -374,7 +383,7 @@ function MerchantProfileContent({ user, logout, router }) {
                             <p className="text-right pr-6">
                               {globalIndex < 3 ? <span className="text-[#e5ad1d]">★</span> : null}
                               {globalIndex < 3 ? " / " : ""}
-                              {row.points}
+                              {row.totalPoints}
                             </p>
                           </div>
                         );

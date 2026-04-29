@@ -1532,7 +1532,7 @@ export async function updateMerchantProduct(productId, updateData) {
  * @param {number} limit - Number of results to return
  */
 export async function getMerchantLikedProducts(limit = 10) {
-    return apiClient(`/offers/merchant/liked-products?limit=${limit}`);
+    return apiClient(`/users/merchant/liked-products?limit=${limit}`);
 }
 
 // ============================================================
@@ -1639,4 +1639,74 @@ export async function verifyVoucherByCode(code) {
         method: 'POST',
         body: JSON.stringify({ code }),
     });
+}
+
+// ============================================================
+// USER DEALS & VOUCHERS APIs
+// ============================================================
+
+/**
+ * Get user's claimed vouchers/deals
+ * @param {object} params - {page, limit, status}
+ */
+export async function getUserVouchers({ page = 1, limit = 50, status } = {}) {
+    let url = `/vouchers/my-vouchers?page=${page}&limit=${limit}`;
+    if (status) url += `&status=${status}`;
+    return apiClient(url);
+}
+
+/**
+ * Calculate user deal statistics
+ * Fetches all user vouchers and calculates redeemed deals and savings
+ */
+export async function getUserDealStatistics() {
+    try {
+        const result = await getUserVouchers({ limit: 100 });
+        if (!result.success || !result.data) {
+            return {
+                dealsRedeemed: 0,
+                totalSavings: 0,
+                expired: [],
+            };
+        }
+
+        const vouchers = result.data || [];
+        let dealsRedeemed = 0;
+        let totalSavings = 0;
+        const expired = [];
+
+        const now = new Date();
+
+        vouchers.forEach(voucher => {
+            // Check if voucher is redeemed (status: 'redeemed', 'partially_redeemed', 'used')
+            if (voucher.status === 'redeemed' || voucher.status === 'used' || voucher.status === 'partially_redeemed') {
+                dealsRedeemed++;
+                // Add any discount/savings value from the offer
+                if (voucher.discountValue) {
+                    totalSavings += voucher.discountValue;
+                } else if (voucher.offer?.discountValue) {
+                    totalSavings += voucher.offer.discountValue;
+                }
+            }
+
+            // Check if voucher is expired
+            if (voucher.expiryDate && new Date(voucher.expiryDate) < now) {
+                expired.push(voucher._id || voucher.id);
+            }
+        });
+
+        return {
+            dealsRedeemed,
+            totalSavings,
+            expired,
+            allVouchers: vouchers,
+        };
+    } catch (error) {
+        console.error('Error calculating deal statistics:', error);
+        return {
+            dealsRedeemed: 0,
+            totalSavings: 0,
+            expired: [],
+        };
+    }
 }

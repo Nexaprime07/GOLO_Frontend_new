@@ -20,7 +20,7 @@ import Footer from "../components/Footer";
 import GolocalProfileSidebar from "../components/GolocalProfileSidebar";
 import { useAuth } from "../context/AuthContext";
 import { useRoleProtection, LoadingScreen } from "../components/RoleBasedRedirect";
-import { getProfile, getMyAds, updateProfile } from "../lib/api";
+import { getProfile, getMyAds, updateProfile, getUserDealStatistics } from "../lib/api";
 
 export default function ProfilePage() {
   const { user, isAuthenticated, refreshProfile } = useAuth();
@@ -28,6 +28,8 @@ export default function ProfilePage() {
   const { isLoading, isAuthorized } = useRoleProtection("user");
   const [profile, setProfile] = useState(null);
   const [activeAdsCount, setActiveAdsCount] = useState(0);
+  const [dealsRedeemed, setDealsRedeemed] = useState(0);
+  const [totalSavings, setTotalSavings] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
 
@@ -50,9 +52,10 @@ export default function ProfilePage() {
     async function fetchData() {
       setLoading(true);
       try {
-        const [profileRes, adsRes] = await Promise.all([
+        const [profileRes, adsRes, dealStatsRes] = await Promise.all([
           getProfile(),
           getMyAds({ page: 1, limit: 1 }),
+          getUserDealStatistics(),
         ]);
 
         if (profileRes.success) {
@@ -60,6 +63,10 @@ export default function ProfilePage() {
         }
         if (adsRes.success) {
           setActiveAdsCount(adsRes.pagination?.total || 0);
+        }
+        if (dealStatsRes) {
+          setDealsRedeemed(dealStatsRes.dealsRedeemed || 0);
+          setTotalSavings(dealStatsRes.totalSavings || 0);
         }
       } catch {
         // Use cached user data as fallback
@@ -401,7 +408,7 @@ export default function ProfilePage() {
                     </div>
                     <p className="text-3xl font-semibold text-[#1f1f1f] mt-4">{loyaltyPoints?.toLocaleString() ?? 0}</p>
                     <p className="text-sm text-[#4d4d4d]">Total Points ({loyaltyTier})</p>
-                    <p className="text-xs text-[#8a8a8a] mt-3">{`You've earned ${monthlyLoyaltyPoints} points this month!`}</p>
+                    {/* <p className="text-xs text-[#8a8a8a] mt-3">{`You've earned ${monthlyLoyaltyPoints} points this month!`}</p> */}
                   </div>
 
                   <div className="rounded-xl border border-[#b6e7d0] bg-[#c9f1df] p-4">
@@ -419,9 +426,9 @@ export default function ProfilePage() {
                       <span className="w-8 h-8 rounded-lg bg-[#eff6f2] text-[#157a4f] flex items-center justify-center"><Ticket size={14} /></span>
                       <span className="text-[11px] text-[#157a4f] bg-[#ecf8f1] px-2 py-0.5 rounded-full">Lifetime</span>
                     </div>
-                    <p className="text-3xl font-semibold text-[#1f1f1f] mt-4">{profile?.dealsRedeemed ?? 0}</p>
+                    <p className="text-3xl font-semibold text-[#1f1f1f] mt-4">{dealsRedeemed || 0}</p>
                     <p className="text-sm text-[#4d4d4d]">Deals Redeemed</p>
-                    <p className="text-xs text-[#8a8a8a] mt-3">{profile?.savingsText || `Estimated ₹${profile?.totalSavings ?? 0} saved on local goods.`}</p>
+                    {/* <p className="text-xs text-[#8a8a8a] mt-3">{`Estimated ₹${totalSavings?.toLocaleString() || 0} saved on local goods.`}</p> */}
                   </div>
                 </section>
 
