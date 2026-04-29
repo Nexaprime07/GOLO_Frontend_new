@@ -42,7 +42,7 @@ export function AuthProvider({ children }) {
         if (typeof window !== "undefined" && userDataWithType?.accountType === "merchant") {
             try {
                 // Ask server to sync any pending merchant location saved during registration
-                await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/users/pending-location/sync`, {
+                await fetch('/api/users/pending-location/sync', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` },
                 });
