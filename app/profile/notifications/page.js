@@ -4,56 +4,11 @@ import Image from "next/image";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import GolocalProfileSidebar from "../../components/GolocalProfileSidebar";
-import { Bell, ChevronDown, Gift, Clock3, Star, CheckCircle2, Circle, MoreVertical, SquareCheckBig } from "lucide-react";
-import { useState } from "react";
+import { Bell, Gift, Clock3, Star, CheckCircle2, Circle, MoreVertical, SquareCheckBig } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { getNotifications, markAllNotificationsRead, markNotificationRead } from "../../lib/api";
 
 const tabs = ["All", "Unread", "Deals", "Rewards", "Coupons"];
-
-const notifications = [
-  {
-    title: "New Deal: 50% Off Signature Thali",
-    description: "Enjoy a feast at Rajdhani Thali. Valid for the next 24 hours only!",
-    time: "2 hours ago",
-    action: "View Deal",
-    accent: "#157a4f",
-    icon: Bell,
-    dot: true,
-  },
-  {
-    title: "Points Milestone Reached!",
-    description: "You just earned 500 GOLO points. Check your rewards balance.",
-    time: "5 hours ago",
-    action: "View Rewards",
-    accent: "#f4a632",
-    icon: Star,
-    dot: true,
-  },
-  {
-    title: "Claim Your Weekend Coupon",
-    description: "Get extra Rs. 200 off on any wellness service above Rs. 1000.",
-    time: "2 days ago",
-    action: "Claim Coupon",
-    secondaryAction: "Dismiss",
-    accent: "#157a4f",
-    icon: Gift,
-    dot: false,
-  },
-  {
-    title: "Appointment Reminder",
-    description: "Your spa session at Azure Wellness is scheduled for tomorrow at 10 AM.",
-    time: "3 days ago",
-    action: "View Details",
-    accent: "#157a4f",
-    icon: Clock3,
-    dot: false,
-  },
-];
-
-const summaryItems = [
-  { label: "Unread Notifications", value: "2 New", highlight: true },
-  { label: "Active Coupons", value: "5" },
-  { label: "Available Points", value: "2,450 pts", strong: true },
-];
 
 const milestones = [
   { title: "Gold Member Status", subtitle: "Unlocked on Oct 10", icon: CheckCircle2 },
@@ -61,6 +16,148 @@ const milestones = [
 
 export default function NotificationsPage() {
   const [activeTab, setActiveTab] = useState("All");
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const toRelativeTime = (dateValue) => {
+    if (!dateValue) return "";
+    const ts = new Date(dateValue).getTime();
+    if (Number.isNaN(ts)) return "";
+    const diffMs = Date.now() - ts;
+    const mins = Math.floor(diffMs / (1000 * 60));
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins} min ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours} hour${hours > 1 ? "s" : ""} ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days} day${days > 1 ? "s" : ""} ago`;
+    return new Date(ts).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  };
+
+  const getNotificationBucket = (notification) => {
+    const type = String(notification?.type || "").toLowerCase();
+    const message = String(notification?.message || "").toLowerCase();
+
+    if (
+      message.includes("coupon") ||
+      message.includes("voucher") ||
+      message.includes("code")
+    ) {
+      return "Coupons";
+    }
+
+    if (
+      message.includes("reward") ||
+      message.includes("point") ||
+      message.includes("loyalty") ||
+      type.includes("reward")
+    ) {
+      return "Rewards";
+    }
+
+    if (
+      type.includes("wishlist") ||
+      type.includes("order") ||
+      message.includes("deal") ||
+      message.includes("offer") ||
+      message.includes("ad")
+    ) {
+      return "Deals";
+    }
+
+    return "All";
+  };
+
+  const getNotificationIcon = (notification) => {
+    const bucket = getNotificationBucket(notification);
+    if (bucket === "Rewards") return Star;
+    if (bucket === "Coupons") return Gift;
+    if (bucket === "Deals") return Bell;
+    return Clock3;
+  };
+
+  const loadNotifications = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const response = await getNotifications({ page: 1, limit: 100 });
+      const payload = response?.data || {};
+      const rows = Array.isArray(payload.notifications) ? payload.notifications : [];
+      setNotifications(rows);
+      setUnreadCount(Number(payload.unreadCount || 0));
+    } catch (err) {
+      setError(err?.message || "Failed to load notifications.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadNotifications();
+    const interval = setInterval(loadNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const filteredNotifications = useMemo(() => {
+    if (activeTab === "All") return notifications;
+    if (activeTab === "Unread") return notifications.filter((n) => !n.read);
+    return notifications.filter((n) => getNotificationBucket(n) === activeTab);
+  }, [activeTab, notifications]);
+
+  const todayStart = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }, []);
+
+  const todayNotifications = useMemo(
+    () =>
+      filteredNotifications.filter((notification) => {
+        const createdTs = new Date(notification?.createdAt).getTime();
+        return !Number.isNaN(createdTs) && createdTs >= todayStart;
+      }),
+    [filteredNotifications, todayStart],
+  );
+
+  const weekNotifications = useMemo(
+    () =>
+      filteredNotifications.filter((notification) => {
+        const createdTs = new Date(notification?.createdAt).getTime();
+        return Number.isNaN(createdTs) || createdTs < todayStart;
+      }),
+    [filteredNotifications, todayStart],
+  );
+
+  const couponCount = useMemo(
+    () => notifications.filter((n) => getNotificationBucket(n) === "Coupons").length,
+    [notifications],
+  );
+
+  const rewardsCount = useMemo(
+    () => notifications.filter((n) => getNotificationBucket(n) === "Rewards").length,
+    [notifications],
+  );
+
+  const handleMarkRead = async (id) => {
+    if (!id) return;
+    try {
+      await markNotificationRead(id);
+      setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, read: true } : n)));
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch {
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllNotificationsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setUnreadCount(0);
+    } catch {
+    }
+  };
 
   return (
     <>
@@ -78,7 +175,12 @@ export default function NotificationsPage() {
                     <div>
                       <h1 className="text-[32px] md:text-[34px] leading-none font-semibold text-[#1f1f1f]">Notifications</h1>
                     </div>
-                    <button className="text-[#157a4f] text-[12px] md:text-[13px] font-semibold mt-2 whitespace-nowrap">Mark all as read</button>
+                    <button
+                      onClick={handleMarkAllRead}
+                      className="text-[#157a4f] text-[12px] md:text-[13px] font-semibold mt-2 whitespace-nowrap"
+                    >
+                      Mark all as read
+                    </button>
                   </div>
 
                   <div className="mt-5 flex flex-wrap items-center gap-2">
@@ -97,17 +199,27 @@ export default function NotificationsPage() {
                     })}
                   </div>
 
+                  {error ? <p className="mt-4 text-[12px] text-[#ef4d4d]">{error}</p> : null}
+
                   <div className="mt-6 space-y-6">
                     <div>
                       <p className="text-[10px] uppercase tracking-[0.18em] text-[#9ca3af] font-semibold">Today</p>
                       <div className="mt-3 space-y-3">
-                        {notifications.slice(0, 2).map((notification) => {
-                          const Icon = notification.icon;
+                        {loading ? (
+                          <div className="rounded-[14px] border border-[#e6e6e6] bg-[#fbfcfd] px-4 py-5 text-[12px] text-[#666]">
+                            Loading notifications...
+                          </div>
+                        ) : todayNotifications.length === 0 ? (
+                          <div className="rounded-[14px] border border-[#e6e6e6] bg-[#fbfcfd] px-4 py-5 text-[12px] text-[#666]">
+                            No notifications for this section.
+                          </div>
+                        ) : todayNotifications.map((notification) => {
+                          const Icon = getNotificationIcon(notification);
                           return (
-                            <div key={notification.title} className="border border-[#d7e7df] rounded-[14px] bg-[#fbfcfd] px-3 md:px-4 py-3 md:py-4 shadow-[0_1px_0_rgba(0,0,0,0.03)]">
+                            <div key={notification._id} className="border border-[#d7e7df] rounded-[14px] bg-[#fbfcfd] px-3 md:px-4 py-3 md:py-4 shadow-[0_1px_0_rgba(0,0,0,0.03)]">
                               <div className="flex items-start gap-3">
                                 <button type="button" className="mt-0.5 text-[#c4c4c4] shrink-0" aria-label="Select notification">
-                                  <SquareCheckBig size={16} />
+                                  {notification.read ? <SquareCheckBig size={16} /> : <Circle size={16} />}
                                 </button>
 
                                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white border border-[#efefef] shadow-sm shrink-0">
@@ -118,11 +230,11 @@ export default function NotificationsPage() {
                                   <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0">
                                       <p className="text-[15px] md:text-[16px] font-semibold text-[#222222] leading-tight inline-flex items-center gap-1">
-                                        {notification.title}
-                                        {notification.dot && <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#f4a632] mt-1" />}
+                                        {notification.message}
+                                        {!notification.read && <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#f4a632] mt-1" />}
                                       </p>
-                                      <p className="mt-1 text-[12px] md:text-[13px] text-[#6f6f6f]">{notification.description}</p>
-                                      <p className="mt-2 text-[11px] text-[#a1a1a1]">{notification.time}</p>
+                                      <p className="mt-1 text-[12px] md:text-[13px] text-[#6f6f6f]">{notification.adTitle || "GOLO Notification"}</p>
+                                      <p className="mt-2 text-[11px] text-[#a1a1a1]">{toRelativeTime(notification.createdAt)}</p>
                                     </div>
 
                                     <button type="button" className="text-[#9aa0a6] hover:text-[#4b5563]">
@@ -131,7 +243,14 @@ export default function NotificationsPage() {
                                   </div>
 
                                   <div className="mt-3 flex flex-wrap items-center gap-2">
-                                    <button className="h-8 px-4 rounded-md bg-[#157a4f] text-white text-[12px] font-semibold hover:opacity-95 transition">{notification.action}</button>
+                                    {!notification.read ? (
+                                      <button
+                                        onClick={() => handleMarkRead(notification._id)}
+                                        className="h-8 px-4 rounded-md bg-[#157a4f] text-white text-[12px] font-semibold hover:opacity-95 transition"
+                                      >
+                                        Mark as read
+                                      </button>
+                                    ) : null}
                                   </div>
                                 </div>
                               </div>
@@ -144,13 +263,17 @@ export default function NotificationsPage() {
                     <div>
                       <p className="text-[10px] uppercase tracking-[0.18em] text-[#9ca3af] font-semibold">This Week</p>
                       <div className="mt-3 space-y-3">
-                        {notifications.slice(2).map((notification) => {
-                          const Icon = notification.icon;
+                        {loading ? null : weekNotifications.length === 0 ? (
+                          <div className="rounded-[14px] border border-[#e6e6e6] bg-[#fbfcfd] px-4 py-5 text-[12px] text-[#666]">
+                            No notifications for this section.
+                          </div>
+                        ) : weekNotifications.map((notification) => {
+                          const Icon = getNotificationIcon(notification);
                           return (
-                            <div key={notification.title} className="border border-[#d7e7df] rounded-[14px] bg-[#fbfcfd] px-3 md:px-4 py-3 md:py-4 shadow-[0_1px_0_rgba(0,0,0,0.03)]">
+                            <div key={notification._id} className="border border-[#d7e7df] rounded-[14px] bg-[#fbfcfd] px-3 md:px-4 py-3 md:py-4 shadow-[0_1px_0_rgba(0,0,0,0.03)]">
                               <div className="flex items-start gap-3">
                                 <button type="button" className="mt-0.5 text-[#c4c4c4] shrink-0" aria-label="Select notification">
-                                  <Circle size={16} />
+                                  {notification.read ? <SquareCheckBig size={16} /> : <Circle size={16} />}
                                 </button>
 
                                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white border border-[#efefef] shadow-sm shrink-0">
@@ -160,9 +283,9 @@ export default function NotificationsPage() {
                                 <div className="min-w-0 flex-1">
                                   <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0">
-                                      <p className="text-[15px] md:text-[16px] font-semibold text-[#222222] leading-tight">{notification.title}</p>
-                                      <p className="mt-1 text-[12px] md:text-[13px] text-[#6f6f6f]">{notification.description}</p>
-                                      <p className="mt-2 text-[11px] text-[#a1a1a1]">{notification.time}</p>
+                                      <p className="text-[15px] md:text-[16px] font-semibold text-[#222222] leading-tight">{notification.message}</p>
+                                      <p className="mt-1 text-[12px] md:text-[13px] text-[#6f6f6f]">{notification.adTitle || "GOLO Notification"}</p>
+                                      <p className="mt-2 text-[11px] text-[#a1a1a1]">{toRelativeTime(notification.createdAt)}</p>
                                     </div>
 
                                     <button type="button" className="text-[#9aa0a6] hover:text-[#4b5563]">
@@ -171,10 +294,14 @@ export default function NotificationsPage() {
                                   </div>
 
                                   <div className="mt-3 flex flex-wrap items-center gap-2">
-                                    <button className="h-8 px-4 rounded-md bg-[#157a4f] text-white text-[12px] font-semibold hover:opacity-95 transition">{notification.action}</button>
-                                    {notification.secondaryAction && (
-                                      <button className="h-8 px-4 rounded-md border border-[#d5d5d5] bg-white text-[#4b4b4b] text-[12px] font-semibold">{notification.secondaryAction}</button>
-                                    )}
+                                    {!notification.read ? (
+                                      <button
+                                        onClick={() => handleMarkRead(notification._id)}
+                                        className="h-8 px-4 rounded-md bg-[#157a4f] text-white text-[12px] font-semibold hover:opacity-95 transition"
+                                      >
+                                        Mark as read
+                                      </button>
+                                    ) : null}
                                   </div>
                                 </div>
                               </div>
@@ -190,7 +317,11 @@ export default function NotificationsPage() {
                   <div className="rounded-[16px] border border-[#ececec] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.06)] px-4 py-4">
                     <h2 className="text-[15px] font-semibold text-[#1e1e1e]">Notification Summary</h2>
                     <div className="mt-4 space-y-3">
-                      {summaryItems.map((item) => (
+                      {[
+                        { label: "Unread Notifications", value: `${unreadCount} New`, highlight: unreadCount > 0 },
+                        { label: "Coupons Notifications", value: `${couponCount}` },
+                        { label: "Rewards Notifications", value: `${rewardsCount}`, strong: true },
+                      ].map((item) => (
                         <div key={item.label} className="flex items-center justify-between gap-3 text-[12px]">
                           <span className="text-[#7d7d7d]">{item.label}</span>
                           <span className={item.highlight ? "inline-flex items-center rounded-full bg-[#f4a632] px-2 py-0.5 text-[10px] font-semibold text-white" : item.strong ? "font-semibold text-[#157a4f]" : "font-semibold text-[#222222]"}>

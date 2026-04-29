@@ -1346,8 +1346,9 @@ export async function getMerchantRealtimeAnalytics() {
 /**
  * Get merchant trend analytics
  */
-export async function getMerchantTrendAnalytics() {
-    return apiClient('/merchant-dashboard/analytics/trend');
+export async function getMerchantTrendAnalytics(period = 'weekly') {
+    const safePeriod = period === 'monthly' ? 'monthly' : 'weekly';
+    return apiClient(`/merchant-dashboard/analytics/trend?period=${safePeriod}`);
 }
 
 /**

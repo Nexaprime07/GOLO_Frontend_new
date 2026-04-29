@@ -4,10 +4,9 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { ArrowLeft, MapPin, Phone, Star, Heart, Share2, ShoppingCart, Tag } from "lucide-react";
-import { useAuth } from "../../context/AuthContext";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
-import { getMerchantProductById, getPublicMerchantProfile, getPublicMerchantProducts, getWishlistIds, likeProductWithOffer } from "../../lib/api";
+import { getMerchantProductById, getPublicMerchantProfile } from "../../lib/api";
 
 export default function ProductDetailPage() {
   return (
@@ -20,22 +19,18 @@ export default function ProductDetailPage() {
 function ProductDetailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user } = useAuth();
   
   const [product, setProduct] = useState(null);
   const [merchant, setMerchant] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
-  const [isLikeLoading, setIsLikeLoading] = useState(false);
-  const [shareMessage, setShareMessage] = useState("");
   
   const offerId = searchParams.get("offerId");
   const merchantId = searchParams.get("merchantId") || "";
 
   useEffect(() => {
-    const loadProductData = async (showLoader = true) => {
+    const loadProductData = async () => {
       const pid = searchParams.get("productId");
       const mid = searchParams.get("merchantId");
       
@@ -46,13 +41,13 @@ function ProductDetailContent() {
       }
 
       try {
-        if (showLoader) setLoading(true);
+        setLoading(true);
         setError("");
 
-              let productData = null;
+        let productData = null;
         let productLoaded = false;
 
-        // 1. Try fetching directly from merchant product API (works if caller has merchant auth)
+        // 1. Try fetching from merchant API first
         if (mid) {
           try {
             const productRes = await getMerchantProductById(pid);
@@ -61,30 +56,11 @@ function ProductDetailContent() {
               productLoaded = true;
             }
           } catch (err) {
-            console.log("Merchant API not available, trying public products");
+            console.log("Merchant API not available, using URL params");
           }
         }
 
-        // 2. Try public merchant products list to get live stock (works for all users)
-        if (!productLoaded && mid) {
-          try {
-            const publicRes = await getPublicMerchantProducts(mid, { limit: 100 });
-            const allProducts = Array.isArray(publicRes?.data)
-              ? publicRes.data
-              : (publicRes?.data?.products || []);
-            const found = allProducts.find(
-              (p) => String(p._id || p.id || p.productId) === pid,
-            );
-            if (found) {
-              productData = found;
-              productLoaded = true;
-            }
-          } catch (err) {
-            console.log("Public merchant products API not available, using cache");
-          }
-        }
-
-        // 3. Build from session cache / URL params as final fallback
+        // 2. Build from URL params as fallback
         if (!productData) {
           let cached = null;
           try {
@@ -121,33 +97,6 @@ function ProductDetailContent() {
           };
         }
 
-        // After any live API fetch, refresh the session cache with up-to-date stock
-        if (productLoaded && productData && typeof window !== "undefined") {
-          try {
-            const cacheKey = `golo_nearby_offer_product_${offerId || "na"}_${pid}`;
-            const existing = JSON.parse(sessionStorage.getItem(cacheKey) || "{}");
-            sessionStorage.setItem(
-              cacheKey,
-              JSON.stringify({
-                ...existing,
-                productId: String(productData._id || productData.productId || pid),
-                offerId,
-                merchantId: mid || "",
-                productName: productData.name || productData.productName || existing.productName || "Product",
-                description: productData.description || existing.description || "",
-                imageUrl: productData.imageUrl || productData.image || existing.imageUrl || "",
-                offerPrice: productData.offerPrice ?? productData.price ?? existing.offerPrice ?? 0,
-                originalPrice: productData.originalPrice ?? existing.originalPrice ?? 0,
-                // Always write the latest live stockQuantity so next visit uses fresh value
-                stockQuantity: productData.stockQuantity ?? existing.stockQuantity ?? 0,
-                category: productData.category || existing.category || "Product",
-              }),
-            );
-          } catch {
-            // cache write failure is non-fatal
-          }
-        }
-
         setProduct(productData);
 
         // Load merchant details if merchantId is provided
@@ -166,45 +115,12 @@ function ProductDetailContent() {
         console.error("Error loading product data:", err);
         setError(err?.data?.message || err?.message || "Failed to load product details");
       } finally {
-        if (showLoader) setLoading(false);
+        setLoading(false);
       }
     };
 
-    loadProductData(true);
-
-    const refreshTimer = setInterval(() => {
-      loadProductData(false);
-    }, 15000);
-
-    const handleFocus = () => {
-      loadProductData(false);
-    };
-    window.addEventListener("focus", handleFocus);
-
-    return () => {
-      clearInterval(refreshTimer);
-      window.removeEventListener("focus", handleFocus);
-    };
+    loadProductData();
   }, [searchParams]);
-
-  useEffect(() => {
-    const loadLikeState = async () => {
-      if (!offerId || !user) {
-        setIsLiked(false);
-        return;
-      }
-
-      try {
-        const response = await getWishlistIds();
-        const ids = response?.data || [];
-        setIsLiked(Array.isArray(ids) ? ids.includes(offerId) : false);
-      } catch {
-        setIsLiked(false);
-      }
-    };
-
-    loadLikeState();
-  }, [offerId, user]);
 
   const handleBackToOffer = () => {
     if (offerId) {
@@ -222,61 +138,6 @@ function ProductDetailContent() {
     }
   };
 
-  const handleLikeProduct = async () => {
-    if (!offerId) return;
-    if (!user) {
-      const pid = searchParams.get("productId");
-      const mid = searchParams.get("merchantId");
-      const params = new URLSearchParams({
-        productId: pid || "",
-        offerId: offerId || "",
-        merchantId: mid || "",
-      });
-      router.push(`/login?redirect=/nearby-deals/product?${params.toString()}`);
-      return;
-    }
-
-    try {
-      setIsLikeLoading(true);
-      await likeProductWithOffer(offerId, {
-        productId: product?.productId || product?._id || "",
-        productName: product?.productName || product?.name || "Product",
-        category: product?.category || "",
-        imageUrl: product?.imageUrl || product?.image || "",
-        offerPrice: Number(product?.offerPrice || product?.price || 0),
-        originalPrice: Number(product?.originalPrice || 0),
-      });
-      setIsLiked(true);
-    } finally {
-      setIsLikeLoading(false);
-    }
-  };
-
-  const handleShareProduct = async () => {
-    const shareUrl =
-      typeof window !== "undefined"
-        ? window.location.href
-        : `${process.env.NEXT_PUBLIC_WEB_URL || ""}/nearby-deals/product?productId=${product?.productId || product?._id || ""}&offerId=${offerId || ""}`;
-
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: productName,
-          text: productDescription,
-          url: shareUrl,
-        });
-        setShareMessage("Product shared successfully.");
-      } else if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(shareUrl);
-        setShareMessage("Product link copied to clipboard.");
-      } else {
-        setShareMessage("Sharing is not supported in this browser.");
-      }
-    } catch {
-      setShareMessage("Sharing cancelled.");
-    }
-  };
-
   const calculateDiscount = () => {
     if (!product?.originalPrice || !product?.offerPrice) return 0;
     const original = Number(product.originalPrice);
@@ -288,95 +149,16 @@ function ProductDetailContent() {
   if (loading) {
     return (
       <main className="min-h-screen bg-[#f3f3f3]">
-        <style>{`
-          @keyframes shimmer-prod-page {
-            0% { background-position: -600px 0; }
-            100% { background-position: 600px 0; }
-          }
-          .sk-prod {
-            background: linear-gradient(90deg, #e2e5ea 25%, #eef0f4 50%, #e2e5ea 75%);
-            background-size: 1200px 100%;
-            animation: shimmer-prod-page 1.5s ease-in-out infinite;
-            border-radius: 6px;
-          }
-        `}</style>
         <Navbar />
-        <div className="mx-auto max-w-[1260px] px-4 lg:px-6 py-4 lg:py-6">
-          {/* Back + breadcrumb */}
-          <div className="h-4 w-40 sk-prod mb-4 rounded-full" />
-          <div className="h-3 w-64 sk-prod mb-4 rounded-full" />
-
-          {/* Main product section */}
-          <section className="bg-white rounded-2xl overflow-hidden shadow-sm mb-8 p-4 lg:p-6">
-            <div className="grid lg:grid-cols-[1.2fr_1fr] gap-6">
-              {/* Image block */}
-              <div className="relative overflow-hidden rounded-xl">
-                <div className="h-[400px] lg:h-[500px] sk-prod rounded-xl" />
-                {/* Stock badge placeholder */}
-                <div className="absolute top-4 right-4 h-7 w-24 sk-prod rounded-full" />
-              </div>
-
-              {/* Details */}
-              <div className="flex flex-col space-y-4">
-                <div className="h-9 w-4/5 sk-prod" />
-                <div className="flex gap-2">
-                  <div className="h-6 w-20 sk-prod rounded-full" />
-                </div>
-                <div className="h-4 w-full sk-prod" />
-                <div className="h-4 w-11/12 sk-prod" />
-                <div className="h-4 w-4/5 sk-prod" />
-
-                {/* Price box */}
-                <div className="bg-[#fef5e7] rounded-xl p-4 space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-36 sk-prod rounded" />
-                    <div className="h-7 w-20 sk-prod rounded" />
-                    <div className="h-6 w-16 sk-prod rounded-full" />
-                  </div>
-                  <div className="h-12 w-full sk-prod rounded-lg" />
-                  <div className="h-3 w-48 sk-prod mx-auto rounded-full" />
-                </div>
-
-                {/* Stock info */}
-                <div className="h-16 sk-prod rounded-lg" />
-
-                {/* Extra info */}
-                <div className="space-y-2">
-                  <div className="h-3 w-36 sk-prod rounded-full" />
-                  <div className="h-3 w-28 sk-prod rounded-full" />
-                  <div className="h-3 w-40 sk-prod rounded-full" />
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Merchant section skeleton */}
-          <section className="bg-white rounded-2xl p-6 mb-8">
-            <div className="h-7 w-48 sk-prod mb-6" />
-            <div className="grid lg:grid-cols-[1fr_300px] gap-6">
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-full sk-prod flex-shrink-0" />
-                  <div className="space-y-2">
-                    <div className="h-5 w-32 sk-prod" />
-                    <div className="h-3 w-24 sk-prod" />
-                  </div>
-                </div>
-                <div className="h-3 w-full sk-prod" />
-                <div className="h-3 w-4/5 sk-prod" />
-              </div>
-              <div className="space-y-3">
-                <div className="h-10 sk-prod rounded-lg" />
-                <div className="h-10 sk-prod rounded-lg" />
-              </div>
-            </div>
-          </section>
+        <div className="mx-auto max-w-[1260px] px-6 py-20">
+          <div className="rounded-xl border border-[#d8dce3] bg-white p-6 text-center text-sm text-[#6b7280]">
+            Loading product details...
+          </div>
         </div>
         <Footer />
       </main>
     );
   }
-
 
   if (error || !product) {
     return (
@@ -457,19 +239,14 @@ function ProductDetailContent() {
                   {productName}
                 </h1>
                 <div className="flex gap-2">
-                  <button onClick={handleShareProduct} className="p-2 rounded-full hover:bg-[#f0f0f0]">
+                  <button className="p-2 rounded-full hover:bg-[#f0f0f0]">
                     <Share2 size={20} className="text-[#666]" />
                   </button>
-                  <button
-                    onClick={handleLikeProduct}
-                    disabled={isLikeLoading}
-                    className="p-2 rounded-full hover:bg-[#f0f0f0] disabled:opacity-60"
-                  >
-                    <Heart size={20} className={isLiked ? "text-[#ef4444]" : "text-[#666]"} fill={isLiked ? "#ef4444" : "none"} />
+                  <button className="p-2 rounded-full hover:bg-[#f0f0f0]">
+                    <Heart size={20} className="text-[#666]" />
                   </button>
                 </div>
               </div>
-              {shareMessage ? <p className="mb-2 text-xs text-[#4b5563]">{shareMessage}</p> : null}
 
               {/* Category */}
               {product?.category && (

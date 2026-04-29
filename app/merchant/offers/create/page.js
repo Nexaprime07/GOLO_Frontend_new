@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Search, Upload, X, Circle, CircleCheck } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
@@ -85,7 +85,7 @@ export default function CreateMerchantOfferPage() {
     imageUrl: "",
     startDate: "",
     endDate: "",
-    promotionExpiryText: "",
+    promotionExpiryText: "Offer ends in 30 days",
     loyaltyRewardEnabled: true,
     loyaltyStarsToOffer: "5",
     loyaltyStarsPerPurchase: "1",
@@ -229,25 +229,6 @@ export default function CreateMerchantOfferPage() {
     [selectedProducts],
   );
 
-  // Auto-calculate promotionExpiryText from endDate
-  useEffect(() => {
-    const end = formData.endDate || formData.startDate;
-    if (!end) {
-      setFormData((prev) => ({ ...prev, promotionExpiryText: "" }));
-      return;
-    }
-    const endMs = new Date(end).getTime();
-    const nowMs = Date.now();
-    const diffMs = endMs - nowMs;
-    if (diffMs <= 0) {
-      setFormData((prev) => ({ ...prev, promotionExpiryText: "Offer has expired" }));
-      return;
-    }
-    const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-    const text = days === 1 ? "Offer ends in 1 day" : `Offer ends in ${days} days`;
-    setFormData((prev) => ({ ...prev, promotionExpiryText: text }));
-  }, [formData.startDate, formData.endDate]);
-
   const openProductModal = () => {
     setModalSelectionIds(selectedProducts.map((item) => item.productId));
     setIsProductModalOpen(true);
@@ -350,7 +331,7 @@ export default function CreateMerchantOfferPage() {
       imageUrl: "",
       startDate: "",
       endDate: "",
-      promotionExpiryText: "",
+      promotionExpiryText: "Offer ends in 30 days",
       loyaltyRewardEnabled: true,
       loyaltyStarsToOffer: "5",
       loyaltyStarsPerPurchase: "1",
@@ -599,8 +580,7 @@ export default function CreateMerchantOfferPage() {
                       value={formData.promotionExpiryText}
                       onChange={(e) => setFormData((prev) => ({ ...prev, promotionExpiryText: e.target.value }))}
                       className="h-10 w-full rounded-[8px] border border-[#dedede] bg-white px-3 text-[13px] outline-none"
-                      placeholder="Calculated from end date"
-                      readOnly
+                      placeholder="Offer ends in 30 days"
                     />
                     <p className="mt-1 text-[11px] text-[#9a9a9a]">Automatically calculated based on campaign end date.</p>
                   </div>

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Download, Plus, ChevronRight, ShoppingBag, Box, Star, User } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import MerchantNavbar from "../MerchantNavbar";
-import { getMerchantDashboardSummary, getMerchantProfile } from "../../lib/api";
+import { getMerchantDashboardSummary, getMerchantProfile, getMerchantTrendAnalytics } from "../../lib/api";
 
 const orders = [
   { id: "#2456", time: "Placed 12 hours ago", amount: "₹340", qty: "3 items" },
@@ -36,6 +36,8 @@ export default function MerchantDashboardPage() {
   const { user, loading, logout, getUserAccountType } = useAuth();
   const [summary, setSummary] = useState(null);
   const [merchantProfile, setMerchantProfile] = useState(null);
+  const [trendPeriod, setTrendPeriod] = useState("weekly");
+  const [trend, setTrend] = useState({ labels: [], values: [] });
 
   const handleMerchantLogout = async () => {
     await logout();
@@ -71,6 +73,24 @@ export default function MerchantDashboardPage() {
   }, [user, getUserAccountType]);
 
   useEffect(() => {
+    const loadTrend = async () => {
+      if (!user || (user?.accountType || getUserAccountType()) !== "merchant") return;
+      try {
+        const res = await getMerchantTrendAnalytics(trendPeriod);
+        const data = res?.data || {};
+        setTrend({
+          labels: Array.isArray(data.labels) ? data.labels : [],
+          values: Array.isArray(data.values) ? data.values.map((v) => Number(v || 0)) : [],
+        });
+      } catch {
+        setTrend({ labels: [], values: [] });
+      }
+    };
+
+    loadTrend();
+  }, [user, getUserAccountType, trendPeriod]);
+
+  useEffect(() => {
     if (!user || (user?.accountType || getUserAccountType()) !== "merchant") return;
 
     let active = true;
@@ -104,6 +124,42 @@ export default function MerchantDashboardPage() {
     user?.shopPhoto ||
     "";
 
+  const displayStoreName =
+    merchantProfile?.storeName ||
+    merchantProfile?.name ||
+    user?.storeName ||
+    user?.name ||
+    "Your Store";
+
+  const chartValues = trend.values.length ? trend.values : [0, 0, 0, 0, 0, 0, 0];
+  const chartLabels =
+    trend.labels.length
+      ? trend.labels
+      : trendPeriod === "monthly"
+        ? ["W1", "W2", "W3", "W4"]
+        : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const maxValue = Math.max(1, ...chartValues);
+  const chartTop = Math.ceil(maxValue * 1.15);
+  const chartGridSteps = 5;
+  const chartTicks = Array.from({ length: chartGridSteps }, (_, idx) =>
+    Math.round((chartTop / (chartGridSteps - 1)) * idx),
+  ).reverse();
+  const chartLeft = 38;
+  const chartRight = 740;
+  const chartTopY = 20;
+  const chartBottomY = 320;
+  const chartHeight = chartBottomY - chartTopY;
+  const points = chartValues.map((value, idx) => {
+    const denom = Math.max(1, chartValues.length - 1);
+    const x = chartLeft + ((chartRight - chartLeft) * idx) / denom;
+    const normalized = Math.max(0, Math.min(1, Number(value || 0) / chartTop));
+    const y = chartBottomY - normalized * chartHeight;
+    return `${x},${y}`;
+  });
+  const chartPolylinePoints = points.join(" ");
+  const totalPeriodVisits = chartValues.reduce((sum, v) => sum + Number(v || 0), 0);
+  const periodLabel = trendPeriod === "monthly" ? "Last 30 Days" : "Last 7 Days";
+
   return (
     <div className="min-h-screen bg-[#ececec] text-[#1b1b1b]" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
       <MerchantNavbar activeKey="dashboard" />
@@ -124,7 +180,7 @@ export default function MerchantDashboardPage() {
                 </div>
                 <div>
                   <p className="text-[9px] text-[#737373]">Open Now • Last updated 2 mins ago</p>
-                  <h1 className="text-[44px] leading-none font-bold text-[#1f1f1f] mt-1">Moon Cafe</h1>
+                  <h1 className="text-[44px] leading-none font-bold text-[#1f1f1f] mt-1">{displayStoreName}</h1>
                   <div className="mt-2 flex items-center gap-6 text-[14px] text-[#424242]">
                     <span className="inline-flex items-center gap-1"><ShoppingBag size={14} className="text-[#157a4f]" /> <span className="font-bold text-[30px] leading-none">{summary?.stats?.totalOrders || 0}</span> Total Orders</span>
                     <span className="inline-flex items-center gap-1"><Star size={14} className="text-[#e9aa1d]" /> <span className="font-bold text-[30px] leading-none">{summary?.stats?.averageRating || 0}</span> Store Rating</span>
@@ -148,28 +204,49 @@ export default function MerchantDashboardPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <h2 className="text-[28px] font-bold leading-none">Shop Visits ↗</h2>
-                  <p className="text-[12px] text-[#666] mt-1">{summary?.stats?.weeklyViews || 0} visits this week</p>
+                  <p className="text-[12px] text-[#666] mt-1">
+                    {totalPeriodVisits} visits this {trendPeriod === "monthly" ? "month" : "week"}
+                  </p>
                 </div>
                 <div className="inline-flex rounded-[7px] border border-[#dddddd] overflow-hidden text-[10px]">
-                  <button className="h-7 px-3 bg-[#f8f8f8] font-semibold">Weekly</button>
-                  <button className="h-7 px-3 bg-white text-[#666]">Monthly</button>
+                  <button
+                    onClick={() => setTrendPeriod("weekly")}
+                    className={`h-7 px-3 ${trendPeriod === "weekly" ? "bg-[#f8f8f8] font-semibold" : "bg-white text-[#666]"}`}
+                  >
+                    Weekly
+                  </button>
+                  <button
+                    onClick={() => setTrendPeriod("monthly")}
+                    className={`h-7 px-3 ${trendPeriod === "monthly" ? "bg-[#f8f8f8] font-semibold" : "bg-white text-[#666]"}`}
+                  >
+                    Monthly
+                  </button>
                 </div>
               </div>
 
               <div className="mt-4 rounded-[10px] bg-[#fbfbfb] border border-[#ececec] p-3">
                 <svg viewBox="0 0 760 360" className="w-full h-[320px]">
-                  {[330, 275, 220, 165, 110].map((y) => (
-                    <g key={y}>
-                      <line x1="38" y1={360 - y} x2="740" y2={360 - y} stroke="#d8d8d8" strokeDasharray="4 4" />
-                      <text x="2" y={364 - y} fontSize="10" fill="#888">{y}</text>
-                    </g>
-                  ))}
+                  {chartTicks.map((tick, idx) => {
+                    const y = chartTopY + (idx * chartHeight) / (chartGridSteps - 1);
+                    return (
+                      <g key={`${tick}-${idx}`}>
+                        <line x1={chartLeft} y1={y} x2={chartRight} y2={y} stroke="#d8d8d8" strokeDasharray="4 4" />
+                        <text x="2" y={y + 4} fontSize="10" fill="#888">{tick}</text>
+                      </g>
+                    );
+                  })}
 
-                  <polyline fill="none" stroke="#219653" strokeWidth="2.2" points="38,130 150,20 262,95 374,320 486,110 598,92 710,136" />
+                  <polyline fill="none" stroke="#219653" strokeWidth="2.2" points={chartPolylinePoints} />
 
-                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d, idx) => (
-                    <text key={d} x={38 + idx * 112} y="352" fontSize="10" fill="#8a8a8a">{d}</text>
-                  ))}
+                  {chartLabels.map((d, idx) => {
+                    const denom = Math.max(1, chartLabels.length - 1);
+                    const x = chartLeft + ((chartRight - chartLeft) * idx) / denom;
+                    return (
+                      <text key={`${d}-${idx}`} x={x} y="352" textAnchor="middle" fontSize="10" fill="#8a8a8a">
+                        {d}
+                      </text>
+                    );
+                  })}
                 </svg>
               </div>
             </div>
@@ -178,13 +255,13 @@ export default function MerchantDashboardPage() {
               <div className="rounded-[10px] border border-[#dce8dd] bg-[#eef6ef] p-4">
                 <p className="text-[10px] uppercase tracking-wide text-[#79927c]">Order Placed</p>
                 <p className="mt-1 text-[46px] font-extrabold leading-none text-[#223322]">{summary?.stats?.totalOrders || 0}</p>
-                <p className="text-[12px] text-[#4a5a4b] mt-1">Last 7 Days <span className="text-[#2e9f5a]">+12%</span></p>
+                <p className="text-[12px] text-[#4a5a4b] mt-1">{periodLabel} <span className="text-[#2e9f5a]">+12%</span></p>
               </div>
 
               <div className="rounded-[10px] border border-[#ebe3cf] bg-[#f8f4e8] p-4">
                 <p className="text-[10px] uppercase tracking-wide text-[#98835a]">Revenue Earned</p>
                 <p className="mt-1 text-[46px] font-extrabold leading-none text-[#4b3913]">₹{summary?.stats?.revenue || 0}</p>
-                <p className="text-[12px] text-[#7f6a42] mt-1">Last 7 Days <span className="text-[#9d6a1d]">+8.5%</span></p>
+                <p className="text-[12px] text-[#7f6a42] mt-1">{periodLabel} <span className="text-[#9d6a1d]">+8.5%</span></p>
               </div>
 
               <div className="rounded-[10px] bg-[#f0ab19] p-5 text-white shadow-sm">
