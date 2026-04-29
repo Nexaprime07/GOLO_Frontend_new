@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Camera, Edit3, User, Bell, Lock } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
@@ -17,7 +17,11 @@ import { getMerchantLoyaltyLeaderboard } from "../../lib/api";
 import { sendPasswordChangeOTP, verifyPasswordChangeOTP, changePasswordWithOTP } from "../../lib/api";
 
 export default function MerchantProfilePage() {
-  return <MerchantProfilePageContent />;
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#ececec]" />}>
+      <MerchantProfilePageContent />
+    </Suspense>
+  );
 }
 
 function MerchantProfilePageContent() {
