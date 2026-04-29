@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Camera, Edit3, User } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Camera, Edit3, User, Bell, Lock } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import MerchantNavbar from "../MerchantNavbar";
 import { useRoleProtection, LoadingScreen } from "../../components/RoleBasedRedirect";
@@ -14,6 +14,7 @@ import { updateMerchantStoreLocation, getMerchantStoreLocation, getMerchantProfi
 const topTabs = ["Profile Settings", "Loyalty Rewards", "Help", "Settings", "Logout"];
 
 import { getMerchantLoyaltyLeaderboard } from "../../lib/api";
+import { sendPasswordChangeOTP, verifyPasswordChangeOTP, changePasswordWithOTP } from "../../lib/api";
 
 export default function MerchantProfilePage() {
   return <MerchantProfilePageContent />;
@@ -22,8 +23,16 @@ export default function MerchantProfilePage() {
 function MerchantProfilePageContent() {
   // Check auth/role FIRST
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading, logout } = useAuth();
   const { isLoading: roleLoading, isAuthorized } = useRoleProtection("merchant");
+  const requestedTab = searchParams.get("tab");
+  const initialTab =
+    requestedTab === "settings"
+      ? "Settings"
+      : requestedTab === "loyalty"
+        ? "Loyalty Rewards"
+        : "Profile Settings";
 
   // Guard checks - early returns with minimal setup
   if (roleLoading) {
@@ -43,11 +52,11 @@ function MerchantProfilePageContent() {
   }
 
   // NOW safe to call rest of hooks since we know auth is valid
-  return <MerchantProfileContent user={user} logout={logout} router={router} />;
+  return <MerchantProfileContent user={user} logout={logout} router={router} initialTab={initialTab} />;
 }
 
-function MerchantProfileContent({ user, logout, router }) {
-  const [activeTab, setActiveTab] = useState("Profile Settings");
+function MerchantProfileContent({ user, logout, router, initialTab = "Profile Settings" }) {
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [isEditMode, setIsEditMode] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
@@ -73,6 +82,14 @@ function MerchantProfileContent({ user, logout, router }) {
   });
   const [loyaltyRows, setLoyaltyRows] = useState([]);
   const [loyaltyLoading, setLoyaltyLoading] = useState(false);
+  const [orderNotifications, setOrderNotifications] = useState(true);
+  const [otp, setOtp] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState("");
+  const [settingsLoading, setSettingsLoading] = useState(false);
   // Pagination state for loyalty leaderboard
   const [loyaltyPage, setLoyaltyPage] = useState(1);
   const LOYALTY_PAGE_SIZE = 15;
@@ -98,6 +115,10 @@ function MerchantProfileContent({ user, logout, router }) {
       })
       .finally(() => setLoyaltyLoading(false));
   };
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   useEffect(() => {
     if (activeTab === "Loyalty Rewards") {
@@ -302,6 +323,65 @@ function MerchantProfileContent({ user, logout, router }) {
     setShowLocationPicker(false);
   };
 
+  const handleSendOtp = async () => {
+    try {
+      setSettingsLoading(true);
+      setSettingsMessage("");
+      await sendPasswordChangeOTP();
+      setOtpSent(true);
+      setSettingsMessage("OTP sent to your registered email.");
+    } catch (error) {
+      setSettingsMessage(error?.message || "Failed to send OTP.");
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    try {
+      setSettingsLoading(true);
+      setSettingsMessage("");
+      await verifyPasswordChangeOTP(otp.trim());
+      setOtpVerified(true);
+      setSettingsMessage("OTP verified. You can now update password.");
+    } catch (error) {
+      setSettingsMessage(error?.message || "Invalid OTP.");
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!otpVerified) {
+      setSettingsMessage("Please verify OTP first.");
+      return;
+    }
+    if (!newPassword || newPassword.length < 6) {
+      setSettingsMessage("New password must be at least 6 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setSettingsMessage("Passwords do not match.");
+      return;
+    }
+
+    try {
+      setSettingsLoading(true);
+      setSettingsMessage("");
+      await changePasswordWithOTP(otp.trim(), newPassword);
+      setOtp("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setOtpSent(false);
+      setOtpVerified(false);
+      setSettingsMessage("Password changed successfully.");
+    } catch (error) {
+      setSettingsMessage(error?.message || "Failed to change password.");
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#ececec] text-[#1b1b1b]" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
       <MerchantNavbar activeKey="profile" />
@@ -316,8 +396,6 @@ function MerchantProfileContent({ user, logout, router }) {
                 onClick={() => {
                   if (tab === "Help") {
                     router.push("/merchant/help");
-                  } else if (tab === "Settings") {
-                    router.push("/merchant/settings");
                   } else if (tab === "Logout") {
                     setShowLogoutConfirm(true);
                   } else {
@@ -411,6 +489,103 @@ function MerchantProfileContent({ user, logout, router }) {
                   </>
                 )}
               </div>
+            </div>
+          ) : activeTab === "Settings" ? (
+            <div className="max-w-[1260px] mx-auto space-y-5">
+              <div className="bg-white rounded-[8px] border border-[#d5d5d5] p-6">
+                <div className="flex items-center gap-3 mb-5">
+                  <Bell size={18} style={{ color: "#157a4f" }} />
+                  <h2 className="text-[16px] font-bold text-[#1f1f1f]">Notifications</h2>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-[#f9f9f9] rounded-[6px]">
+                  <div>
+                    <p className="text-[12px] font-semibold text-[#1f1f1f]">Order Alerts</p>
+                    <p className="text-[11px] text-[#999] mt-0.5">Get notified when a customer claims your offer</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={orderNotifications}
+                      onChange={(e) => setOrderNotifications(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-[#d5d5d5] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:border-[#d5d5d5] after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#157a4f]"></div>
+                  </label>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-[8px] border border-[#d5d5d5] p-6">
+                <div className="flex items-center gap-3 mb-5">
+                  <Lock size={18} style={{ color: "#157a4f" }} />
+                  <h2 className="text-[16px] font-bold text-[#1f1f1f]">Change Password</h2>
+                </div>
+
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={handleSendOtp}
+                    disabled={settingsLoading}
+                    className="h-9 px-4 rounded-[8px] bg-[#157a4f] text-white text-[12px] font-semibold disabled:opacity-70"
+                  >
+                    {settingsLoading ? "Sending..." : "Send OTP"}
+                  </button>
+                  {otpSent ? <p className="text-[11px] text-[#666]">OTP sent. Check your email.</p> : null}
+
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                      placeholder="Enter OTP"
+                      className="w-full px-3 py-2 border border-[#d5d5d5] rounded-[6px] bg-white text-[12px] focus:outline-none focus:border-[#157a4f]"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleVerifyOtp}
+                      disabled={settingsLoading || !otp}
+                      className="px-4 py-2 border border-[#157a4f] text-[#157a4f] text-[12px] font-semibold rounded-[6px] disabled:opacity-60"
+                    >
+                      Verify
+                    </button>
+                  </div>
+
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="New password"
+                    className="w-full px-3 py-2 border border-[#d5d5d5] rounded-[6px] bg-white text-[12px] focus:outline-none focus:border-[#157a4f]"
+                  />
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm password"
+                    className="w-full px-3 py-2 border border-[#d5d5d5] rounded-[6px] bg-white text-[12px] focus:outline-none focus:border-[#157a4f]"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={handleChangePassword}
+                    disabled={settingsLoading}
+                    className="h-9 px-4 rounded-[8px] bg-[#efb02e] text-[#1b1b1b] text-[12px] font-semibold disabled:opacity-70"
+                  >
+                    {settingsLoading ? "Processing..." : "Update Password"}
+                  </button>
+                </div>
+              </div>
+
+              {settingsMessage ? (
+                <div
+                  className={`p-3 rounded-[8px] text-[12px] font-semibold ${
+                    settingsMessage.toLowerCase().includes("success") || settingsMessage.toLowerCase().includes("verified")
+                      ? "bg-[#dcfce7] text-[#166534]"
+                      : "bg-[#fee2e2] text-[#b91c1c]"
+                  }`}
+                >
+                  {settingsMessage}
+                </div>
+              ) : null}
             </div>
           ) : (
             <>

@@ -321,18 +321,9 @@ export async function updateProfile(data) {
 }
 
 export async function sendPasswordChangeOTP() {
-    try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-        if (!token) {
-            throw new Error('No authentication token found. Please login again.');
-        }
-        return apiClient('/users/send-password-otp', {
-            method: 'POST',
-        });
-    } catch (error) {
-        console.error('OTP Error:', error);
-        throw error;
-    }
+    return apiClient('/users/send-password-otp', {
+        method: 'POST',
+    });
 }
 
 export async function verifyPasswordChangeOTP(otp) {

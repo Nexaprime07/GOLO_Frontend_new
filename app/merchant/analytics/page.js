@@ -8,6 +8,7 @@ import MerchantNavbar from "../MerchantNavbar";
 import {
   getMerchantRealtimeAnalytics,
   getMerchantLikedProducts,
+  getMerchantProfile,
 } from "../../lib/api";
 
 export default function MerchantAnalyticsPage() {
@@ -28,6 +29,7 @@ export default function MerchantAnalyticsPage() {
   const [loadError, setLoadError] = useState("");
   const [likedOffers, setLikedOffers] = useState([]);
   const [likedProducts, setLikedProducts] = useState([]);
+  const [merchantProfile, setMerchantProfile] = useState(null);
   const [ageRows, setAgeRows] = useState([
     { label: "18-24", male: 40, female: 60, total: "3.3%" },
     { label: "25-34", male: 54, female: 46, total: "12.7%" },
@@ -104,6 +106,20 @@ export default function MerchantAnalyticsPage() {
     };
   }, [user]);
 
+  useEffect(() => {
+    const loadMerchantProfile = async () => {
+      if (!user || user.accountType !== "merchant") return;
+      try {
+        const response = await getMerchantProfile();
+        setMerchantProfile(response?.data || null);
+      } catch {
+        setMerchantProfile(null);
+      }
+    };
+
+    loadMerchantProfile();
+  }, [user]);
+
   // Fetch liked products for merchant (keep fallback if none)
   useEffect(() => {
     let intervalId;
@@ -161,6 +177,18 @@ export default function MerchantAnalyticsPage() {
 
   if (user.accountType !== "merchant") return null;
 
+  const analyticsStoreName =
+    merchantProfile?.storeName ||
+    merchantProfile?.name ||
+    user?.storeName ||
+    user?.name ||
+    "Your Store";
+  const analyticsStoreAvatar =
+    merchantProfile?.profilePhoto ||
+    merchantProfile?.shopPhoto ||
+    user?.profilePhoto ||
+    "/images/place2.avif";
+
   return (
     <div className="min-h-screen bg-[#ececec] text-[#1b1b1b]" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
       <MerchantNavbar activeKey="analytics" />
@@ -183,12 +211,12 @@ export default function MerchantAnalyticsPage() {
                 </div>
 
                 <div className="text-right">
-                  <div className="inline-flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-full overflow-hidden border border-[#ddd]">
-                      <Image src="/images/place2.avif" alt="Fashion Fusion" width={32} height={32} className="h-full w-full object-cover" />
+                    <div className="inline-flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-full overflow-hidden border border-[#ddd]">
+                        <Image src={analyticsStoreAvatar} alt={analyticsStoreName} width={32} height={32} className="h-full w-full object-cover" />
+                      </div>
+                      <p className="text-[24px] font-semibold">{analyticsStoreName}</p>
                     </div>
-                    <p className="text-[24px] font-semibold">Fashion Fusion</p>
-                  </div>
                   <p className="mt-2 text-[11px] text-[#2f8f55] inline-flex rounded-full bg-[#edf8f0] px-2 py-0.5">↗ +1,208 more than usual</p>
                 </div>
               </div>
