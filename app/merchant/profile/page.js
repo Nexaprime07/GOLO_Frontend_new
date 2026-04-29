@@ -13,15 +13,7 @@ import { updateMerchantStoreLocation, getMerchantStoreLocation, getMerchantProfi
 
 const topTabs = ["Profile Settings", "Loyalty Rewards", "Help", "Settings", "Logout"];
 
-const loyaltyRows = [
-  { customer: "Amit Singh", offers: 16, points: 146, star: true },
-  { customer: "Rakesh Patel", offers: 14, points: 102, star: true },
-  { customer: "Amit Singh", offers: 10, points: 102, star: true },
-  { customer: "Rakesh Patel", offers: 10, points: 95, star: false },
-  { customer: "Amit Singh", offers: 6, points: 73, star: false },
-  { customer: "Rakesh Patel", offers: 4, points: 50, star: false },
-  { customer: "Amit Singh", offers: 2, points: 23, star: false },
-];
+import { getMerchantLoyaltyLeaderboard } from "../../lib/api";
 
 export default function MerchantProfilePage() {
   return <MerchantProfilePageContent />;
@@ -79,6 +71,35 @@ function MerchantProfileContent({ user, logout, router }) {
     latitude: 0,
     longitude: 0,
   });
+  const [loyaltyRows, setLoyaltyRows] = useState([]);
+  const [loyaltyLoading, setLoyaltyLoading] = useState(false);
+  // Pagination state for loyalty leaderboard
+  const [loyaltyPage, setLoyaltyPage] = useState(1);
+  const LOYALTY_PAGE_SIZE = 15;
+
+  useEffect(() => {
+    if (activeTab === "Loyalty Rewards") {
+      setLoyaltyLoading(true);
+      getMerchantLoyaltyLeaderboard()
+        .then((res) => {
+          // Debug: Print the full API response
+          console.log('[LOYALTY DEBUG] API response:', res);
+          // Accept both res.data (array) and res.data.data (array)
+          let rows = [];
+          if (Array.isArray(res?.data)) {
+            rows = res.data;
+          } else if (Array.isArray(res?.data?.data)) {
+            rows = res.data.data;
+          }
+          setLoyaltyRows(rows.slice(0, 10));
+        })
+        .catch((err) => {
+          console.error('[LOYALTY DEBUG] API error:', err);
+          setLoyaltyRows([])
+        })
+        .finally(() => setLoyaltyLoading(false));
+    }
+  }, [activeTab]);
 
   // Load merchant profile data on mount
   useEffect(() => {
@@ -313,15 +334,15 @@ function MerchantProfileContent({ user, logout, router }) {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="h-[56px] rounded-[8px] border border-[#b8bdc6] bg-white px-4 flex items-center justify-between">
                   <p className="text-[13px] font-semibold text-[#1f9b57]">Total Customers</p>
-                  <p className="text-[30px] leading-none font-semibold text-[#1f1f1f]">228</p>
+                  <p className="text-[30px] leading-none font-semibold text-[#1f1f1f]">{loyaltyRows.length}</p>
                 </div>
                 <div className="h-[56px] rounded-[8px] border border-[#b8bdc6] bg-white px-4 flex items-center justify-between">
                   <p className="text-[13px] font-semibold text-[#f1a61b]">Reward Champs</p>
-                  <p className="text-[30px] leading-none font-semibold text-[#1f1f1f]">3</p>
+                  <p className="text-[30px] leading-none font-semibold text-[#1f1f1f]">{loyaltyRows.slice(0, 3).length}</p>
                 </div>
                 <div className="h-[56px] rounded-[8px] border border-[#b8bdc6] bg-white px-4 flex items-center justify-between">
                   <p className="text-[13px] font-semibold text-[#323232]">Reward Points</p>
-                  <p className="text-[30px] leading-none font-semibold text-[#1f1f1f]">100</p>
+                  <p className="text-[30px] leading-none font-semibold text-[#1f1f1f]">{loyaltyRows.reduce((acc, row) => acc + (row.points || 0), 0)}</p>
                 </div>
               </div>
 
@@ -332,26 +353,54 @@ function MerchantProfileContent({ user, logout, router }) {
                   <p className="text-center">Number of Offers Claimed</p>
                   <p className="text-right">Loyalty Rewards</p>
                 </div>
-
-                {loyaltyRows.map((row, index) => (
-                  <div key={`${row.customer}-${index}`} className="grid grid-cols-3 px-6 py-3 text-[13px] text-[#2f2f2f] border-b border-[#bfc3cb] last:border-b-0">
-                    <p className="pl-6">{row.customer}</p>
-                    <p className="text-center">{row.offers}</p>
-                    <p className="text-right pr-6">
-                      {row.star ? <span className="text-[#e5ad1d]">★</span> : null}
-                      {row.star ? " / " : ""}
-                      {row.points}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="rounded-[8px] bg-[#d9dbe0] px-5 py-3 flex items-center justify-between">
-                <p className="text-[11px] text-[#5f6064]">Showing 5 of 97 products</p>
-                <div className="flex items-center gap-2">
-                  <button className="h-7 px-3 rounded-[8px] border border-[#8f949d] bg-white text-[10px] text-[#5f6064]">Previous</button>
-                  <button className="h-7 px-3 rounded-[8px] border border-[#86c490] bg-[#e6f8eb] text-[10px] text-[#1f9b57]">Next</button>
-                </div>
+                {loyaltyLoading ? (
+                  <div className="text-center text-[#888] py-6">Loading leaderboard...</div>
+                ) : loyaltyRows.length === 0 ? (
+                  <div className="text-center text-[#888] py-6">No loyalty data yet.</div>
+                ) : (
+                  <>
+                    {loyaltyRows
+                      .slice((loyaltyPage - 1) * LOYALTY_PAGE_SIZE, loyaltyPage * LOYALTY_PAGE_SIZE)
+                      .map((row, index) => {
+                        const globalIndex = (loyaltyPage - 1) * LOYALTY_PAGE_SIZE + index;
+                        return (
+                          <div key={row.email || globalIndex} className="grid grid-cols-3 px-6 py-3 text-[13px] text-[#2f2f2f] border-b border-[#bfc3cb] last:border-b-0">
+                            <p className="pl-6">
+                              <span className="font-bold mr-2">{globalIndex + 1}.</span>
+                              {row.name || row.email || "Customer"}
+                            </p>
+                            <p className="text-center">{row.offersClaimed ?? '-'}
+                            </p>
+                            <p className="text-right pr-6">
+                              {globalIndex < 3 ? <span className="text-[#e5ad1d]">★</span> : null}
+                              {globalIndex < 3 ? " / " : ""}
+                              {row.points}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    {/* Pagination controls */}
+                    <div className="flex justify-end items-center gap-3 px-6 py-4 bg-[#f9f9f9] border-t border-[#bfc3cb]">
+                      <button
+                        className="px-4 py-2 rounded bg-[#ececec] text-[#222] text-[13px] font-semibold disabled:opacity-60"
+                        onClick={() => setLoyaltyPage((p) => Math.max(1, p - 1))}
+                        disabled={loyaltyPage === 1}
+                      >
+                        Previous
+                      </button>
+                      <span className="text-[13px] font-semibold text-[#666]">
+                        Page {loyaltyPage} of {Math.max(1, Math.ceil(loyaltyRows.length / LOYALTY_PAGE_SIZE))}
+                      </span>
+                      <button
+                        className="px-4 py-2 rounded bg-[#ececec] text-[#222] text-[13px] font-semibold disabled:opacity-60"
+                        onClick={() => setLoyaltyPage((p) => Math.min(Math.ceil(loyaltyRows.length / LOYALTY_PAGE_SIZE), p + 1))}
+                        disabled={loyaltyPage >= Math.ceil(loyaltyRows.length / LOYALTY_PAGE_SIZE)}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           ) : (

@@ -103,10 +103,14 @@ export default function ProfilePage() {
     displayUser?.profile?.city || displayUser?.profile?.state
       ? `${displayUser?.profile?.city || ""}${displayUser?.profile?.city && displayUser?.profile?.state ? ", " : ""}${displayUser?.profile?.state || ""}`
       : "Pulewadi, IN";
-  const points = Math.max(12450, activeAdsCount * 140);
+  
+  // Use loyalty points from API, fallback to calculated points
+  const loyaltyPoints = displayUser?.loyaltyPoints ?? Math.max(12450, activeAdsCount * 140);
+  const loyaltyTier = displayUser?.loyaltyTier || 'Bronze';
+  const monthlyLoyaltyPoints = displayUser?.monthlyLoyaltyPoints ?? 0;
   const pointsGoal = 15000;
-  const progressPct = Math.min(100, Math.round((points / pointsGoal) * 100));
-  const neededPoints = Math.max(0, pointsGoal - points);
+  const progressPct = Math.min(100, Math.round((loyaltyPoints / pointsGoal) * 100));
+  const neededPoints = Math.max(0, pointsGoal - loyaltyPoints);
   const formattedPhone = displayUser?.profile?.phone || displayUser?.phone || "+91 9876543212";
   const interests = displayUser?.profile?.interests || [
     "Home Services",
@@ -395,9 +399,9 @@ export default function ProfilePage() {
                       <span className="w-8 h-8 rounded-lg bg-[#eff6f2] text-[#157a4f] flex items-center justify-center"><Star size={14} /></span>
                       <span className="text-[11px] text-[#157a4f] bg-[#ecf8f1] px-2 py-0.5 rounded-full">Lifetime</span>
                     </div>
-                    <p className="text-3xl font-semibold text-[#1f1f1f] mt-4">12,450</p>
-                    <p className="text-sm text-[#4d4d4d]">Total Points</p>
-                    <p className="text-xs text-[#8a8a8a] mt-3">You've earned 850 points this month!</p>
+                    <p className="text-3xl font-semibold text-[#1f1f1f] mt-4">{loyaltyPoints?.toLocaleString() ?? 0}</p>
+                    <p className="text-sm text-[#4d4d4d]">Total Points ({loyaltyTier})</p>
+                    <p className="text-xs text-[#8a8a8a] mt-3">{`You've earned ${monthlyLoyaltyPoints} points this month!`}</p>
                   </div>
 
                   <div className="rounded-xl border border-[#b6e7d0] bg-[#c9f1df] p-4">
@@ -405,9 +409,9 @@ export default function ProfilePage() {
                       <span className="w-8 h-8 rounded-lg bg-[#e5f7ef] text-[#157a4f] flex items-center justify-center"><Award size={14} /></span>
                       <span className="text-[11px] text-[#157a4f] bg-[#d9f6e8] px-2 py-0.5 rounded-full">Lifetime</span>
                     </div>
-                    <p className="text-3xl font-semibold text-[#1f1f1f] mt-4">Platinum Local</p>
+                    <p className="text-3xl font-semibold text-[#1f1f1f] mt-4">{loyaltyTier} Local</p>
                     <p className="text-sm text-[#4d4d4d]">Current Tier</p>
-                    <p className="text-xs text-[#5b7d6d] mt-3">Top 5% of users in Portland area.</p>
+                    <p className="text-xs text-[#5b7d6d] mt-3">{profile?.tierDescription || `You are in the ${loyaltyTier} tier.`}</p>
                   </div>
 
                   <div className="rounded-xl border border-[#e7e7e7] p-4">
@@ -415,9 +419,9 @@ export default function ProfilePage() {
                       <span className="w-8 h-8 rounded-lg bg-[#eff6f2] text-[#157a4f] flex items-center justify-center"><Ticket size={14} /></span>
                       <span className="text-[11px] text-[#157a4f] bg-[#ecf8f1] px-2 py-0.5 rounded-full">Lifetime</span>
                     </div>
-                    <p className="text-3xl font-semibold text-[#1f1f1f] mt-4">48</p>
+                    <p className="text-3xl font-semibold text-[#1f1f1f] mt-4">{profile?.dealsRedeemed ?? 0}</p>
                     <p className="text-sm text-[#4d4d4d]">Deals Redeemed</p>
-                    <p className="text-xs text-[#8a8a8a] mt-3">Estimated ₹120 saved on local goods.</p>
+                    <p className="text-xs text-[#8a8a8a] mt-3">{profile?.savingsText || `Estimated ₹${profile?.totalSavings ?? 0} saved on local goods.`}</p>
                   </div>
                 </section>
 
@@ -439,7 +443,7 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 text-sm font-semibold text-[#3f3f3f]">{points.toLocaleString()} / {pointsGoal.toLocaleString()} Points</div>
+                  <div className="mt-4 text-sm font-semibold text-[#3f3f3f]">{loyaltyPoints.toLocaleString()} / {pointsGoal.toLocaleString()} Points</div>
                   <div className="w-full h-2.5 rounded-full bg-[#f2e5c6] mt-2 overflow-hidden">
                     <div className="h-full rounded-full bg-[#157a4f]" style={{ width: `${progressPct}%` }} />
                   </div>

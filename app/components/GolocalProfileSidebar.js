@@ -30,10 +30,7 @@ export default function GolocalProfileSidebar({ active = "profile" }) {
           Profile
         </Link>
 
-        <Link href="/profile/rewards" className={itemClass(active === "rewards")}>
-          <Trophy size={15} />
-          Points & Rewards
-        </Link>
+        {/* Points & Rewards link removed */}
 
         <Link href="/profile/favorites" className={itemClass(active === "favorites")}>
           <Heart size={15} />

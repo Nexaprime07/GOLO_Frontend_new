@@ -106,27 +106,22 @@ function RecentListingsContent() {
             try {
                 setLoading(true);
                 const [sortBy, sortOrder] = sortValue.split("_");
-                
+
                 let response;
-                if (q || category || location || sortBy === 'distance') {
-                    response = await searchAds({
-                        q,
-                        category,
-                        location,
-                        sortBy,
-                        sortOrder,
+                // Always use getNearbyAds if userLocation or location is set (Golocal user surface)
+                if ((userLocation && userLocation.lat && userLocation.lng) || location) {
+                    response = await getNearbyAds({
                         lat: userLocation?.lat,
                         lng: userLocation?.lng,
+                        category,
                         page: 1,
                         limit: 50
                     });
                 } else {
-                    response = await getAllAds({ 
-                        page: 1, 
-                        limit: 50,
-                        sortBy,
-                        sortOrder
-                    });
+                    // Fallback: show nothing if no location (prevents Choja ads leak)
+                    setAds([]);
+                    setLoading(false);
+                    return;
                 }
 
                 if (response.success) {

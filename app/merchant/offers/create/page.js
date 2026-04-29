@@ -87,9 +87,7 @@ export default function CreateMerchantOfferPage() {
     endDate: "",
     promotionExpiryText: "Offer ends in 30 days",
     loyaltyRewardEnabled: true,
-    loyaltyStarsToOffer: "5",
-    loyaltyStarsPerPurchase: "1",
-    loyaltyScorePerStar: "50",
+    loyaltyPointsPerPurchase: "1",
     termsAndConditions: DEFAULT_TERMS,
     exampleUsage: DEFAULT_EXAMPLE,
   });
@@ -333,9 +331,7 @@ export default function CreateMerchantOfferPage() {
       endDate: "",
       promotionExpiryText: "Offer ends in 30 days",
       loyaltyRewardEnabled: true,
-      loyaltyStarsToOffer: "5",
-      loyaltyStarsPerPurchase: "1",
-      loyaltyScorePerStar: "50",
+      loyaltyPointsPerPurchase: "1",
       termsAndConditions: DEFAULT_TERMS,
       exampleUsage: DEFAULT_EXAMPLE,
     });
@@ -471,9 +467,7 @@ export default function CreateMerchantOfferPage() {
         selectedDates,
         totalPrice: totalOfferValue,
         loyaltyRewardEnabled: formData.loyaltyRewardEnabled,
-        loyaltyStarsToOffer: Number(formData.loyaltyStarsToOffer || 0),
-        loyaltyStarsPerPurchase: Number(formData.loyaltyStarsPerPurchase || 0),
-        loyaltyScorePerStar: Number(formData.loyaltyScorePerStar || 0),
+        loyaltyPointsPerPurchase: Number(formData.loyaltyPointsPerPurchase || 1),
         promotionExpiryText: formData.promotionExpiryText,
         termsAndConditions: formData.termsAndConditions,
         exampleUsage: formData.exampleUsage,
@@ -626,42 +620,24 @@ export default function CreateMerchantOfferPage() {
                   </button>
                 </div>
 
-                <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="mb-1 block text-[12px] font-semibold text-[#555]">Stars to be offered</label>
+                    <label className="mb-1 block text-[12px] font-semibold text-[#555]">Points rewarded to user after redemption <span className="text-[#ef4d4d]">*</span></label>
                     <input
                       type="number"
-                      min="0"
-                      value={formData.loyaltyStarsToOffer}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, loyaltyStarsToOffer: e.target.value }))}
+                      min="1"
+                      max="50"
+                      value={formData.loyaltyPointsPerPurchase}
+                      onChange={(e) => {
+                        let val = e.target.value.replace(/[^0-9]/g, "");
+                        if (val === "") val = "1";
+                        let num = Math.max(1, Math.min(50, Number(val)));
+                        setFormData((prev) => ({ ...prev, loyaltyPointsPerPurchase: String(num) }));
+                      }}
                       disabled={!formData.loyaltyRewardEnabled}
                       className="h-10 w-full rounded-[8px] border border-[#dedede] bg-white px-3 text-[13px] outline-none disabled:bg-[#f1f1f1]"
                     />
-                  </div>
-
-                  <div>
-                    <label className="mb-1 block text-[12px] font-semibold text-[#555]">Number of stars earned on purchase</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={formData.loyaltyStarsPerPurchase}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, loyaltyStarsPerPurchase: e.target.value }))}
-                      disabled={!formData.loyaltyRewardEnabled}
-                      className="h-10 w-full rounded-[8px] border border-[#dedede] bg-white px-3 text-[13px] outline-none disabled:bg-[#f1f1f1]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="mb-1 block text-[12px] font-semibold text-[#555]">Scoring value per star</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={formData.loyaltyScorePerStar}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, loyaltyScorePerStar: e.target.value }))}
-                      disabled={!formData.loyaltyRewardEnabled}
-                      className="h-10 w-full rounded-[8px] border border-[#dedede] bg-white px-3 text-[13px] outline-none disabled:bg-[#f1f1f1]"
-                    />
-                    <p className="mt-1 text-[11px] text-[#9a9a9a]">Current: 1 star = Rs {formData.loyaltyScorePerStar || 0} in score credit.</p>
+                    <p className="mt-1 text-[11px] text-[#9a9a9a]">Allowed range: 1 to 50 points per redemption.</p>
                   </div>
                 </div>
               </div>
@@ -1019,14 +995,12 @@ export default function CreateMerchantOfferPage() {
                     <h5 className="text-[16px] font-semibold text-[#111827] mb-2">Loyalty Reward</h5>
                     <p className="text-[12px] text-[#6b7280] mb-3">
                       {formData.loyaltyRewardEnabled
-                        ? "Customers can earn stars on purchases for this offer."
+                        ? `Customers will earn ${formData.loyaltyPointsPerPurchase || 1} point(s) per redemption for this offer.`
                         : "Loyalty reward is disabled for this offer."}
                     </p>
                     <div className="space-y-2 text-[12px]">
                       <div className="flex justify-between"><span className="text-[#6b7280]">Enabled</span><span className="font-semibold text-[#111827]">{formData.loyaltyRewardEnabled ? "Yes" : "No"}</span></div>
-                      <div className="flex justify-between"><span className="text-[#6b7280]">Stars Offered</span><span className="font-semibold text-[#111827]">{formData.loyaltyStarsToOffer || 0}</span></div>
-                      <div className="flex justify-between"><span className="text-[#6b7280]">Stars Per Purchase</span><span className="font-semibold text-[#111827]">{formData.loyaltyStarsPerPurchase || 0}</span></div>
-                      <div className="flex justify-between"><span className="text-[#6b7280]">Value Per Star</span><span className="font-semibold text-[#111827]">Rs {formData.loyaltyScorePerStar || 0}</span></div>
+                      <div className="flex justify-between"><span className="text-[#6b7280]">Points Per Redemption</span><span className="font-semibold text-[#111827]">{formData.loyaltyPointsPerPurchase || 1}</span></div>
                     </div>
                   </div>
 

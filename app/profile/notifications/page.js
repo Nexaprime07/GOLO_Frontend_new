@@ -1,245 +1,211 @@
 "use client";
 
-import Image from "next/image";
+
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import GolocalProfileSidebar from "../../components/GolocalProfileSidebar";
-import { Bell, ChevronDown, Gift, Clock3, Star, CheckCircle2, Circle, MoreVertical, SquareCheckBig } from "lucide-react";
-import { useState } from "react";
+import { Bell, CheckCircle2, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { getNotifications, markNotificationRead, markAllNotificationsRead } from "../../lib/api";
 
-const tabs = ["All", "Unread", "Deals", "Rewards", "Coupons"];
-
-const notifications = [
-  {
-    title: "New Deal: 50% Off Signature Thali",
-    description: "Enjoy a feast at Rajdhani Thali. Valid for the next 24 hours only!",
-    time: "2 hours ago",
-    action: "View Deal",
-    accent: "#157a4f",
-    icon: Bell,
-    dot: true,
-  },
-  {
-    title: "Points Milestone Reached!",
-    description: "You just earned 500 GOLO points. Check your rewards balance.",
-    time: "5 hours ago",
-    action: "View Rewards",
-    accent: "#f4a632",
-    icon: Star,
-    dot: true,
-  },
-  {
-    title: "Claim Your Weekend Coupon",
-    description: "Get extra Rs. 200 off on any wellness service above Rs. 1000.",
-    time: "2 days ago",
-    action: "Claim Coupon",
-    secondaryAction: "Dismiss",
-    accent: "#157a4f",
-    icon: Gift,
-    dot: false,
-  },
-  {
-    title: "Appointment Reminder",
-    description: "Your spa session at Azure Wellness is scheduled for tomorrow at 10 AM.",
-    time: "3 days ago",
-    action: "View Details",
-    accent: "#157a4f",
-    icon: Clock3,
-    dot: false,
-  },
-];
-
-const summaryItems = [
-  { label: "Unread Notifications", value: "2 New", highlight: true },
-  { label: "Active Coupons", value: "5" },
-  { label: "Available Points", value: "2,450 pts", strong: true },
-];
-
-const milestones = [
-  { title: "Gold Member Status", subtitle: "Unlocked on Oct 10", icon: CheckCircle2 },
-];
 
 export default function NotificationsPage() {
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("All");
+
+  const fetchNotifications = async () => {
+    setLoading(true);
+    try {
+      const res = await getNotifications({ limit: 50 });
+      if (res?.success) {
+        setNotifications(res.data?.notifications || []);
+        setUnreadCount(res.data?.unreadCount || 0);
+      }
+    } catch {
+      setNotifications([]);
+      setUnreadCount(0);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleMarkRead = async (id) => {
+    try {
+      await markNotificationRead(id);
+      setNotifications((prev) => prev.map((n) => n._id === id ? { ...n, read: true } : n));
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch {}
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllNotificationsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setUnreadCount(0);
+    } catch {}
+  };
+
+  const handleClearAll = () => {
+    setNotifications([]);
+    setUnreadCount(0);
+  };
+
+  const filteredNotifications = activeTab === "All"
+    ? notifications
+    : notifications.filter((n) => !n.read);
 
   return (
     <>
       <Navbar />
-
-      <div className="min-h-screen bg-[#f4f4f4]">
+      <div className="min-h-screen bg-gradient-to-br from-[#f4f4f4] to-[#e9f1ed]">
         <div className="w-full px-0 py-0">
           <div className="grid lg:grid-cols-[250px_1fr] min-h-[760px]">
             <GolocalProfileSidebar active="notifications" />
-
-            <main className="bg-white px-5 md:px-8 lg:px-10 py-6 md:py-8">
-              <div className="grid xl:grid-cols-[minmax(0,1fr)_280px] gap-6 xl:gap-8 items-start">
-                <div>
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h1 className="text-[32px] md:text-[34px] leading-none font-semibold text-[#1f1f1f]">Notifications</h1>
-                    </div>
-                    <button className="text-[#157a4f] text-[12px] md:text-[13px] font-semibold mt-2 whitespace-nowrap">Mark all as read</button>
+            <main className="flex flex-row gap-8 min-h-[760px] w-full px-4 md:px-8 py-10">
+              {/* Notifications List */}
+              <section className="flex-1 flex flex-col">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                  <div className="flex flex-col gap-1">
+                    <h1 className="text-[30px] md:text-[34px] leading-none font-bold text-[#1f1f1f]">Notifications</h1>
+                    <span className="text-sm text-gray-400 font-medium">Stay up to date with your latest activity and alerts</span>
                   </div>
-
-                  <div className="mt-5 flex flex-wrap items-center gap-2">
-                    {tabs.map((tab) => {
-                      const active = activeTab === tab;
-                      return (
-                        <button
-                          key={tab}
-                          type="button"
-                          onClick={() => setActiveTab(tab)}
-                          className={`h-8 px-4 rounded-full border text-[12px] font-medium transition ${active ? "bg-[#157a4f] border-[#157a4f] text-white" : "bg-white border-[#e5e5e5] text-[#7a7a7a] hover:border-[#cfd8d3] hover:text-[#4c4c4c]"}`}
-                        >
-                          {tab}
-                        </button>
-                      );
-                    })}
+                  <div className="flex gap-2 items-center">
+                    <button
+                      className={`px-4 py-2 rounded-full text-sm font-semibold border transition ${activeTab === "All" ? "bg-[#157a4f] text-white border-[#157a4f]" : "bg-white text-[#157a4f] border-[#d2e7de] hover:bg-[#f4f4f4]"}`}
+                      onClick={() => setActiveTab("All")}
+                    >
+                      All
+                    </button>
+                    <button
+                      className={`px-4 py-2 rounded-full text-sm font-semibold border transition ${activeTab === "Unread" ? "bg-[#157a4f] text-white border-[#157a4f]" : "bg-white text-[#157a4f] border-[#d2e7de] hover:bg-[#f4f4f4]"}`}
+                      onClick={() => setActiveTab("Unread")}
+                    >
+                      Unread {unreadCount > 0 && <span className="ml-1 inline-block bg-[#f4a632] text-white rounded-full px-2 py-0.5 text-xs font-bold">{unreadCount}</span>}
+                    </button>
                   </div>
-
-                  <div className="mt-6 space-y-6">
-                    <div>
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-[#9ca3af] font-semibold">Today</p>
-                      <div className="mt-3 space-y-3">
-                        {notifications.slice(0, 2).map((notification) => {
-                          const Icon = notification.icon;
-                          return (
-                            <div key={notification.title} className="border border-[#d7e7df] rounded-[14px] bg-[#fbfcfd] px-3 md:px-4 py-3 md:py-4 shadow-[0_1px_0_rgba(0,0,0,0.03)]">
-                              <div className="flex items-start gap-3">
-                                <button type="button" className="mt-0.5 text-[#c4c4c4] shrink-0" aria-label="Select notification">
-                                  <SquareCheckBig size={16} />
-                                </button>
-
-                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white border border-[#efefef] shadow-sm shrink-0">
-                                  <Icon size={15} className="text-[#f4a632]" />
-                                </div>
-
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0">
-                                      <p className="text-[15px] md:text-[16px] font-semibold text-[#222222] leading-tight inline-flex items-center gap-1">
-                                        {notification.title}
-                                        {notification.dot && <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#f4a632] mt-1" />}
-                                      </p>
-                                      <p className="mt-1 text-[12px] md:text-[13px] text-[#6f6f6f]">{notification.description}</p>
-                                      <p className="mt-2 text-[11px] text-[#a1a1a1]">{notification.time}</p>
-                                    </div>
-
-                                    <button type="button" className="text-[#9aa0a6] hover:text-[#4b5563]">
-                                      <MoreVertical size={16} />
-                                    </button>
-                                  </div>
-
-                                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                                    <button className="h-8 px-4 rounded-md bg-[#157a4f] text-white text-[12px] font-semibold hover:opacity-95 transition">{notification.action}</button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
+                  <div className="flex gap-2 items-center">
+                    <button
+                      onClick={handleMarkAllRead}
+                      disabled={unreadCount === 0}
+                      className="flex items-center gap-1 px-3 py-2 rounded-md text-xs font-semibold border border-[#d2e7de] text-[#157a4f] bg-white hover:bg-[#f4f4f4] disabled:opacity-50"
+                    >
+                      <CheckCircle2 size={15} /> Mark all as read
+                    </button>
+                    <button
+                      onClick={handleClearAll}
+                      className="flex items-center gap-1 px-3 py-2 rounded-md text-xs font-semibold border border-[#e5e5e5] text-[#b91c1c] bg-white hover:bg-[#fbeaea]"
+                    >
+                      <Trash2 size={15} /> Clear all
+                    </button>
+                  </div>
+                </div>
+                <div className="border-b border-[#e5e5e5] mb-6" />
+                {loading ? (
+                  <div className="text-center text-[#157a4f] py-16 text-lg font-semibold flex flex-col items-center gap-2">
+                    <Bell size={40} className="mx-auto mb-2 animate-pulse" />
+                    Loading notifications...
+                  </div>
+                ) : filteredNotifications.length === 0 ? (
+                  <div className="text-center text-gray-400 py-20 flex flex-col items-center gap-2">
+                    <Bell size={48} className="mx-auto mb-2 opacity-60" />
+                    <span className="text-lg font-semibold">No notifications</span>
+                    <span className="text-sm text-gray-400">You're all caught up!</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-4">
+                    {filteredNotifications.map((notif) => (
+                      <div
+                        key={notif._id}
+                        onClick={() => !notif.read && handleMarkRead(notif._id)}
+                        className={`flex items-start gap-4 px-5 py-4 border border-[#e5e5e5] rounded-xl shadow-sm transition cursor-pointer group ${notif.read ? "bg-white" : "bg-green-50 hover:bg-green-100"}`}
+                      >
+                        <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center mt-0.5 ${notif.read ? "bg-[#e5e5e5]" : "bg-[#157A4F]/10"}`}>
+                          <Bell size={18} className={notif.read ? "text-[#bdbdbd]" : "text-[#157A4F]"} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-base font-semibold ${notif.read ? "text-gray-700" : "text-[#157A4F]"}`}>{notif.message}</span>
+                            {!notif.read && <span className="inline-block w-2 h-2 rounded-full bg-[#f4a632] mt-1" />}
+                          </div>
+                          <span className="text-xs text-gray-400 mt-1 block">
+                            {new Date(notif.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                        {!notif.read && (
+                          <button
+                            onClick={e => { e.stopPropagation(); handleMarkRead(notif._id); }}
+                            className="ml-2 px-2 py-1 rounded bg-[#157A4F] text-white text-xs font-semibold hover:bg-[#10613a] transition"
+                          >Mark as read</button>
+                        )}
                       </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+              {/* Right Side Panel */}
+              <aside className="hidden lg:flex flex-col w-[340px] min-w-[280px] max-w-[380px] bg-gradient-to-br from-[#f4f8f6] to-[#e9f1ed] border border-[#e0ece6] rounded-2xl shadow-xl p-7 mt-2 gap-10 animate-fade-in">
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-3 mb-1">
+                    <Bell size={22} className="text-[#157a4f]" />
+                    <h2 className="text-xl font-extrabold text-[#157a4f] tracking-tight">Notification Stats</h2>
+                  </div>
+                  <div className="flex items-center gap-4 mt-2">
+                    <div className="flex flex-col items-center flex-1">
+                      <span className="text-3xl font-bold text-[#157a4f]">{notifications.length}</span>
+                      <span className="text-xs text-gray-500 font-medium mt-1">Total</span>
                     </div>
-
-                    <div>
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-[#9ca3af] font-semibold">This Week</p>
-                      <div className="mt-3 space-y-3">
-                        {notifications.slice(2).map((notification) => {
-                          const Icon = notification.icon;
-                          return (
-                            <div key={notification.title} className="border border-[#d7e7df] rounded-[14px] bg-[#fbfcfd] px-3 md:px-4 py-3 md:py-4 shadow-[0_1px_0_rgba(0,0,0,0.03)]">
-                              <div className="flex items-start gap-3">
-                                <button type="button" className="mt-0.5 text-[#c4c4c4] shrink-0" aria-label="Select notification">
-                                  <Circle size={16} />
-                                </button>
-
-                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white border border-[#efefef] shadow-sm shrink-0">
-                                  <Icon size={15} className="text-[#f4a632]" />
-                                </div>
-
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0">
-                                      <p className="text-[15px] md:text-[16px] font-semibold text-[#222222] leading-tight">{notification.title}</p>
-                                      <p className="mt-1 text-[12px] md:text-[13px] text-[#6f6f6f]">{notification.description}</p>
-                                      <p className="mt-2 text-[11px] text-[#a1a1a1]">{notification.time}</p>
-                                    </div>
-
-                                    <button type="button" className="text-[#9aa0a6] hover:text-[#4b5563]">
-                                      <MoreVertical size={16} />
-                                    </button>
-                                  </div>
-
-                                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                                    <button className="h-8 px-4 rounded-md bg-[#157a4f] text-white text-[12px] font-semibold hover:opacity-95 transition">{notification.action}</button>
-                                    {notification.secondaryAction && (
-                                      <button className="h-8 px-4 rounded-md border border-[#d5d5d5] bg-white text-[#4b4b4b] text-[12px] font-semibold">{notification.secondaryAction}</button>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                    <div className="flex flex-col items-center flex-1">
+                      <span className="text-3xl font-bold text-[#f4a632]">{unreadCount}</span>
+                      <span className="text-xs text-gray-500 font-medium mt-1">Unread</span>
+                    </div>
+                    <div className="flex flex-col items-center flex-1">
+                      <span className="text-3xl font-bold text-[#1a6d49]">{notifications.length - unreadCount}</span>
+                      <span className="text-xs text-gray-500 font-medium mt-1">Read</span>
+                    </div>
+                  </div>
+                  {/* Progress bar */}
+                  <div className="w-full mt-4">
+                    <div className="flex justify-between text-xs text-gray-400 mb-1">
+                      <span>Read</span>
+                      <span>Unread</span>
+                    </div>
+                    <div className="w-full h-3 bg-[#e5e5e5] rounded-full overflow-hidden">
+                      <div
+                        className="h-3 bg-gradient-to-r from-[#1a6d49] to-[#f4a632] rounded-full transition-all duration-500"
+                        style={{ width: `${notifications.length === 0 ? 0 : ((notifications.length - unreadCount) / (notifications.length || 1)) * 100}%` }}
+                      />
                     </div>
                   </div>
                 </div>
-
-                <aside className="space-y-4 xl:sticky xl:top-6">
-                  <div className="rounded-[16px] border border-[#ececec] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.06)] px-4 py-4">
-                    <h2 className="text-[15px] font-semibold text-[#1e1e1e]">Notification Summary</h2>
-                    <div className="mt-4 space-y-3">
-                      {summaryItems.map((item) => (
-                        <div key={item.label} className="flex items-center justify-between gap-3 text-[12px]">
-                          <span className="text-[#7d7d7d]">{item.label}</span>
-                          <span className={item.highlight ? "inline-flex items-center rounded-full bg-[#f4a632] px-2 py-0.5 text-[10px] font-semibold text-white" : item.strong ? "font-semibold text-[#157a4f]" : "font-semibold text-[#222222]"}>
-                            {item.value}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="mt-4 border-t border-[#ececec] pt-3">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-[#9ca3af] font-semibold">Recent Milestone</p>
-                      {milestones.map((milestone) => {
-                        const Icon = milestone.icon;
-                        return (
-                          <div key={milestone.title} className="mt-3 flex items-start gap-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#edf8f2] border border-[#d4eadf] text-[#157a4f] shrink-0">
-                              <Icon size={15} />
-                            </div>
-                            <div>
-                              <p className="text-[12px] font-semibold text-[#1d1d1d] leading-tight">{milestone.title}</p>
-                              <p className="text-[11px] text-[#8a8a8a] mt-0.5">{milestone.subtitle}</p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <CheckCircle2 size={18} className="text-[#157a4f]" />
+                    <h2 className="text-lg font-bold text-[#157a4f] tracking-tight">Tips</h2>
                   </div>
-
-                  <div className="relative overflow-hidden rounded-[18px] border border-[#ececec] bg-[#1f170f] shadow-[0_16px_32px_rgba(15,23,42,0.16)] min-h-[250px]">
-                    <div className="absolute inset-0">
-                      <Image src="/images/place2.avif" alt="Featured wellness offer" fill className="object-cover opacity-95" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#0f0b08]/95 via-[#2a1b12]/40 to-transparent" />
-                    </div>
-                    <div className="relative z-10 flex h-full min-h-[250px] flex-col justify-end p-4 text-white">
-                      <span className="inline-flex w-fit items-center rounded-full bg-[#f4a632] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
-                        Featured
-                      </span>
-                      <h3 className="mt-2 text-[22px] leading-[1.05] font-semibold">Signature Wellness Day</h3>
-                      <p className="mt-1 text-[12px] text-white/82">Special price Rs. 1,200</p>
-                      <button className="mt-4 h-10 rounded-[8px] bg-[#f4b232] text-[#fff] text-[13px] font-semibold shadow-sm">Claim Now</button>
-                    </div>
-                  </div>
-                </aside>
-              </div>
+                  <ul className="text-[15px] text-gray-700 space-y-2">
+                    <li className="flex items-center gap-2"><span className="inline-block w-2 h-2 rounded-full bg-[#f4a632]" />Click a notification to mark it as read.</li>
+                    <li className="flex items-center gap-2"><span className="inline-block w-2 h-2 rounded-full bg-[#157a4f]" />Use the tabs to filter unread messages.</li>
+                    <li className="flex items-center gap-2"><span className="inline-block w-2 h-2 rounded-full bg-[#1a6d49]" />"Mark all as read" to clear your badge.</li>
+                    <li className="flex items-center gap-2"><span className="inline-block w-2 h-2 rounded-full bg-[#b91c1c]" />"Clear all" to remove all notifications.</li>
+                  </ul>
+                </div>
+                <div className="mt-auto text-xs text-gray-400 pt-4 border-t border-[#e0ece6] flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 rounded-full bg-[#157a4f] animate-pulse" />
+                  Last updated: {new Date().toLocaleString()}
+                </div>
+              </aside>
             </main>
           </div>
         </div>
       </div>
-
       <Footer />
     </>
   );

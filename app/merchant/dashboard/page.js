@@ -6,36 +6,15 @@ import { useRouter } from "next/navigation";
 import { Download, Plus, ChevronRight, ShoppingBag, Box, Star, User } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import MerchantNavbar from "../MerchantNavbar";
-import { getMerchantDashboardSummary, getMerchantProfile } from "../../lib/api";
+import { getMerchantDashboardSummary, getMerchantProfile, getMerchantLoyaltyLeaderboard } from "../../lib/api";
 
-const orders = [
-  { id: "#2456", time: "Placed 12 hours ago", amount: "₹340", qty: "3 items" },
-  { id: "#2451", time: "Placed 14 hours ago", amount: "₹523", qty: "5 items" },
-  { id: "#2448", time: "Placed 1 day ago", amount: "₹890", qty: "8 items" },
-  { id: "#2445", time: "Placed 1 day ago", amount: "₹120", qty: "1 items" },
-  { id: "#2442", time: "Placed 2 days ago", amount: "₹450", qty: "4 items" },
-];
-
-const latestReviews = [
-  {
-    name: "Rahul K.",
-    time: "Yesterday",
-    text: "Best local store on Golo. Prices are reasonable and the food is always fresh!",
-    avatar: "/images/banner3.avif",
-  },
-  {
-    name: "Anjali S.",
-    time: "2 days ago",
-    text: "Love the Moon Cafe vibes. The packaging was neat and eco-friendly.",
-    avatar: "/images/place2.avif",
-  },
-];
 
 export default function MerchantDashboardPage() {
   const router = useRouter();
   const { user, loading, logout, getUserAccountType } = useAuth();
   const [summary, setSummary] = useState(null);
   const [merchantProfile, setMerchantProfile] = useState(null);
+  const [loyaltyLeaderboard, setLoyaltyLeaderboard] = useState([]);
 
   const handleMerchantLogout = async () => {
     await logout();
@@ -82,6 +61,26 @@ export default function MerchantDashboardPage() {
       } catch (err) {
         if (!active) return;
         setMerchantProfile(null);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [user, getUserAccountType]);
+
+  useEffect(() => {
+    if (!user || (user?.accountType || getUserAccountType()) !== "merchant") return;
+
+    let active = true;
+    (async () => {
+      try {
+        const res = await getMerchantLoyaltyLeaderboard();
+        if (!active) return;
+        setLoyaltyLeaderboard(res?.data?.data || []);
+      } catch (err) {
+        if (!active) return;
+        setLoyaltyLeaderboard([]);
       }
     })();
 
@@ -203,21 +202,21 @@ export default function MerchantDashboardPage() {
               </div>
 
               <div>
-                {(summary?.recentOrders || orders).map((order) => (
-                  <div key={order._id || order.id} className="px-4 py-3 border-b border-[#f0f0f0] last:border-b-0 flex items-center gap-3">
+                {(summary?.recentOrders || []).map((order) => (
+                  <div key={order._id || order.orderNumber} className="px-4 py-3 border-b border-[#f0f0f0] last:border-b-0 flex items-center gap-3">
                     <div className="h-8 w-8 rounded-full bg-[#ebf8ef] border border-[#cce9d4] text-[#1f8f4f] flex items-center justify-center">
                       <Box size={14} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-[15px] font-semibold text-[#252525]">Order {order.id || `#${order.orderNumber || String(order._id || '').slice(-6)}`}</p>
-                      <p className="text-[11px] text-[#858585]">{order.time || `Placed ${new Date(order.placedAt).toLocaleString()}`}</p>
+                      <p className="text-[15px] font-semibold text-[#252525]">Order {order.orderNumber ? `#${order.orderNumber}` : String(order._id || '').slice(-6)}</p>
+                      <p className="text-[11px] text-[#858585]">{order.placedAt ? `Placed ${new Date(order.placedAt).toLocaleString()}` : ''}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[16px] font-bold text-[#202020]">{typeof order.amount === 'string' ? order.amount : `₹${order.amount || 0}`}</p>
+                      <p className="text-[16px] font-bold text-[#202020]">₹{order.amount || 0}</p>
                       <p className="text-[9px] uppercase text-[#8a8a8a]">Amount</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[16px] font-bold text-[#202020]">{order.qty || `${order.itemsCount || 1} items`}</p>
+                      <p className="text-[16px] font-bold text-[#202020]">{order.itemsCount || 1} items</p>
                       <p className="text-[9px] uppercase text-[#8a8a8a]">Quantity</p>
                     </div>
                     <button className="text-[#9a9a9a] hover:text-[#333]"><ChevronRight size={14} /></button>
@@ -233,26 +232,65 @@ export default function MerchantDashboardPage() {
               </div>
 
               <div className="mt-3 space-y-3">
-                {(summary?.latestReviews || latestReviews).map((review) => (
-                  <article key={review._id || review.name} className="rounded-[10px] border border-[#ececec] bg-[#fbfbfb] p-3">
+                {(summary?.latestReviews || []).map((review) => (
+                  <article key={review._id || review.userName} className="rounded-[10px] border border-[#ececec] bg-[#fbfbfb] p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-2">
                         <div className="h-7 w-7 rounded-full overflow-hidden border border-[#ddd]">
-                          <Image src={review.avatar || "/images/place2.avif"} alt={review.name || "Customer"} width={28} height={28} className="h-full w-full object-cover" />
+                          <Image src={review.avatar || "/images/place2.avif"} alt={review.userName || "Customer"} width={28} height={28} className="h-full w-full object-cover" />
                         </div>
                         <div>
-                          <p className="text-[13px] font-semibold">{review.name || review.userName || "Customer"}</p>
+                          <p className="text-[13px] font-semibold">{review.userName || "Customer"}</p>
                           <p className="text-[10px] text-[#f0aa19]">{review.rating ? "★".repeat(review.rating) : "★★★★★"}</p>
                         </div>
                       </div>
-                      <span className="text-[10px] text-[#888]">{review.time || new Date(review.createdAt).toLocaleDateString()}</span>
+                      <span className="text-[10px] text-[#888]">{review.createdAt ? new Date(review.createdAt).toLocaleDateString() : ''}</span>
                     </div>
-                    <p className="mt-2 text-[11px] leading-5 text-[#5a5a5a]">"{review.text || review.content}"</p>
+                    <p className="mt-2 text-[11px] leading-5 text-[#5a5a5a]">"{review.content}"</p>
                   </article>
                 ))}
               </div>
 
               <button className="mt-4 h-9 w-full rounded-[8px] border border-[#d8d8d8] bg-white text-[12px] font-semibold text-[#343434]">Read All 48 Reviews</button>
+            </div>
+
+            {/* Loyalty Leaderboard Section */}
+            <div className="rounded-[12px] border border-[#d8d8d8] bg-white p-5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-[31px] font-bold leading-none">Loyalty Leaderboard</h3>
+                <button className="text-[#888]">⋮</button>
+              </div>
+
+              <div className="mt-3 space-y-2">
+                {loyaltyLeaderboard.length > 0 ? (
+                  loyaltyLeaderboard.map((customer, idx) => (
+                    <div key={customer.email || idx} className="flex items-center gap-3 p-2 rounded-[8px] bg-[#fbfbfb] border border-[#ececec]">
+                      <div className="flex items-center justify-center h-8 w-8 rounded-full bg-[#f0f0f0] text-[14px] font-bold text-[#666]">
+                        {idx + 1}
+                      </div>
+                      <div className="h-8 w-8 rounded-full overflow-hidden border border-[#ddd]">
+                        {customer.profilePhoto ? (
+                          <Image src={customer.profilePhoto} alt={customer.name || "Customer"} width={32} height={32} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center bg-[#e0e0e0] text-[#999]">
+                            <User size={16} />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-semibold truncate">{customer.name || "Customer"}</p>
+                        <p className="text-[10px] text-[#888] truncate">{customer.email || ""}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[14px] font-bold text-[#1f8f4f]">{customer.points || 0}</p>
+                        <p className="text-[9px] text-[#888]">points</p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-[12px] text-[#888] text-center py-4">No loyalty data yet. Customers will appear here after making purchases.</p>
+                )}
+              </div>
             </div>
           </section>
         </div>

@@ -45,6 +45,10 @@ const PUBLIC_AUTH_ENDPOINTS = new Set([
 
 export async function apiClient(endpoint, options = {}) {
     const url = `${BASE_URL}${endpoint}`;
+    // Debug: Print the full URL being called
+    if (typeof window !== 'undefined') {
+        console.log('[API DEBUG] Full API URL:', url);
+    }
     const isPublicAuthEndpoint = [...PUBLIC_AUTH_ENDPOINTS].some((path) => endpoint.startsWith(path));
 
     const headers = {
@@ -1377,6 +1381,17 @@ export async function getMerchantDeviceAnalytics() {
  */
 export async function getAnalyticsDeviceBreakdown(dateRange = '7days') {
     return apiClient(`/analytics/device-breakdown?dateRange=${dateRange}`);
+}
+
+// ============================================================
+// LOYALTY POINTS APIs
+// ============================================================
+
+/**
+ * Get merchant loyalty leaderboard (top customers by loyalty points)
+ */
+export async function getMerchantLoyaltyLeaderboard() {
+    return apiClient('/merchant-dashboard/loyalty-leaderboard');
 }
 
 /**

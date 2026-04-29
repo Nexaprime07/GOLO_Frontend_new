@@ -126,8 +126,10 @@ function NavbarContent({
   }, [isAuthenticated]);
 
   const handleNotifBellClick = () => {
-    setShowNotifications((prev) => !prev);
+    // Instead of dropdown, navigate to notifications page
+    setShowNotifications(false);
     setShowProfileMenu(false);
+    router.push("/profile/notifications");
   };
 
   const handleMarkRead = async (id) => {
@@ -163,7 +165,12 @@ function NavbarContent({
     if (trimmedSearch) params.set("q", trimmedSearch);
     if (trimmedLocation) params.set("location", trimmedLocation);
 
-    const isGolocalSurface = pathname === "/" || pathname.startsWith("/nearby-deals");
+    // Always treat /profile and all Golocal pages as Golocal surface
+    const isGolocalSurface =
+      pathname === "/" ||
+      pathname.startsWith("/nearby-deals") ||
+      pathname.startsWith("/profile") ||
+      pathname.startsWith("/my-deals");
     const targetBase = isGolocalSurface ? "/nearby-deals" : "/choja";
     router.push(params.toString() ? `${targetBase}?${params.toString()}` : targetBase);
   };
@@ -374,52 +381,7 @@ function NavbarContent({
                   )}
                 </button>
 
-                {showNotifications && (
-                  <div className="absolute top-12 right-0 w-80 bg-white rounded-xl shadow-lg border border-gray-200 z-[9999] overflow-hidden">
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                      <p className="text-sm font-semibold text-gray-800">Notifications</p>
-                      {unreadCount > 0 && (
-                        <button
-                          onClick={handleMarkAllRead}
-                          className="text-xs text-[#157A4F] hover:underline"
-                        >
-                          Mark all read
-                        </button>
-                      )}
-                    </div>
-                    <div className="max-h-80 overflow-y-auto">
-                      {notifications.length === 0 ? (
-                        <div className="px-4 py-8 text-center">
-                          <Bell size={28} className="mx-auto mb-2 text-gray-300" />
-                          <p className="text-sm text-gray-400">No notifications yet</p>
-                        </div>
-                      ) : (
-                        notifications.map((notif) => (
-                          <div
-                            key={notif._id}
-                            onClick={() => !notif.read && handleMarkRead(notif._id)}
-                            className={`flex items-start gap-3 px-4 py-3 border-b border-gray-50 transition cursor-pointer ${
-                              notif.read ? "bg-white" : "bg-green-50 hover:bg-green-100"
-                            }`}
-                          >
-                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#157A4F]/10 flex items-center justify-center mt-0.5">
-                              <Bell size={14} className="text-[#157A4F]" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm text-gray-800 leading-snug">{notif.message}</p>
-                              <p className="text-xs text-gray-400 mt-1">
-                                {new Date(notif.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                              </p>
-                            </div>
-                            {!notif.read && (
-                              <span className="flex-shrink-0 w-2 h-2 rounded-full bg-[#157A4F] mt-2" />
-                            )}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
+                {/* Notification dropdown removed; bell now navigates to notifications page */}
               </div>
 
               {/* PROFILE AVATAR */}
@@ -501,13 +463,7 @@ function NavbarContent({
                   >
                     <User size={16} /> Profile
                   </Link>
-                  <Link
-                    href="/profile/rewards"
-                    onClick={() => setShowProfileMenu(false)}
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
-                  >
-                    <Trophy size={16} /> Points & Rewards
-                  </Link>
+                  {/* Points & Rewards link removed */}
                   <Link
                     href="/profile/favorites"
                     onClick={() => setShowProfileMenu(false)}
