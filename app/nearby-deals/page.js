@@ -10,7 +10,36 @@ import CategoryBar from "../components/CategoryBar";
 import Footer from "../components/Footer";
 import { getNearbyOffers } from "../lib/api";
 
-const OFFER_TYPES = ["Flat Discounts", "BOGO Deals", "Combo Offers", "Cashback"];
+const OFFER_TYPES = [
+  "Special",
+  "Festival",
+  "Limited Time",
+  "Combo",
+  "Clearance",
+  "Flash Sale",
+  "Buy One Get One (BOGO)",
+  "Flat Discount",
+  "Percentage Off",
+  "Bundle Deal",
+  "New Arrival Offer",
+  "Seasonal Offer",
+  "Weekend Offer",
+  "Happy Hour Deal",
+  "Member Exclusive",
+  "First Purchase Offer",
+  "Loyalty Reward",
+  "Referral Offer",
+  "Clear Stock Sale",
+  "Free Gift Offer",
+];
+
+const SORT_OPTIONS = [
+  { value: "nearest", label: "Nearest" },
+  { value: "newest", label: "Newest" },
+  { value: "price_asc", label: "Price: Low to High" },
+  { value: "price_desc", label: "Price: High to Low" },
+  { value: "discount_desc", label: "Best Discount" },
+];
 
 function toNumber(value, fallback = 0) {
   const parsed = Number(value);
@@ -53,12 +82,18 @@ function matchOfferType(row, typeLabel) {
   const title = String(row?.title || "").toLowerCase();
   const category = String(row?.category || "").toLowerCase();
   const combined = `${title} ${category}`;
+  const normalizedType = String(typeLabel || "").trim().toLowerCase();
 
-  if (typeLabel === "Flat Discounts") {
+  // Exact category match first for the new offer category model.
+  if (normalizedType && category === normalizedType) {
+    return true;
+  }
+
+  if (normalizedType === "flat discount") {
     return row?.discountPercent > 0 || combined.includes("discount") || combined.includes("flat");
   }
 
-  if (typeLabel === "BOGO Deals") {
+  if (normalizedType === "buy one get one (bogo)") {
     return (
       combined.includes("bogo") ||
       combined.includes("buy 1 get 1") ||
@@ -66,15 +101,15 @@ function matchOfferType(row, typeLabel) {
     );
   }
 
-  if (typeLabel === "Combo Offers") {
+  if (normalizedType === "combo") {
     return combined.includes("combo");
   }
 
-  if (typeLabel === "Cashback") {
-    return combined.includes("cashback") || combined.includes("cash back");
+  if (normalizedType === "percentage off") {
+    return combined.includes("%") || combined.includes("percent") || combined.includes("percentage");
   }
 
-  return true;
+  return combined.includes(normalizedType);
 }
 
 function NearbyDealsPageContent() {
@@ -89,11 +124,28 @@ function NearbyDealsPageContent() {
   const [locationError, setLocationError] = useState("");
   const [topDiscountOnly, setTopDiscountOnly] = useState(false);
   const [activeNowOnly, setActiveNowOnly] = useState(false);
+  const [sortBy, setSortBy] = useState("nearest");
   const [selectedOfferTypes, setSelectedOfferTypes] = useState({
-    "Flat Discounts": false,
-    "BOGO Deals": false,
-    "Combo Offers": false,
-    Cashback: false,
+    Special: false,
+    Festival: false,
+    "Limited Time": false,
+    Combo: false,
+    Clearance: false,
+    "Flash Sale": false,
+    "Buy One Get One (BOGO)": false,
+    "Flat Discount": false,
+    "Percentage Off": false,
+    "Bundle Deal": false,
+    "New Arrival Offer": false,
+    "Seasonal Offer": false,
+    "Weekend Offer": false,
+    "Happy Hour Deal": false,
+    "Member Exclusive": false,
+    "First Purchase Offer": false,
+    "Loyalty Reward": false,
+    "Referral Offer": false,
+    "Clear Stock Sale": false,
+    "Free Gift Offer": false,
   });
   const [rawOffers, setRawOffers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -285,19 +337,39 @@ function NearbyDealsPageContent() {
       return true;
     });
 
+    const sortedRows = [...rows];
+
+    if (sortBy === "price_asc") {
+      sortedRows.sort((a, b) => toNumber(a?.displayPrice, 0) - toNumber(b?.displayPrice, 0));
+    } else if (sortBy === "price_desc") {
+      sortedRows.sort((a, b) => toNumber(b?.displayPrice, 0) - toNumber(a?.displayPrice, 0));
+    } else if (sortBy === "newest") {
+      sortedRows.sort(
+        (a, b) => new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime(),
+      );
+    } else if (sortBy === "discount_desc") {
+      sortedRows.sort((a, b) => toNumber(b?.discountPercent, 0) - toNumber(a?.discountPercent, 0));
+    } else {
+      sortedRows.sort((a, b) => {
+        const distanceA = typeof a?.distanceKm === "number" ? a.distanceKm : Number.MAX_SAFE_INTEGER;
+        const distanceB = typeof b?.distanceKm === "number" ? b.distanceKm : Number.MAX_SAFE_INTEGER;
+        return distanceA - distanceB;
+      });
+    }
+
     if (!location) {
-      return rows;
+      return sortedRows;
     }
 
     const locationNeedle = String(location).trim().toLowerCase();
-    return rows.sort((a, b) => {
-      const addressA = String(a?.merchant?.address || '').toLowerCase();
-      const addressB = String(b?.merchant?.address || '').toLowerCase();
+    return sortedRows.sort((a, b) => {
+      const addressA = String(a?.merchant?.address || "").toLowerCase();
+      const addressB = String(b?.merchant?.address || "").toLowerCase();
       const scoreA = addressA.includes(locationNeedle) ? 1 : 0;
       const scoreB = addressB.includes(locationNeedle) ? 1 : 0;
       return scoreB - scoreA;
     });
-  }, [rawOffers, activeNowOnly, topDiscountOnly, selectedTypeLabels, location]);
+  }, [rawOffers, activeNowOnly, topDiscountOnly, selectedTypeLabels, location, sortBy]);
 
   const summary = useMemo(() => {
     const total = filteredDeals.length;
@@ -317,11 +389,28 @@ function NearbyDealsPageContent() {
     setPriceRange(5000);
     setTopDiscountOnly(false);
     setActiveNowOnly(false);
+    setSortBy("nearest");
     setSelectedOfferTypes({
-      "Flat Discounts": false,
-      "BOGO Deals": false,
-      "Combo Offers": false,
-      Cashback: false,
+      Special: false,
+      Festival: false,
+      "Limited Time": false,
+      Combo: false,
+      Clearance: false,
+      "Flash Sale": false,
+      "Buy One Get One (BOGO)": false,
+      "Flat Discount": false,
+      "Percentage Off": false,
+      "Bundle Deal": false,
+      "New Arrival Offer": false,
+      "Seasonal Offer": false,
+      "Weekend Offer": false,
+      "Happy Hour Deal": false,
+      "Member Exclusive": false,
+      "First Purchase Offer": false,
+      "Loyalty Reward": false,
+      "Referral Offer": false,
+      "Clear Stock Sale": false,
+      "Free Gift Offer": false,
     });
   };
 
@@ -473,7 +562,18 @@ function NearbyDealsPageContent() {
                   <List size={14} />
                 </button>
                 <button className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700">
-                  Sort: Nearest
+                  Sort:
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="bg-transparent text-xs text-gray-700 outline-none"
+                  >
+                    {SORT_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                   <ChevronDown size={12} />
                 </button>
               </div>
@@ -498,9 +598,7 @@ function NearbyDealsPageContent() {
 
             <div className={activeView === "list" ? "space-y-4" : "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"}>
               {loading ? (
-                <div className="col-span-full rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
-                  Loading nearby offers...
-                </div>
+                <NearbyDealsSkeleton view={activeView} />
               ) : filteredDeals.length === 0 ? (
                 <div className="col-span-full rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
                   No offers found for the selected filters.
@@ -557,6 +655,34 @@ function NearbyDealsPageContent() {
 
       <Footer />
     </main>
+  );
+}
+
+function NearbyDealsSkeleton({ view = "grid" }) {
+  return (
+    <>
+      {Array.from({ length: view === "list" ? 5 : 8 }).map((_, idx) => (
+        <article
+          key={idx}
+          className="group overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
+        >
+          <div className="relative h-36 w-full overflow-hidden bg-gray-100">
+            <div className="h-full w-full animate-pulse bg-[#e6ebf1]" />
+            <span className="absolute left-2 top-2 h-5 w-20 animate-pulse rounded-full bg-[#d9dee5]" />
+            <span className="absolute left-2 top-8 h-4 w-16 animate-pulse rounded-md bg-[#e2e6ec]" />
+          </div>
+          <div className="p-3">
+            <div className="h-4 w-3/4 animate-pulse rounded bg-[#e5e7eb]" />
+            <div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-[#edf0f4]" />
+            <div className="mt-2 h-3 w-full animate-pulse rounded bg-[#edf0f4]" />
+            <div className="mt-2 h-3 w-5/6 animate-pulse rounded bg-[#edf0f4]" />
+            <div className="mt-2 h-3 w-2/3 animate-pulse rounded bg-[#edf0f4]" />
+            <div className="mt-2 h-6 w-1/3 animate-pulse rounded bg-[#e5e7eb]" />
+            <div className="mt-3 h-[34px] w-full animate-pulse rounded-lg bg-[#e5e7eb]" />
+          </div>
+        </article>
+      ))}
+    </>
   );
 }
 

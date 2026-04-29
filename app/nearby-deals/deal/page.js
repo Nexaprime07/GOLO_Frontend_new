@@ -120,6 +120,7 @@ function NearbyDealDetailsContent() {
     breakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
   });
   const [loadingReviews, setLoadingReviews] = useState(true);
+  const [loadingReviews, setLoadingReviews] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
   const [likeLoading, setLikeLoading] = useState(false);
@@ -185,27 +186,40 @@ function NearbyDealDetailsContent() {
     return () => clearInterval(timer);
   }, [offer?.endsAt]);
 
-  // Check if offer is in wishlist and get likes count
-  useEffect(() => {
-    if (!offerId || !user) return;
+   // Timer for countdown
+   useEffect(() => {
+     if (!offer?.endsAt) {
+       setTimeRemaining(null);
+       return;
+     }
+     setTimeRemaining(getTimeRemaining(offer.endsAt));
+     const timer = setInterval(() => {
+       setTimeRemaining(getTimeRemaining(offer.endsAt));
+     }, 60000);
+     return () => clearInterval(timer);
+   }, [offer?.endsAt]);
 
-    const loadWishlistInfo = async () => {
-      try {
-        // Get wishlist IDs to check if this offer is liked
-        const idsRes = await getWishlistIds();
-        const ids = idsRes?.data || [];
-        setIsLiked(ids.includes(offerId));
+   // Check if offer is in wishlist and get likes count
+   useEffect(() => {
+     if (!offerId || !user) return;
 
-        // Get likes count for this offer
-        const countRes = await getAdWishlistCount(offerId);
-        setLikesCount(countRes?.data?.count || 0);
-      } catch (err) {
-        console.error("Failed to load wishlist info:", err);
-      }
-    };
+     const loadWishlistInfo = async () => {
+       try {
+         // Get wishlist IDs to check if this offer is liked
+         const idsRes = await getWishlistIds();
+         const ids = idsRes?.data || [];
+         setIsLiked(ids.includes(offerId));
 
-    loadWishlistInfo();
-  }, [offerId, user]);
+         // Get likes count for this offer
+         const countRes = await getAdWishlistCount(offerId);
+         setLikesCount(countRes?.data?.count || 0);
+       } catch (err) {
+         console.error("Failed to load wishlist info:", err);
+       }
+     };
+
+     loadWishlistInfo();
+   }, [offerId, user]);
 
   const readCachedOffer = (id) => {
     if (!id || typeof window === "undefined") return null;
@@ -424,6 +438,8 @@ function NearbyDealDetailsContent() {
                   {offer?.title || "Untitled Offer"}
                 </h1>
                 <div className="flex gap-2">
+                </h1>
+                <div className="flex gap-2">
                   <button
                     onClick={handleShare}
                     className="p-2 rounded-full hover:bg-[#f0f0f0]"
@@ -458,11 +474,6 @@ function NearbyDealDetailsContent() {
               </div>
 
               {/* Description */}
-              <p className="text-sm text-[#666] mb-4">
-                {offer?.description ||
-                  offer?.promotionExpiryText ||
-                  "Experience premium services with this exclusive offer from our merchant partners."}
-              </p>
 
               {/* Rating */}
               <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-[#e8edf2] bg-[#fbfcfd] px-4 py-3">
@@ -579,7 +590,15 @@ function NearbyDealDetailsContent() {
                   </p>
                 </div>
               </div>
-            </div>
+                 {formatDate(offer?.endsAt)}
+                   </p>
+                 </div>
+               </div>
+
+               <p className="text-xs text-[#666] mt-3 flex items-center gap-1">
+                 <Clock3 size={12} /> Digital redemption via QR code
+               </p>
+             </div>
           </div>
         </section>
 
@@ -645,11 +664,11 @@ function NearbyDealDetailsContent() {
                               0
                             ).toLocaleString("en-IN")}
                           </p>
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
+                         </div>
+                       </article>
+                     );
+                   })}
+                 </div>
               )}
             </div>
 

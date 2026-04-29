@@ -383,6 +383,10 @@ export async function markAllNotificationsRead() {
     return apiClient('/users/notifications/read-all', { method: 'POST' });
 }
 
+export async function clearAllNotifications() {
+    return apiClient('/users/notifications', { method: 'DELETE' });
+}
+
 // ============================================================
 // I WANT PREFERENCE APIs
 // ============================================================

@@ -6,7 +6,7 @@ import { Suspense, useEffect, useState } from "react";
 import { ArrowLeft, MapPin, Phone, Star, Heart, Share2, ShoppingCart, Tag } from "lucide-react";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
-import { getMerchantProductById, getPublicMerchantProfile, toggleWishlist, getWishlistIds, getAdWishlistCount } from "../../lib/api";
+import { getMerchantProductById, getPublicMerchantProfile } from "../../lib/api";
 
 export default function ProductDetailPage() {
   return (
@@ -28,62 +28,6 @@ function ProductDetailContent() {
   
   const offerId = searchParams.get("offerId");
   const merchantId = searchParams.get("merchantId") || "";
-  const [isLiked, setIsLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(0);
-  const [likeLoading, setLikeLoading] = useState(false);
-
-  // Check if offer is in wishlist
-  useEffect(() => {
-    if (!offerId) return;
-    const checkWishlist = async () => {
-      try {
-        const idsRes = await getWishlistIds();
-        const ids = idsRes?.data || [];
-        setIsLiked(ids.includes(offerId));
-
-        const countRes = await getAdWishlistCount(offerId);
-        setLikesCount(countRes?.data?.count || 0);
-      } catch (err) {
-        console.error("Failed to check wishlist:", err);
-      }
-    };
-    checkWishlist();
-  }, [offerId]);
-
-  const handleToggleLike = async () => {
-    if (!offerId) return;
-    setLikeLoading(true);
-    try {
-      const res = await toggleWishlist(offerId);
-      const newLikedState = res?.data?.isLiked ?? !isLiked;
-      setIsLiked(newLikedState);
-      setLikesCount(prev => newLikedState ? prev + 1 : Math.max(0, prev - 1));
-    } catch (err) {
-      console.error("Failed to toggle like:", err);
-    } finally {
-      setLikeLoading(false);
-    }
-  };
-
-  const handleShare = async () => {
-    const shareData = {
-      title: productName || "Check out this product!",
-      text: `Grab this deal: ${productName}`,
-      url: window.location.href,
-    };
-    try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-      } else {
-        await navigator.clipboard.writeText(window.location.href);
-        alert("Link copied to clipboard!");
-      }
-    } catch (err) {
-      if (err.name !== "AbortError") {
-        console.error("Share failed:", err);
-      }
-    }
-  };
 
   useEffect(() => {
     const loadProductData = async () => {
@@ -295,28 +239,12 @@ function ProductDetailContent() {
                   {productName}
                 </h1>
                 <div className="flex gap-2">
-                  <button 
-                    onClick={handleShare}
-                    className="p-2 rounded-full hover:bg-[#f0f0f0]" 
-                    aria-label="Share this product"
-                  >
+                  <button className="p-2 rounded-full hover:bg-[#f0f0f0]">
                     <Share2 size={20} className="text-[#666]" />
                   </button>
-                  <button 
-                    onClick={handleToggleLike}
-                    disabled={likeLoading}
-                    className={`p-2 rounded-full hover:bg-[#f0f0f0] ${isLiked ? "bg-red-50" : ""}`}
-                    aria-label={isLiked ? "Remove from favorites" : "Add to favorites"}
-                  >
-                    <Heart 
-                      size={20} 
-                      className={isLiked ? "text-red-500 fill-red-500" : "text-[#666]"} 
-                      fill={isLiked ? "currentColor" : "none"}
-                    />
+                  <button className="p-2 rounded-full hover:bg-[#f0f0f0]">
+                    <Heart size={20} className="text-[#666]" />
                   </button>
-                  {likesCount > 0 && (
-                    <span className="self-center text-sm text-[#666]">{likesCount}</span>
-                  )}
                 </div>
               </div>
 

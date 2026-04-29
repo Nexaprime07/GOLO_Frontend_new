@@ -195,9 +195,9 @@ export default function MerchantHelpPage() {
                   if (tab === "Profile Settings") {
                     router.push("/merchant/profile");
                   } else if (tab === "Loyalty Rewards") {
-                    router.push("/merchant/profile");
+                    router.push("/merchant/profile?tab=loyalty");
                   } else if (tab === "Settings") {
-                    router.push("/merchant/settings");
+                    router.push("/merchant/profile?tab=settings");
                   } else if (tab === "Logout") {
                     setShowLogoutConfirm(true);
                   }

@@ -6,7 +6,7 @@ import Footer from "../../components/Footer";
 import GolocalProfileSidebar from "../../components/GolocalProfileSidebar";
 import { Bell, CheckCircle2, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getNotifications, markNotificationRead, markAllNotificationsRead } from "../../lib/api";
+import { getNotifications, markNotificationRead, markAllNotificationsRead, clearAllNotifications } from "../../lib/api";
 
 
 export default function NotificationsPage() {
@@ -14,6 +14,7 @@ export default function NotificationsPage() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("All");
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   const fetchNotifications = async () => {
     setLoading(true);
@@ -22,6 +23,7 @@ export default function NotificationsPage() {
       if (res?.success) {
         setNotifications(res.data?.notifications || []);
         setUnreadCount(res.data?.unreadCount || 0);
+        setLastUpdated(new Date());
       }
     } catch {
       setNotifications([]);
@@ -53,9 +55,14 @@ export default function NotificationsPage() {
     } catch {}
   };
 
-  const handleClearAll = () => {
-    setNotifications([]);
-    setUnreadCount(0);
+  const handleClearAll = async () => {
+    try {
+      await clearAllNotifications();
+      setNotifications([]);
+      setUnreadCount(0);
+    } catch (err) {
+      console.error('Failed to clear notifications:', err);
+    }
   };
 
   const filteredNotifications = activeTab === "All"
@@ -199,7 +206,7 @@ export default function NotificationsPage() {
                 </div>
                 <div className="mt-auto text-xs text-gray-400 pt-4 border-t border-[#e0ece6] flex items-center gap-2">
                   <span className="inline-block w-2 h-2 rounded-full bg-[#157a4f] animate-pulse" />
-                  Last updated: {new Date().toLocaleString()}
+                  Last updated: {lastUpdated ? lastUpdated.toLocaleString() : 'Loading...'}
                 </div>
               </aside>
             </main>

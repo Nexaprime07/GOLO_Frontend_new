@@ -179,6 +179,17 @@ export default function MerchantProductsPage() {
 
   return (
     <div className="min-h-screen bg-[#ececec] text-[#1b1b1b]" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
+      <style>{`
+        @keyframes shimmer-sweep {
+          0% { background-position: -400px 0; }
+          100% { background-position: 400px 0; }
+        }
+        .shimmer-prod {
+          background: linear-gradient(90deg, #e8e8e8 25%, #f4f4f4 50%, #e8e8e8 75%);
+          background-size: 800px 100%;
+          animation: shimmer-sweep 1.4s ease-in-out infinite;
+        }
+      `}</style>
       <MerchantNavbar activeKey="products" />
 
       <main className="w-full px-8 lg:px-10 py-6">
@@ -282,7 +293,28 @@ export default function MerchantProductsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {products.map((item) => (
+                  {isFetching ? (
+                    <>
+                      {[...Array(5)].map((_, i) => (
+                        <tr key={i} className="border-t border-[#f0f0f0]">
+                          <td className="px-4 py-3">
+                            <div className="h-8 w-8 rounded-full shimmer-prod" />
+                          </td>
+                          <td className="px-4 py-3"><div className="h-4 w-32 rounded shimmer-prod" /></td>
+                          <td className="px-4 py-3"><div className="h-4 w-16 rounded shimmer-prod" /></td>
+                          <td className="px-4 py-3"><div className="h-5 w-20 rounded-full shimmer-prod" /></td>
+                          <td className="px-4 py-3"><div className="h-4 w-16 rounded shimmer-prod" /></td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <div className="h-6 w-14 rounded shimmer-prod" />
+                              <div className="h-6 w-14 rounded shimmer-prod" />
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </>
+                  ) : (
+                  <>{products.map((item) => (
                     <tr key={item.id} className="border-t border-[#f0f0f0]">
                       <td className="px-4 py-3">
                         <div className="h-8 w-8 rounded-full overflow-hidden border border-[#ececec]">
@@ -294,11 +326,13 @@ export default function MerchantProductsPage() {
                       <td className="px-4 py-3">
                         {item.status === "Out of Stock" ? (
                           <span className="inline-flex rounded-full bg-[#ef4d4d] px-2 py-0.5 text-[10px] font-semibold text-white">Out of Stock</span>
+                        ) : item.status === "Low Stock" ? (
+                          <span className="inline-flex rounded-full bg-[#f59e0b] px-2 py-0.5 text-[10px] font-semibold text-white">Low Stock</span>
                         ) : (
-                          <span>{item.status}</span>
+                          <span className="inline-flex rounded-full bg-[#e7f7ec] px-2 py-0.5 text-[10px] font-semibold text-[#2f9e58]">{item.status}</span>
                         )}
                       </td>
-                      <td className={`px-4 py-3 ${item.status === "Out of Stock" ? "text-[#ef4d4d]" : ""}`}>{item.stock}</td>
+                      <td className={`px-4 py-3 font-semibold ${item.status === "Out of Stock" ? "text-[#ef4d4d]" : item.status === "Low Stock" ? "text-[#f59e0b]" : "text-[#2a2a2a]"}`}>{item.stockQuantity}</td>
                       <td className="px-4 py-3 text-[11px]">
                         <button
                           onClick={() => router.push(`/merchant/products/details?id=${item.id}`)}
@@ -322,6 +356,8 @@ export default function MerchantProductsPage() {
                       </td>
                     </tr>
                   ) : null}
+                  </>
+                  )}
                 </tbody>
               </table>
 
