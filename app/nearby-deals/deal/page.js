@@ -26,6 +26,8 @@ import {
   getNearbyOfferDetails,
   getNearbyOffers,
   getOfferReviews,
+  getPublicMerchantProductById,
+  getPublicMerchantProducts,
   toggleWishlist,
   getAdWishlistCount,
   getWishlistIds,
@@ -123,6 +125,7 @@ function NearbyDealDetailsContent() {
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
   const [likeLoading, setLikeLoading] = useState(false);
+  const [liveStockByProductId, setLiveStockByProductId] = useState({});
 
   const offerId = searchParams.get("offerId") || "";
 
@@ -328,6 +331,79 @@ function NearbyDealDetailsContent() {
     () => (Array.isArray(offer?.selectedProducts) ? offer.selectedProducts : []),
     [offer]
   );
+
+  useEffect(() => {
+    if (selectedProducts.length === 0) {
+      setLiveStockByProductId({});
+      return;
+    }
+
+    let cancelled = false;
+    const selectedIds = new Set(
+      selectedProducts.map((item) => String(item?.productId || item?.id || item?._id || "")).filter(Boolean)
+    );
+
+    const loadLiveStock = async () => {
+      try {
+        const nextMap = {};
+        const idList = Array.from(selectedIds);
+        const responses = await Promise.all(
+          idList.map(async (id) => {
+            try {
+              const res = await getPublicMerchantProductById(id);
+              return { id, data: res?.data || null };
+            } catch {
+              return { id, data: null };
+            }
+          })
+        );
+
+        responses.forEach(({ id, data }) => {
+          if (!data) return;
+          nextMap[id] = Number(data?.stockQuantity ?? 0);
+        });
+
+        if (Object.keys(nextMap).length === 0) {
+          const merchantStoreId =
+            offer?.merchant?.merchantId ||
+            offer?.merchantId ||
+            offer?.merchant?._id ||
+            offer?.merchant?.id;
+          if (merchantStoreId) {
+            const listRes = await getPublicMerchantProducts(merchantStoreId, { page: 1, limit: 200 });
+            const rows = Array.isArray(listRes?.data?.products)
+              ? listRes.data.products
+              : Array.isArray(listRes?.data?.rows)
+              ? listRes.data.rows
+              : Array.isArray(listRes?.rows)
+              ? listRes.rows
+              : [];
+
+            rows.forEach((row) => {
+              const id = String(row?.id || row?._id || row?.productId || "");
+              if (!id || !selectedIds.has(id)) return;
+              nextMap[id] = Number(row?.stockQuantity ?? 0);
+            });
+          }
+        }
+
+        if (!cancelled) {
+          setLiveStockByProductId(nextMap);
+        }
+      } catch {
+        if (!cancelled) {
+          setLiveStockByProductId({});
+        }
+      }
+    };
+
+    loadLiveStock();
+    const timer = setInterval(loadLiveStock, 10000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [offer, selectedProducts]);
 
   const startingPrice = useMemo(
     () => computeStartingPrice(selectedProducts, offer?.totalPrice),
@@ -611,13 +687,25 @@ function NearbyDealDetailsContent() {
                   {selectedProducts.map((item, index) => {
                     const productId =
                       item?.productId || item?.id || item?._id;
+                    const liveStock = liveStockByProductId[String(productId)];
+                    const merchantStoreId =
+                      offer?.merchant?.merchantId ||
+                      offer?.merchantId ||
+                      offer?.merchant?._id ||
+                      offer?.merchant?.id;
                     return (
                       <article
                         key={`${productId || index}`}
                         onClick={() =>
                           productId &&
                           router.push(
-                            `/product/${productId}/merchant-page`
+                            `/nearby-deals/product?offerId=${encodeURIComponent(
+                              offerId
+                            )}&productId=${encodeURIComponent(
+                              productId
+                            )}&merchantId=${encodeURIComponent(
+                              merchantStoreId || ""
+                            )}`
                           )
                         }
                         className="rounded-[12px] border border-[#d8dce3] bg-white p-3 flex items-center gap-3 cursor-pointer hover:shadow-lg hover:border-[#157a4f] transition"
@@ -639,7 +727,10 @@ function NearbyDealDetailsContent() {
                           </p>
                           <p className="text-[12px] text-[#6b7280]">
                             Stock:{" "}
-                            {toNumber(item?.stockQuantity, 0)}
+                            {toNumber(
+                              liveStock !== undefined ? liveStock : item?.stockQuantity,
+                              0
+                            )}
                           </p>
                         </div>
                         <div className="text-right">

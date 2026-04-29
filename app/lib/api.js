@@ -1034,6 +1034,10 @@ export async function getMerchantProductById(productId) {
     return apiClient(`/merchant/products/${productId}`);
 }
 
+export async function getPublicMerchantProductById(productId) {
+    return apiClient(`/merchant/products/public/item/${productId}`);
+}
+
 export async function deleteMerchantProduct(productId) {
     return apiClient(`/merchant/products/${productId}`, {
         method: 'DELETE',

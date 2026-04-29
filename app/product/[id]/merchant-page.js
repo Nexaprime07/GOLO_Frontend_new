@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { use, useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import Recommended from "@/app/components/Recommended";
-import { getMerchantProductById } from "../../lib/api";
+import { getAdById, getMerchantProductById } from "../../lib/api";
 
 export default function MerchantProductDetails({ params }) {
-  const productId = params.id;
+  const { id: productId } = use(params);
   const router = useRouter();
 
   const [product, setProduct] = useState(null);
@@ -17,18 +17,54 @@ export default function MerchantProductDetails({ params }) {
   const [error, setError] = useState("");
   const [selectedImage, setSelectedImage] = useState(0);
 
+  const normalizeProduct = (raw) => {
+    if (!raw) return null;
+    return {
+      _id: raw?._id || raw?.id || "",
+      name: raw?.name || raw?.title || raw?.productName || "Product",
+      description: raw?.description || "No description provided.",
+      category: raw?.category || "General",
+      subCategory: raw?.subCategory || "",
+      price: Number(raw?.price ?? raw?.offerPrice ?? 0),
+      offerPrice: Number(raw?.offerPrice ?? raw?.price ?? 0),
+      originalPrice: Number(raw?.originalPrice ?? 0),
+      stockQuantity:
+        raw?.stockQuantity !== undefined && raw?.stockQuantity !== null
+          ? Number(raw.stockQuantity)
+          : undefined,
+      imageUrl: raw?.imageUrl || raw?.image || "",
+      images: Array.isArray(raw?.images) ? raw.images : [],
+      merchantId:
+        raw?.merchantId || raw?.merchant?._id || raw?.merchant?.id || "",
+      merchantName: raw?.merchantName || raw?.merchant?.name || "",
+      merchantPhone: raw?.merchantPhone || raw?.merchant?.phone || "",
+      merchant: raw?.merchant || null,
+    };
+  };
+
   useEffect(() => {
     async function fetchProduct() {
       setLoading(true);
       try {
-        const response = await getMerchantProductById(productId);
-        if (response.success && response.data) {
-          setProduct(response.data);
-        } else {
-          setError("Product not found");
+        let normalized = null;
+
+        try {
+          const merchantRes = await getMerchantProductById(productId);
+          normalized = normalizeProduct(merchantRes?.data);
+        } catch {
+          normalized = null;
         }
+
+        if (!normalized?._id) {
+          const adRes = await getAdById(productId);
+          normalized = normalizeProduct(adRes?.data);
+        }
+
+        if (!normalized?._id) throw new Error("Product not found");
+        setProduct(normalized);
+        setError("");
       } catch (err) {
-        setError("Failed to load product details");
+        setError(err?.message || "Failed to load product details");
       } finally {
         setLoading(false);
       }
