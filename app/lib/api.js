@@ -340,6 +340,13 @@ export async function changePasswordWithOTP(otp, newPassword) {
     });
 }
 
+export async function changePassword(currentPassword, newPassword) {
+    return apiClient('/users/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword, newPassword }),
+    });
+}
+
 // ============================================================
 // WISHLIST APIs
 // ============================================================

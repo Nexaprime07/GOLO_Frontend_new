@@ -20,6 +20,21 @@ const OFFER_CATEGORIES = [
   "Limited Time",
   "Combo",
   "Clearance",
+  "Flash Sale",
+  "Buy One Get One (BOGO)",
+  "Flat Discount",
+  "Percentage Off",
+  "Bundle Deal",
+  "New Arrival Offer",
+  "Seasonal Offer",
+  "Weekend Offer",
+  "Happy Hour Deal",
+  "Member Exclusive",
+  "First Purchase Offer",
+  "Loyalty Reward",
+  "Referral Offer",
+  "Clear Stock Sale",
+  "Free Gift Offer",
 ];
 
 const DEFAULT_TERMS = "• Valid only on selected products.\n• Limited to 1 use per customer.";

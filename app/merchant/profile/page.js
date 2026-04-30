@@ -9,12 +9,11 @@ import MerchantNavbar from "../MerchantNavbar";
 import { useRoleProtection, LoadingScreen } from "../../components/RoleBasedRedirect";
 import LocationPicker from "../../components/LocationPicker";
 import StoreLocationMap from "../../components/StoreLocationMap";
-import { updateMerchantStoreLocation, getMerchantStoreLocation, getMerchantProfile, updateProfile, updateMerchantProfile } from "../../lib/api";
+import { updateMerchantStoreLocation, getMerchantStoreLocation, getMerchantProfile, updateProfile, updateMerchantProfile, changePassword } from "../../lib/api";
 
 const topTabs = ["Profile Settings", "Loyalty Rewards", "Help", "Settings", "Logout"];
 
 import { getMerchantLoyaltyLeaderboard } from "../../lib/api";
-import { sendPasswordChangeOTP, verifyPasswordChangeOTP, changePasswordWithOTP } from "../../lib/api";
 
 export default function MerchantProfilePage() {
   return (
@@ -87,11 +86,9 @@ function MerchantProfileContent({ user, logout, router, initialTab = "Profile Se
   const [loyaltyRows, setLoyaltyRows] = useState([]);
   const [loyaltyLoading, setLoyaltyLoading] = useState(false);
   const [orderNotifications, setOrderNotifications] = useState(true);
-  const [otp, setOtp] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpVerified, setOtpVerified] = useState(false);
   const [settingsMessage, setSettingsMessage] = useState("");
   const [settingsLoading, setSettingsLoading] = useState(false);
   // Pagination state for loyalty leaderboard
@@ -327,37 +324,9 @@ function MerchantProfileContent({ user, logout, router, initialTab = "Profile Se
     setShowLocationPicker(false);
   };
 
-  const handleSendOtp = async () => {
-    try {
-      setSettingsLoading(true);
-      setSettingsMessage("");
-      await sendPasswordChangeOTP();
-      setOtpSent(true);
-      setSettingsMessage("OTP sent to your registered email.");
-    } catch (error) {
-      setSettingsMessage(error?.message || "Failed to send OTP.");
-    } finally {
-      setSettingsLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    try {
-      setSettingsLoading(true);
-      setSettingsMessage("");
-      await verifyPasswordChangeOTP(otp.trim());
-      setOtpVerified(true);
-      setSettingsMessage("OTP verified. You can now update password.");
-    } catch (error) {
-      setSettingsMessage(error?.message || "Invalid OTP.");
-    } finally {
-      setSettingsLoading(false);
-    }
-  };
-
   const handleChangePassword = async () => {
-    if (!otpVerified) {
-      setSettingsMessage("Please verify OTP first.");
+    if (!currentPassword) {
+      setSettingsMessage("Please enter your current password.");
       return;
     }
     if (!newPassword || newPassword.length < 6) {
@@ -372,15 +341,13 @@ function MerchantProfileContent({ user, logout, router, initialTab = "Profile Se
     try {
       setSettingsLoading(true);
       setSettingsMessage("");
-      await changePasswordWithOTP(otp.trim(), newPassword);
-      setOtp("");
+      await changePassword(currentPassword, newPassword);
+      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      setOtpSent(false);
-      setOtpVerified(false);
       setSettingsMessage("Password changed successfully.");
     } catch (error) {
-      setSettingsMessage(error?.message || "Failed to change password.");
+      setSettingsMessage(error?.data?.message || error?.message || "Failed to change password.");
     } finally {
       setSettingsLoading(false);
     }
@@ -525,39 +492,21 @@ function MerchantProfileContent({ user, logout, router, initialTab = "Profile Se
                 </div>
 
                 <div className="space-y-3">
-                  <button
-                    type="button"
-                    onClick={handleSendOtp}
-                    disabled={settingsLoading}
-                    className="h-9 px-4 rounded-[8px] bg-[#157a4f] text-white text-[12px] font-semibold disabled:opacity-70"
-                  >
-                    {settingsLoading ? "Sending..." : "Send OTP"}
-                  </button>
-                  {otpSent ? <p className="text-[11px] text-[#666]">OTP sent. Check your email.</p> : null}
-
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value)}
-                      placeholder="Enter OTP"
-                      className="w-full px-3 py-2 border border-[#d5d5d5] rounded-[6px] bg-white text-[12px] focus:outline-none focus:border-[#157a4f]"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleVerifyOtp}
-                      disabled={settingsLoading || !otp}
-                      className="px-4 py-2 border border-[#157a4f] text-[#157a4f] text-[12px] font-semibold rounded-[6px] disabled:opacity-60"
-                    >
-                      Verify
-                    </button>
-                  </div>
+                  <input
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Current password"
+                    autoComplete="current-password"
+                    className="w-full px-3 py-2 border border-[#d5d5d5] rounded-[6px] bg-white text-[12px] focus:outline-none focus:border-[#157a4f]"
+                  />
 
                   <input
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="New password"
+                    autoComplete="new-password"
                     className="w-full px-3 py-2 border border-[#d5d5d5] rounded-[6px] bg-white text-[12px] focus:outline-none focus:border-[#157a4f]"
                   />
                   <input
@@ -565,6 +514,7 @@ function MerchantProfileContent({ user, logout, router, initialTab = "Profile Se
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Confirm password"
+                    autoComplete="new-password"
                     className="w-full px-3 py-2 border border-[#d5d5d5] rounded-[6px] bg-white text-[12px] focus:outline-none focus:border-[#157a4f]"
                   />
 

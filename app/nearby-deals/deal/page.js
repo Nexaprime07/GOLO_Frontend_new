@@ -93,6 +93,57 @@ function computeStartingPrice(products = [], fallback = 0) {
   return Math.min(...values);
 }
 
+function OfferDetailSkeleton() {
+  return (
+    <main className="min-h-screen bg-[#f5f5f5]">
+      <Navbar />
+      <div className="mx-auto max-w-[1260px] px-4 lg:px-6 py-4 lg:py-6">
+        <div className="mb-4 h-3 w-56 animate-pulse rounded bg-[#dfe4ea]" />
+        <section className="mb-8 overflow-hidden rounded-2xl bg-white shadow-sm">
+          <div className="grid gap-6 p-4 lg:grid-cols-[1.5fr_1fr] lg:p-6">
+            <div className="h-[300px] animate-pulse rounded-xl bg-[#e4e9ef] lg:h-[400px]" />
+            <div className="space-y-4">
+              <div className="flex justify-between gap-3">
+                <div className="space-y-3 flex-1">
+                  <div className="h-8 w-4/5 animate-pulse rounded bg-[#dfe4ea]" />
+                  <div className="h-8 w-3/5 animate-pulse rounded bg-[#edf1f5]" />
+                </div>
+                <div className="flex gap-2">
+                  <div className="h-10 w-10 animate-pulse rounded-full bg-[#edf1f5]" />
+                  <div className="h-10 w-10 animate-pulse rounded-full bg-[#edf1f5]" />
+                </div>
+              </div>
+              <div className="h-14 animate-pulse rounded-xl bg-[#f0f3f7]" />
+              <div className="h-32 animate-pulse rounded-xl bg-[#fff0cf]" />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="h-20 animate-pulse rounded-lg bg-[#edf2ff]" />
+                <div className="h-20 animate-pulse rounded-lg bg-[#fff0cf]" />
+              </div>
+            </div>
+          </div>
+        </section>
+        <section className="grid gap-6 lg:grid-cols-[1.75fr_1fr]">
+          <div className="space-y-3">
+            <div className="h-8 w-64 animate-pulse rounded bg-[#dfe4ea]" />
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div key={index} className="flex items-center gap-3 rounded-[12px] border border-[#d8dce3] bg-white p-3">
+                <div className="h-16 w-16 animate-pulse rounded-lg bg-[#e4e9ef]" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-3/5 animate-pulse rounded bg-[#dfe4ea]" />
+                  <div className="h-3 w-2/5 animate-pulse rounded bg-[#edf1f5]" />
+                </div>
+                <div className="h-8 w-20 animate-pulse rounded bg-[#edf1f5]" />
+              </div>
+            ))}
+          </div>
+          <div className="h-64 animate-pulse rounded-[12px] bg-white" />
+        </section>
+      </div>
+      <Footer />
+    </main>
+  );
+}
+
 export default function NearbyDealDetailsPage() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-[#F3F3F3]" />}>
@@ -128,6 +179,18 @@ function NearbyDealDetailsContent() {
   const [liveStockByProductId, setLiveStockByProductId] = useState({});
 
   const offerId = searchParams.get("offerId") || "";
+  const nowTs = Date.now();
+  const offerStartsTs = offer?.startsAt ? new Date(offer.startsAt).getTime() : null;
+  const offerEndsTs = offer?.endsAt ? new Date(offer.endsAt).getTime() : null;
+  const offerActiveNow =
+    offerStartsTs !== null &&
+    offerEndsTs !== null &&
+    !Number.isNaN(offerStartsTs) &&
+    !Number.isNaN(offerEndsTs) &&
+    offerStartsTs <= nowTs &&
+    offerEndsTs >= nowTs;
+
+  const allowClaim = Boolean(offerActiveNow);
 
   // Handle like/unlike
   const handleToggleLike = async () => {
@@ -271,6 +334,24 @@ function NearbyDealDetailsContent() {
 
     loadOffer();
   }, [offerId]);
+
+  // If offer is outside visibility window, show message then send user back.
+  useEffect(() => {
+    if (!offer) return;
+    if (loadingOffer) return;
+    if (offerActiveNow) return;
+
+    const startsLabel = offer?.startsAt ? formatDate(offer.startsAt) : "-";
+    const endsLabel = offer?.endsAt ? formatDate(offer.endsAt) : "-";
+    setLoadError(
+      offerStartsTs && offerStartsTs > nowTs
+        ? `This offer starts on ${startsLabel}.`
+        : `This offer expired on ${endsLabel}.`,
+    );
+
+    const t = setTimeout(() => router.push("/nearby-deals"), 1200);
+    return () => clearTimeout(t);
+  }, [offer, loadingOffer, offerActiveNow, offerStartsTs, nowTs, offerEndsTs, router]);
 
   // Load offer reviews
   useEffect(() => {
@@ -422,6 +503,10 @@ function NearbyDealDetailsContent() {
 
   const handleClaimOffer = async () => {
     if (!offerId) return;
+    if (!allowClaim) {
+      setClaimError("This offer is not active yet.");
+      return;
+    }
 
     if (!user) {
       router.push(`/login?redirect=/nearby-deals/deal?offerId=${offerId}`);
@@ -445,17 +530,7 @@ function NearbyDealDetailsContent() {
   };
 
   if (loadingOffer) {
-    return (
-      <main className="min-h-screen bg-[#F3F3F3]">
-        <Navbar />
-        <div className="mx-auto max-w-[1260px] px-6 py-20">
-          <div className="rounded-xl border border-[#d8dce3] bg-white p-6 text-center text-sm text-[#6b7280]">
-            Loading offer details...
-          </div>
-        </div>
-        <Footer />
-      </main>
-    );
+    return <OfferDetailSkeleton />;
   }
 
   if (loadError || !offer) {

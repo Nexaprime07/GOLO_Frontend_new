@@ -123,7 +123,7 @@ function NearbyDealsPageContent() {
   const [locationStatus, setLocationStatus] = useState("detecting");
   const [locationError, setLocationError] = useState("");
   const [topDiscountOnly, setTopDiscountOnly] = useState(false);
-  const [activeNowOnly, setActiveNowOnly] = useState(false);
+  const [activeNowOnly, setActiveNowOnly] = useState(true);
   const [sortBy, setSortBy] = useState("nearest");
   const [selectedOfferTypes, setSelectedOfferTypes] = useState({
     Special: false,
@@ -319,6 +319,11 @@ function NearbyDealsPageContent() {
 
   const filteredDeals = useMemo(() => {
     const rows = rawOffers.filter((row) => {
+      // Business rule: offers must not appear before startDate or after endDate.
+      if (!row?.isActiveNow) {
+        return false;
+      }
+
       if (activeNowOnly && !row?.isActiveNow) {
         return false;
       }
@@ -388,7 +393,7 @@ function NearbyDealsPageContent() {
     setDistanceRadius(5);
     setPriceRange(5000);
     setTopDiscountOnly(false);
-    setActiveNowOnly(false);
+    setActiveNowOnly(true);
     setSortBy("nearest");
     setSelectedOfferTypes({
       Special: false,

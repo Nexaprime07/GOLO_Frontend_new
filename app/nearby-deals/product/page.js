@@ -31,6 +31,65 @@ export default function ProductDetailPage() {
   );
 }
 
+function ProductDetailSkeleton() {
+  return (
+    <main className="min-h-screen bg-[#f5f5f5]">
+      <Navbar />
+      <div className="mx-auto max-w-[1260px] px-4 lg:px-6 py-4 lg:py-6">
+        <div className="mb-4 h-5 w-36 animate-pulse rounded bg-[#dfe4ea]" />
+        <div className="mb-4 h-3 w-64 animate-pulse rounded bg-[#e8edf2]" />
+        <section className="mb-8 overflow-hidden rounded-2xl bg-white shadow-sm">
+          <div className="grid gap-6 p-4 lg:grid-cols-[1.2fr_1fr] lg:p-6">
+            <div className="h-[400px] animate-pulse rounded-xl bg-[#e4e9ef] lg:h-[500px]" />
+            <div className="space-y-4">
+              <div className="flex justify-between gap-3">
+                <div className="space-y-3 flex-1">
+                  <div className="h-8 w-4/5 animate-pulse rounded bg-[#dfe4ea]" />
+                  <div className="h-4 w-32 animate-pulse rounded-full bg-[#edf2ff]" />
+                </div>
+                <div className="flex gap-2">
+                  <div className="h-10 w-10 animate-pulse rounded-full bg-[#edf1f5]" />
+                  <div className="h-10 w-10 animate-pulse rounded-full bg-[#edf1f5]" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="h-3 w-full animate-pulse rounded bg-[#edf1f5]" />
+                <div className="h-3 w-11/12 animate-pulse rounded bg-[#edf1f5]" />
+                <div className="h-3 w-2/3 animate-pulse rounded bg-[#edf1f5]" />
+              </div>
+              <div className="h-36 animate-pulse rounded-xl bg-[#fff0cf]" />
+              <div className="h-20 animate-pulse rounded-lg bg-[#e8f6ef]" />
+              <div className="space-y-2">
+                <div className="h-3 w-3/5 animate-pulse rounded bg-[#edf1f5]" />
+                <div className="h-3 w-1/2 animate-pulse rounded bg-[#edf1f5]" />
+                <div className="h-3 w-2/5 animate-pulse rounded bg-[#edf1f5]" />
+              </div>
+            </div>
+          </div>
+        </section>
+        <section className="rounded-2xl bg-white p-6">
+          <div className="mb-6 h-7 w-56 animate-pulse rounded bg-[#dfe4ea]" />
+          <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+            <div className="flex gap-4">
+              <div className="h-16 w-16 animate-pulse rounded-full bg-[#e4e9ef]" />
+              <div className="flex-1 space-y-3">
+                <div className="h-5 w-48 animate-pulse rounded bg-[#dfe4ea]" />
+                <div className="h-3 w-36 animate-pulse rounded bg-[#edf1f5]" />
+                <div className="h-3 w-4/5 animate-pulse rounded bg-[#edf1f5]" />
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="h-10 animate-pulse rounded-lg bg-[#fff0cf]" />
+              <div className="h-10 animate-pulse rounded-lg bg-[#e8f6ef]" />
+            </div>
+          </div>
+        </section>
+      </div>
+      <Footer />
+    </main>
+  );
+}
+
 function ProductDetailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -223,17 +282,7 @@ function ProductDetailContent() {
   };
 
   if (loading) {
-    return (
-      <main className="min-h-screen bg-[#f3f3f3]">
-        <Navbar />
-        <div className="mx-auto max-w-[1260px] px-6 py-20">
-          <div className="rounded-xl border border-[#d8dce3] bg-white p-6 text-center text-sm text-[#6b7280]">
-            Loading product details...
-          </div>
-        </div>
-        <Footer />
-      </main>
-    );
+    return <ProductDetailSkeleton />;
   }
 
   if (error || !product) {
