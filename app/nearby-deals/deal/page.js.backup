@@ -422,9 +422,15 @@ function NearbyDealDetailsContent() {
     [offer]
   );
 
-  const offerDisplayPrice = offer?.displayPrice || 0;
+  const offerDisplayPrice = useMemo(
+    () => computeStartingPrice(selectedProducts, offer?.displayPrice || offer?.totalPrice),
+    [selectedProducts, offer?.displayPrice, offer?.totalPrice]
+  );
 
-  const offerDiscountPercent = offer?.discountPercent || 0;
+  const offerDiscountPercent = useMemo(
+    () => computeBestDiscountPercent(selectedProducts, offer?.discountPercent),
+    [selectedProducts, offer?.discountPercent]
+  );
 
   useEffect(() => {
     if (selectedProducts.length === 0) {

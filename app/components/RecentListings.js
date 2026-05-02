@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useState, useMemo, Suspense } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import { getAllAds, searchAds } from "../lib/api";
+import { getAllAds, getNearbyAds, searchAds } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import AuthRequiredModal from "./AuthRequiredModal";
 
@@ -108,8 +108,9 @@ function RecentListingsContent() {
                 const [sortBy, sortOrder] = sortValue.split("_");
 
                 let response;
-                // Always use getNearbyAds if userLocation or location is set (Golocal user surface)
-                if ((userLocation && userLocation.lat && userLocation.lng) || location) {
+                // Choja should show the full public feed by default.
+                // Use nearby ads only when the user explicitly selects Nearby.
+                if (sortValue === "distance_asc" && userLocation?.lat && userLocation?.lng) {
                     response = await getNearbyAds({
                         lat: userLocation?.lat,
                         lng: userLocation?.lng,
@@ -117,11 +118,23 @@ function RecentListingsContent() {
                         page: 1,
                         limit: 50
                     });
+                } else if (q || location || category) {
+                    response = await searchAds({
+                        q,
+                        category,
+                        location,
+                        sortBy,
+                        sortOrder,
+                        page: 1,
+                        limit: 50,
+                    });
                 } else {
-                    // Fallback: show nothing if no location (prevents Choja ads leak)
-                    setAds([]);
-                    setLoading(false);
-                    return;
+                    response = await getAllAds({
+                        page: 1,
+                        limit: 50,
+                        sortBy,
+                        sortOrder,
+                    });
                 }
 
                 if (response.success) {

@@ -644,7 +644,9 @@ export async function getMyBannerPromotions() {
 }
 
 export async function getMyOfferPromotions() {
-    const response = await apiClient('/offers/my');
+    const response = await apiClient('/offers/my', {
+        cache: 'no-store',
+    });
     const rows = Array.isArray(response?.data) ? response.data : [];
     const trackedOfferIds = readTrackedOfferPromotionIds();
 

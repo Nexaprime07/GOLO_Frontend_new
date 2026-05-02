@@ -46,6 +46,59 @@ function toNumber(value, fallback = 0) {
   return Number.isNaN(parsed) ? fallback : parsed;
 }
 
+function computeBestDiscountPercent(products = [], fallback = 0) {
+  const fallbackValue = toNumber(fallback, 0);
+  if (fallbackValue > 0) {
+    return Math.max(0, Math.round(fallbackValue));
+  }
+
+  return Math.round(
+    products.reduce((best, product) => {
+      const original = toNumber(product?.originalPrice, 0);
+      const offer = toNumber(product?.offerPrice, 0);
+      if (original <= 0 || offer < 0 || offer >= original) {
+        return best;
+      }
+      const discount = ((original - offer) / original) * 100;
+      return Math.max(best, discount);
+    }, 0),
+  );
+}
+
+function computeStartingPrice(products = [], fallback = 0) {
+  const fallbackValue = toNumber(fallback, 0);
+  if (fallbackValue > 0) {
+    return fallbackValue;
+  }
+
+  if (!Array.isArray(products) || products.length === 0) {
+    return fallbackValue;
+  }
+
+  const values = products
+    .map((item) => toNumber(item?.offerPrice, 0))
+    .filter((price) => price > 0);
+
+  if (!values.length) {
+    return fallbackValue;
+  }
+
+  return values.reduce((sum, price) => sum + price, 0);
+}
+
+function normalizeNearbyOffer(row) {
+  const selectedProducts = Array.isArray(row?.selectedProducts) ? row.selectedProducts : [];
+  const displayPrice = computeStartingPrice(selectedProducts, row?.displayPrice || row?.totalPrice);
+  const discountPercent = computeBestDiscountPercent(selectedProducts, row?.discountPercent);
+
+  return {
+    ...row,
+    selectedProducts,
+    displayPrice,
+    discountPercent,
+  };
+}
+
 function formatDistance(distanceKm) {
   if (typeof distanceKm !== "number" || Number.isNaN(distanceKm)) return "Nearby";
   return `${distanceKm.toFixed(1)} km`;
@@ -280,7 +333,9 @@ function NearbyDealsPageContent() {
           limit: 100,
         });
 
-        const primaryRows = Array.isArray(response?.data) ? response.data : [];
+        const primaryRows = Array.isArray(response?.data)
+          ? response.data.map(normalizeNearbyOffer)
+          : [];
 
         // Graceful fallback: if strict geofence returns empty, show relevant offers
         // instead of a blank state (helps when merchant coords are incomplete/inaccurate).
@@ -297,7 +352,11 @@ function NearbyDealsPageContent() {
             limit: 100,
           });
 
-          setRawOffers(Array.isArray(fallbackResponse?.data) ? fallbackResponse.data : []);
+          setRawOffers(
+            Array.isArray(fallbackResponse?.data)
+              ? fallbackResponse.data.map(normalizeNearbyOffer)
+              : [],
+          );
         } else {
           setRawOffers(primaryRows);
         }
