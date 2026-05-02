@@ -313,12 +313,20 @@ function NearbyStoreContent() {
 
         {/* Store Info */}
         <div className="mt-3 flex flex-wrap items-center gap-4 text-xs lg:text-sm text-[#4e5965]">
-          <span className="font-semibold text-[#f2b632]">★★★★★</span>
-          <span><span className="font-semibold text-[#1f2329]">{storeRating.toFixed(1)}</span> ({reviewCount.toLocaleString()} Reviews)</span>
+          <span className="font-semibold text-[#1f2329]">{resolvedAddress || (merchant?.profile?.city ? `${merchant.profile.city}${merchant.profile.state ? `, ${merchant.profile.state}` : ""}` : "Location")}</span>
+
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-[#f2b632]">★★★★★</span>
+            <span>
+              <span className="font-semibold text-[#1f2329]">{(merchant?.averageRating ?? storeRating).toFixed(1)}</span>
+              {" "}({(merchant?.totalReviews ?? reviewCount).toLocaleString()} Reviews)
+            </span>
+          </div>
+
           <span className="text-[#9ca3ad]">|</span>
+
           <span>
-            {merchant?.profile?.city && merchant?.profile?.state ? `${merchant.profile.city}, ${merchant.profile.state}` : "Location"}
-            {resolvedPhone && <span className="ml-2"> • {resolvedPhone}</span>}
+            {/* Location {resolvedPhone && <span className="ml-2">• {resolvedPhone}</span>} */}
           </span>
         </div>
 
@@ -430,43 +438,46 @@ function NearbyStoreContent() {
                         </div>
                         <h2 className="text-xl font-bold text-[#1f2329]">Popular Services</h2>
                       </div>
-              
-                      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                        {offers.slice(0, 1).map((offer, idx) => (
-                          <div 
-                            key={offer?.offerId || offer?._id || `popular-offer-${idx}`} 
-                            className="group bg-white rounded-2xl border border-[#f1f5f9] overflow-hidden hover:shadow-lg hover:border-[#157a4f] transition-all duration-300 flex flex-col cursor-pointer"
-                            onClick={() => router.push(`/nearby-deals/deal?offerId=${offer.offerId}`)}
-                          >
-                            <div className="relative h-40 overflow-hidden bg-[#f8fafc]">
-                              <Image
-                                src={offer?.imageUrl || "/images/deal2.avif"}
-                                alt={offer?.title || "Offer"}
-                                fill
-                                className="object-cover group-hover:scale-105 transition-transform duration-500"
-                              />
-                              <div className="absolute top-2 left-2 bg-[#157a4f] text-white px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider">
-                                Popular
-                              </div>
-                            </div>
-                            <div className="p-4 flex flex-col flex-1">
-                              <div className="mb-3">
-                                <p className="text-[9px] font-bold text-[#4a5fc1] uppercase tracking-wider mb-1">{offer?.category || "Service"}</p>
-                                <h3 className="font-bold text-[#1e293b] text-sm line-clamp-1 group-hover:text-[#157a4f] transition-colors">
-                                  {offer?.title}
-                                </h3>
-                              </div>
-                              <div className="mt-auto">
-                                <div className="flex items-baseline justify-between mb-3">
-                                  <span className="text-lg font-black text-[#157a4f]">Rs.{offer?.totalPrice?.toLocaleString("en-IN")}</span>
+
+                      <div className="-mx-4 px-4 overflow-x-auto">
+                        <div className="flex gap-5 w-max">
+                          {offers.slice(0, 8).map((offer, idx) => (
+                            <div key={offer?.offerId || offer?._id || `popular-offer-${idx}`} className="flex-none min-w-[280px]">
+                              <div
+                                className="group bg-white rounded-2xl border border-[#f1f5f9] overflow-hidden hover:shadow-lg hover:border-[#157a4f] transition-all duration-300 flex flex-col cursor-pointer h-full"
+                                onClick={() => router.push(`/nearby-deals/deal?offerId=${offer.offerId}`)}
+                              >
+                                <div className="relative h-40 overflow-hidden bg-[#f8fafc]">
+                                  <Image
+                                    src={offer?.imageUrl || "/images/deal2.avif"}
+                                    alt={offer?.title || "Offer"}
+                                    fill
+                                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                  />
+                                  <div className="absolute top-2 left-2 bg-[#157a4f] text-white px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider">
+                                    Popular
+                                  </div>
                                 </div>
-                                <button className="w-full h-9 bg-[#f0f9f6] text-[#157a4f] rounded-lg font-bold text-[11px] hover:bg-[#157a4f] hover:text-white border border-[#157a4f]/5 transition-all">
-                                  View Details
-                                </button>
+                                <div className="p-4 flex flex-col flex-1">
+                                  <div className="mb-3">
+                                    <p className="text-[9px] font-bold text-[#4a5fc1] uppercase tracking-wider mb-1">{offer?.category || "Service"}</p>
+                                    <h3 className="font-bold text-[#1e293b] text-sm line-clamp-1 group-hover:text-[#157a4f] transition-colors">
+                                      {offer?.title}
+                                    </h3>
+                                  </div>
+                                  <div className="mt-auto">
+                                    <div className="flex items-baseline justify-between mb-3">
+                                      <span className="text-lg font-black text-[#157a4f]">Rs.{offer?.totalPrice?.toLocaleString("en-IN")}</span>
+                                    </div>
+                                    <button className="w-full h-9 bg-[#f0f9f6] text-[#157a4f] rounded-lg font-bold text-[11px] hover:bg-[#157a4f] hover:text-white border border-[#157a4f]/5 transition-all">
+                                      View Details
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
                     </section>
                   )}
@@ -481,62 +492,63 @@ function NearbyStoreContent() {
                         <h2 className="text-xl font-bold text-[#1f2329]">Products</h2>
                       </div>
 
-                      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                        {products.map((product, idx) => (
-                          <div 
-                            key={product?._id || product?.productId || product?.id || `${product?.name || 'product'}-${idx}`} 
-                            className="group bg-white rounded-2xl border border-[#f1f5f9] overflow-hidden hover:shadow-lg hover:border-[#157a4f] transition-all duration-300 flex flex-col"
-                          >
-                            <div className="relative h-40 overflow-hidden bg-[#f8fafc]">
-                              <Image
-                                src={product?.image || product?.imageUrl || "/images/place2.avif"}
-                                alt={product?.name || "Product"}
-                                fill
-                                className="object-cover group-hover:scale-105 transition-transform duration-500"
-                              />
-                              {product?.originalPrice > product?.price && (
-                                <div className="absolute top-2 right-2 bg-[#e7a91d] text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm">
-                                  -{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
+                      <div className="-mx-4 px-4 overflow-x-auto">
+                        <div className="flex gap-5 w-max">
+                          {products.map((product, idx) => (
+                            <div key={product?._id || product?.productId || product?.id || `${product?.name || 'product'}-${idx}`} className="flex-none min-w-[260px]">
+                              <div className="group bg-white rounded-2xl border border-[#f1f5f9] overflow-hidden hover:shadow-lg hover:border-[#157a4f] transition-all duration-300 flex flex-col h-full">
+                                <div className="relative h-40 overflow-hidden bg-[#f8fafc]">
+                                  <Image
+                                    src={product?.image || product?.imageUrl || "/images/place2.avif"}
+                                    alt={product?.name || "Product"}
+                                    fill
+                                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                  />
+                                  {product?.originalPrice > product?.price && (
+                                    <div className="absolute top-2 right-2 bg-[#e7a91d] text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                                      -{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                            <div className="p-4 flex flex-col flex-1">
-                              <div className="mb-3">
-                                <p className="text-[9px] font-bold text-[#4a5fc1] uppercase tracking-wider mb-1">{product?.category || "Item"}</p>
-                                <h3 className="font-bold text-[#1e293b] text-sm line-clamp-1 group-hover:text-[#157a4f] transition-colors">
-                                  {product?.name}
-                                </h3>
-                              </div>
-                      
-                              <div className="mt-auto">
-                                <div className="flex items-baseline justify-between mb-3">
-                                  <span className="text-lg font-black text-[#157a4f]">Rs.{product?.price?.toLocaleString("en-IN") || "0"}</span>
+                                <div className="p-4 flex flex-col flex-1">
+                                  <div className="mb-3">
+                                    <p className="text-[9px] font-bold text-[#4a5fc1] uppercase tracking-wider mb-1">{product?.category || "Item"}</p>
+                                    <h3 className="font-bold text-[#1e293b] text-sm line-clamp-1 group-hover:text-[#157a4f] transition-colors">
+                                      {product?.name}
+                                    </h3>
+                                  </div>
+
+                                  <div className="mt-auto">
+                                    <div className="flex items-baseline justify-between mb-3">
+                                      <span className="text-lg font-black text-[#157a4f]">Rs.{product?.price?.toLocaleString("en-IN") || "0"}</span>
+                                    </div>
+                                    <button 
+                                      onClick={() => {
+                                        const pid = product?.productId || product?._id || product?.id;
+                                        if (pid) {
+                                          const params = new URLSearchParams({
+                                            productId: pid,
+                                            merchantId: merchantId,
+                                            productName: encodeURIComponent(product?.name || product?.productName || ""),
+                                            price: String(product?.price || product?.offerPrice || "0"),
+                                            originalPrice: String(product?.originalPrice || "0"),
+                                            imageUrl: encodeURIComponent(product?.image || product?.imageUrl || ""),
+                                            category: encodeURIComponent(product?.category || ""),
+                                            description: encodeURIComponent(product?.description || ""),
+                                          });
+                                          router.push(`/nearby-deals/product?${params.toString()}`);
+                                        }
+                                      }}
+                                      className="w-full h-9 bg-[#f0f9f6] text-[#157a4f] rounded-lg font-bold text-[11px] hover:bg-[#157a4f] hover:text-white border border-[#157a4f]/5 transition-all"
+                                    >
+                                      View Product
+                                    </button>
+                                  </div>
                                 </div>
-                                <button 
-                                  onClick={() => {
-                                    const pid = product?.productId || product?._id || product?.id;
-                                    if (pid) {
-                                      const params = new URLSearchParams({
-                                        productId: pid,
-                                        merchantId: merchantId,
-                                        productName: encodeURIComponent(product?.name || product?.productName || ""),
-                                        price: String(product?.price || product?.offerPrice || "0"),
-                                        originalPrice: String(product?.originalPrice || "0"),
-                                        imageUrl: encodeURIComponent(product?.image || product?.imageUrl || ""),
-                                        category: encodeURIComponent(product?.category || ""),
-                                        description: encodeURIComponent(product?.description || ""),
-                                      });
-                                      router.push(`/nearby-deals/product?${params.toString()}`);
-                                    }
-                                  }}
-                                  className="w-full h-9 bg-[#f0f9f6] text-[#157a4f] rounded-lg font-bold text-[11px] hover:bg-[#157a4f] hover:text-white border border-[#157a4f]/5 transition-all"
-                                >
-                                  View Product
-                                </button>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
                     </section>
                   )}
@@ -551,42 +563,45 @@ function NearbyStoreContent() {
                         <h2 className="text-xl font-bold text-[#1f2329]">Exclusive Offers</h2>
                       </div>
 
-                      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                        {offers.slice(1).map((offer, idx) => (
-                          <div 
-                            key={offer?.offerId || offer?._id || `offer-${idx}`} 
-                            onClick={() => router.push(`/nearby-deals/deal?offerId=${offer.offerId}`)} 
-                            className="group bg-white rounded-2xl border border-[#f1f5f9] overflow-hidden hover:shadow-lg hover:border-[#4a5fc1] transition-all duration-300 flex flex-col cursor-pointer"
-                          >
-                            <div className="relative h-40 overflow-hidden">
-                              <Image
-                                src={offer?.imageUrl || "/images/deal2.avif"}
-                                alt={offer?.title || "Offer"}
-                                fill
-                                className="object-cover group-hover:scale-105 transition-transform duration-500"
-                              />
-                              <div className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm text-[#1f2329] px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest shadow-sm">
-                                Offer
-                              </div>
-                            </div>
-                            <div className="p-4 flex flex-col flex-1">
-                              <div className="mb-3">
-                                <span className="text-[9px] font-bold text-[#4a5fc1] uppercase tracking-wider block mb-1">{offer?.category || "Special"}</span>
-                                <h3 className="font-bold text-[#1e293b] text-sm line-clamp-1 group-hover:text-[#4a5fc1] transition-colors">
-                                  {offer?.title}
-                                </h3>
-                              </div>
-                              <div className="mt-auto">
-                                <div className="flex items-baseline justify-between mb-3">
-                                  <span className="text-lg font-black text-[#157a4f]">Rs.{offer?.totalPrice?.toLocaleString("en-IN") || "0"}</span>
+                      <div className="-mx-4 px-4 overflow-x-auto">
+                        <div className="flex gap-5 w-max">
+                          {offers.slice(1).map((offer, idx) => (
+                            <div key={offer?.offerId || offer?._id || `offer-${idx}`} className="flex-none min-w-[280px]">
+                              <div
+                                onClick={() => router.push(`/nearby-deals/deal?offerId=${offer.offerId}`)}
+                                className="group bg-white rounded-2xl border border-[#f1f5f9] overflow-hidden hover:shadow-lg hover:border-[#4a5fc1] transition-all duration-300 flex flex-col cursor-pointer h-full"
+                              >
+                                <div className="relative h-40 overflow-hidden">
+                                  <Image
+                                    src={offer?.imageUrl || "/images/deal2.avif"}
+                                    alt={offer?.title || "Offer"}
+                                    fill
+                                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                  />
+                                  <div className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm text-[#1f2329] px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest shadow-sm">
+                                    Offer
+                                  </div>
                                 </div>
-                                <button className="w-full h-9 bg-[#f0f4ff] text-[#4a5fc1] rounded-lg font-bold text-[11px] hover:bg-[#4a5fc1] hover:text-white transition-all">
-                                  Claim Now
-                                </button>
+                                <div className="p-4 flex flex-col flex-1">
+                                  <div className="mb-3">
+                                    <span className="text-[9px] font-bold text-[#4a5fc1] uppercase tracking-wider block mb-1">{offer?.category || "Special"}</span>
+                                    <h3 className="font-bold text-[#1e293b] text-sm line-clamp-1 group-hover:text-[#4a5fc1] transition-colors">
+                                      {offer?.title}
+                                    </h3>
+                                  </div>
+                                  <div className="mt-auto">
+                                    <div className="flex items-baseline justify-between mb-3">
+                                      <span className="text-lg font-black text-[#157a4f]">Rs.{offer?.totalPrice?.toLocaleString("en-IN") || "0"}</span>
+                                    </div>
+                                    <button className="w-full h-9 bg-[#f0f4ff] text-[#4a5fc1] rounded-lg font-bold text-[11px] hover:bg-[#4a5fc1] hover:text-white transition-all">
+                                      Claim Now
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
                     </section>
                   )}
